@@ -50,6 +50,22 @@
     }[c]));
   }
 
+  // Shared by the Timeline/Quotes/People/Places cards — each entry's
+  // relatedContent (see archive_content_links_public(), includes/
+  // archive.php) is content an admin's AI analysis pass matched to that
+  // specific entry, e.g. a photo clearly depicting a named person. Empty
+  // most of the time; that's expected, not an error.
+  function renderRelatedContent(items) {
+    if (!items || !items.length) return "";
+    const links = items.map(c => {
+      const url = "/api/file.php?fileId=" + encodeURIComponent(c.fileId);
+      return c.isVideo
+        ? `<a href="${url}" target="_blank" rel="noopener" class="pill related-content-link">&#9654; ${esc(c.title)}</a>`
+        : `<a href="${url}" target="_blank" rel="noopener" class="related-content-thumb" title="${esc(c.title)}"><img src="${url}" alt="${esc(c.title)}" loading="lazy"></a>`;
+    }).join("");
+    return `<div class="meta related-content">${links}</div>`;
+  }
+
   // --- Timeline ---
   let timelineData = [];
   loadData("timeline").then(data => {
@@ -70,6 +86,7 @@
         ${historicalNote}
         ${t.citation ? `<div class="meta">source: ${esc(t.citation)}</div>` : ""}
         <div class="body">${esc(t.event)}${t.note ? "\n\nNote: " + esc(t.note) : ""}</div>
+        ${renderRelatedContent(t.relatedContent)}
       </div>
     `;
     }).join("") || `<p class="meta">No results.</p>`;
@@ -113,6 +130,7 @@
         <div class="body">"${esc((q.quote || "").trim())}"</div>
         ${q.citation ? `<div class="meta">source: ${esc(q.citation)}</div>` : ""}
         ${viewLink}
+        ${renderRelatedContent(q.relatedContent)}
       </div>
     `;
     }).join("") || `<p class="meta">No results.</p>`;
@@ -147,6 +165,7 @@
         ${p.fate ? `<div class="meta">fate: ${esc(p.fate)}</div>` : ""}
         <div class="body">${esc((p.notes || "").trim())}</div>
         ${p.citation ? `<div class="meta">source: ${esc(p.citation)}</div>` : ""}
+        ${renderRelatedContent(p.relatedContent)}
       </div>
     `).join("") || `<p class="meta">No results.</p>`;
   }
@@ -174,6 +193,7 @@
         <div class="meta">role: ${esc(p.role)}</div>
         ${p.notes ? `<div class="body">${esc((p.notes || "").trim())}</div>` : ""}
         ${p.citation ? `<div class="meta">source: ${esc(p.citation)}</div>` : ""}
+        ${renderRelatedContent(p.relatedContent)}
       </div>
     `).join("") || `<p class="meta">No results.</p>`;
   }

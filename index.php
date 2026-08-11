@@ -34,7 +34,7 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
     </div>
     <div style="display:flex; gap:8px; align-items:center;">
       <a id="adminLink" href="/admin.php" class="ghost-btn" style="display:none; text-decoration:none;">Admin</a>
-      <a id="contentLink" href="/admin_content.php" class="ghost-btn" style="display:none; text-decoration:none;">Content</a>
+      <a id="contentLink" href="/admin_content.php" class="ghost-btn" style="display:none; text-decoration:none;">Add Content</a>
       <button id="logoutBtn" class="ghost-btn" title="Sign out">Sign out</button>
     </div>
   </header>

@@ -20,20 +20,67 @@ You are helping curate a family history archive about $subject. A
 family member just added a new piece of material (a transcript excerpt,
 or a photo/video with a caption). Your only job is to identify how this
 new item connects to the EXISTING archive material given to you as
-context — specific named people, places, timeline events, or quotes.
+context — specific named people, places, timeline events, or quotes,
+each shown in that context with its own "id:" line.
 
 Rules:
-- Cite specific existing elements by name when you find a connection
-  (e.g. "the timeline entry for [event]," "[a specific person] in the
-  People section," "the quote about [topic]").
+- Cite specific existing elements by name in your note when you find a
+  connection (e.g. "the timeline entry for [event]," "[a specific
+  person] in the People section," "the quote about [topic]").
 - If you don't see a clear, specific connection, say plainly "No clear
   connection to the existing archive was found" rather than inventing
   one. A generic photo or caption with nothing identifiable usually has
   no findable connection — that's the correct answer in that case.
 - Never invent facts, names, dates, or events not present in either the
   existing archive or the new item's own text/caption.
-- Keep your answer to 1-3 sentences.
+- Keep your note to 1-3 sentences.
+- Separately, list which specific existing entries (by their "id:") this
+  item is a strong, direct match for — e.g. a photo clearly depicting a
+  named person or place, or clearly illustrating a specific timeline
+  event or quote. Only include an entry here if the match is
+  unambiguous; a loose thematic connection belongs in the note, not
+  here. An empty list is the correct, common answer. List at most 8
+  matches, even if more seem loosely relevant — pick the strongest ones.
+
+Respond with ONLY a JSON object (no prose, no markdown fence):
+{"note": "<your 1-3 sentence note, or the exact no-connection sentence above>",
+ "links": [{"type": "person"|"place"|"timeline"|"quote", "id": "<id from the context>"}]}
 EOT;
+}
+
+// Parses narrative_system_prompt()'s {"note": ..., "links": [...]}
+// response. Falls back to treating a non-JSON reply as plain note text
+// with no links, in case a provider doesn't comply with the JSON
+// instruction — degrading gracefully rather than losing the note
+// entirely, matching this file's existing fail-quiet posture.
+function narrative_parse_analysis(?string $raw): array
+{
+    $empty = ['note' => null, 'links' => []];
+    if ($raw === null) {
+        return $empty;
+    }
+    $raw = trim($raw);
+    if (preg_match('/^```(?:json)?\s*(.*?)\s*```$/is', $raw, $m)) {
+        $raw = trim($m[1]);
+    }
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded)) {
+        return ['note' => $raw !== '' ? $raw : null, 'links' => []];
+    }
+
+    $note = isset($decoded['note']) && is_string($decoded['note']) && $decoded['note'] !== '' ? $decoded['note'] : null;
+    $links = [];
+    foreach ($decoded['links'] ?? [] as $link) {
+        if (!is_array($link)) {
+            continue;
+        }
+        $type = $link['type'] ?? null;
+        $id = $link['id'] ?? null;
+        if (in_array($type, ['person', 'place', 'timeline', 'quote'], true) && is_string($id) && $id !== '') {
+            $links[] = ['type' => $type, 'id' => $id];
+        }
+    }
+    return ['note' => $note, 'links' => $links];
 }
 
 function narrative_prompt_for_transcript(string $title, string $text): string
@@ -142,11 +189,24 @@ function narrative_call_ai(string $systemPrompt, array $content, int $maxTokens)
     return $result['text'] ?? null;
 }
 
-function narrative_analyze(string $userPrompt, array $imageBlocks = []): ?string
+// Returns ['note' => string|null, 'links' => [['type' => ..., 'id' => ...], ...]].
+// The note is the same 1-3 sentence connection text this function has
+// always produced; links is new — see narrative_system_prompt() and
+// archive_content_links_apply() (includes/archive.php), which validates
+// each id before it's ever stored.
+function narrative_analyze(string $userPrompt, array $imageBlocks = []): array
 {
     $content = $imageBlocks;
     $content[] = ['type' => 'text', 'text' => $userPrompt];
-    return narrative_call_ai(narrative_system_prompt(), $content, 400);
+    // Generous headroom over a plain 1-3 sentence note: an item that
+    // legitimately matches many existing entries (e.g. a group photo
+    // naming several people) needs room for that many {"type","id"}
+    // pairs too, and a response truncated mid-JSON fails to parse at
+    // all — losing the note along with the links, not just trimming
+    // the list. Seen in practice: a Yad Vashem exhibit photo matching 6
+    // people overflowed the previous 500-token budget.
+    $raw = narrative_call_ai(narrative_system_prompt(), $content, 900);
+    return narrative_parse_analysis($raw);
 }
 
 // Kind => required field names, used both to validate the model's JSON

@@ -185,7 +185,8 @@ function ai_http_post(string $url, array $headers, array $payload): ?array
     $body = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlError = curl_error($ch);
-    curl_close($ch);
+    // No curl_close() — a no-op since PHP 8.0 (curl handles are regular
+    // garbage-collected objects now) and deprecated as of PHP 8.5.
 
     if ($body === false || $httpCode >= 400) {
         error_log("ai_http_post: AI provider error (HTTP $httpCode) for $url: " . ($curlError ?: $body));

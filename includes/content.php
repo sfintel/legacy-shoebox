@@ -302,7 +302,7 @@ function content_fetch_url(string $url): array
     $body = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlError = curl_error($ch);
-    curl_close($ch);
+    // No curl_close() — a no-op since PHP 8.0, deprecated as of PHP 8.5.
 
     if ($body === false || $httpCode >= 400) {
         throw new RuntimeException("Couldn't fetch that URL (HTTP $httpCode)." . ($curlError ? " $curlError" : ''));
@@ -349,18 +349,19 @@ function content_create_transcript(string $title, string $text, string $userId):
     $fileName = "$fileId.md";
     $dir = content_upload_dir('transcript');
     file_put_contents("$dir/$fileName", $text);
-    $narrativeNote = narrative_analyze(narrative_prompt_for_transcript($title, $text));
+    $analysis = narrative_analyze(narrative_prompt_for_transcript($title, $text));
 
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
         'INSERT INTO content_items (id, type, title, description, narrative_note, created_by)
          VALUES (?, \'transcript\', ?, NULL, ?, ?)'
-    )->execute([$itemId, $title, $narrativeNote, $userId]);
+    )->execute([$itemId, $title, $analysis['note'], $userId]);
     content_insert_file($pdo, $itemId, [
         'fileId' => $fileId, 'fileName' => $fileName, 'originalName' => "$title.md",
         'mimeType' => 'text/markdown', 'size' => strlen($text), 'metadata' => null,
     ], 0);
+    archive_content_links_apply($itemId, $analysis['links']);
 
     return content_find($itemId);
 }
@@ -388,18 +389,19 @@ function content_create_url(string $title, string $url, string $userId): array
     $fileName = "$fileId.md";
     $dir = content_upload_dir('url');
     file_put_contents("$dir/$fileName", "Source: $url\n\n" . $fetched['text']);
-    $narrativeNote = narrative_analyze(narrative_prompt_for_url($title, $url, $fetched['text']));
+    $analysis = narrative_analyze(narrative_prompt_for_url($title, $url, $fetched['text']));
 
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
         'INSERT INTO content_items (id, type, title, description, source_url, narrative_note, created_by)
          VALUES (?, \'url\', ?, NULL, ?, ?, ?)'
-    )->execute([$itemId, $title, $url, $narrativeNote, $userId]);
+    )->execute([$itemId, $title, $url, $analysis['note'], $userId]);
     content_insert_file($pdo, $itemId, [
         'fileId' => $fileId, 'fileName' => $fileName, 'originalName' => "$title.md",
         'mimeType' => 'text/markdown', 'size' => strlen($fetched['text']), 'metadata' => null,
     ], 0);
+    archive_content_links_apply($itemId, $analysis['links']);
 
     $suggestions = narrative_suggest_additions($title, $url, $fetched['text']);
     content_suggestions_insert($itemId, $suggestions);
@@ -463,7 +465,7 @@ function content_create_video(string $title, ?string $description, array $file, 
 
     $stored = content_store_uploaded_file('video', $file);
     $description = $description !== null ? trim($description) : '';
-    $narrativeNote = narrative_analyze(
+    $analysis = narrative_analyze(
         narrative_prompt_for_media($title, $description !== '' ? $description : null, $stored['metadata'])
     );
 
@@ -472,8 +474,9 @@ function content_create_video(string $title, ?string $description, array $file, 
     $pdo->prepare(
         'INSERT INTO content_items (id, type, title, description, narrative_note, created_by)
          VALUES (?, \'video\', ?, ?, ?, ?)'
-    )->execute([$itemId, $title, $description !== '' ? $description : null, $narrativeNote, $userId]);
+    )->execute([$itemId, $title, $description !== '' ? $description : null, $analysis['note'], $userId]);
     content_insert_file($pdo, $itemId, $stored, 0);
+    archive_content_links_apply($itemId, $analysis['links']);
 
     return content_find($itemId);
 }
@@ -509,7 +512,7 @@ function content_create_photo_album(string $title, ?string $description, array $
         }
     }
     $metadataList = array_map(static fn ($s) => $s['metadata'], $stored);
-    $narrativeNote = narrative_analyze(
+    $analysis = narrative_analyze(
         narrative_prompt_for_photo_album($title, $description !== '' ? $description : null, $metadataList),
         $imageBlocks
     );
@@ -519,10 +522,11 @@ function content_create_photo_album(string $title, ?string $description, array $
     $pdo->prepare(
         'INSERT INTO content_items (id, type, title, description, narrative_note, created_by)
          VALUES (?, \'photo\', ?, ?, ?, ?)'
-    )->execute([$itemId, $title, $description !== '' ? $description : null, $narrativeNote, $userId]);
+    )->execute([$itemId, $title, $description !== '' ? $description : null, $analysis['note'], $userId]);
     foreach ($stored as $i => $s) {
         content_insert_file($pdo, $itemId, $s, $i);
     }
+    archive_content_links_apply($itemId, $analysis['links']);
 
     return content_find($itemId);
 }
@@ -627,20 +631,23 @@ function content_update_item(string $id, ?string $ownerId, ?string $narrativeNot
 // before this feature existed, or where the original call failed/the
 // API key was unset at the time. Works the same for a single-photo item
 // and a multi-photo album, since both are just content_files rows.
-function content_analyze_existing_item(array $item): ?string
+// Returns the same ['note' => ..., 'links' => ...] shape as
+// narrative_analyze() itself.
+function content_analyze_existing_item(array $item): array
 {
+    $empty = ['note' => null, 'links' => []];
     $files = content_files_for_item($item['id']);
 
     if ($item['type'] === 'transcript') {
         $file = $files[0] ?? null;
         if (!$file) {
-            return null;
+            return $empty;
         }
         $path = content_upload_dir('transcript') . '/' . $file['file_name'];
         $text = is_file($path) ? file_get_contents($path) : null;
         return $text !== null && $text !== false
             ? narrative_analyze(narrative_prompt_for_transcript($item['title'], $text))
-            : null;
+            : $empty;
     }
 
     if ($item['type'] === 'video') {
@@ -652,13 +659,13 @@ function content_analyze_existing_item(array $item): ?string
     if ($item['type'] === 'url') {
         $file = $files[0] ?? null;
         if (!$file) {
-            return null;
+            return $empty;
         }
         $path = content_upload_dir('url') . '/' . $file['file_name'];
         $text = is_file($path) ? file_get_contents($path) : null;
         return $text !== null && $text !== false
             ? narrative_analyze(narrative_prompt_for_url($item['title'], (string) $item['source_url'], $text))
-            : null;
+            : $empty;
     }
 
     // photo album
@@ -681,20 +688,26 @@ function content_analyze_existing_item(array $item): ?string
 }
 
 // Fills in narrative_note for every existing item that doesn't have one
-// yet. Safe to re-run — only touches rows where narrative_note IS NULL,
-// so it never overwrites a note (or a deliberately-confirmed "no
-// connection found") already stored.
+// yet, and (re-)applies its content_links. Safe to re-run — only
+// touches rows where narrative_note IS NULL, so it never overwrites a
+// note (or a deliberately-confirmed "no connection found") already
+// stored; links are cleared and reapplied each time it processes an
+// item, so a second run against the same still-note-less item doesn't
+// accumulate duplicate links.
 function content_backfill_narrative_notes(): array
 {
     $items = db()->query('SELECT * FROM content_items WHERE narrative_note IS NULL ORDER BY created_at ASC')->fetchAll();
 
     $results = [];
     foreach ($items as $item) {
-        $note = content_analyze_existing_item($item);
+        $analysis = content_analyze_existing_item($item);
+        $note = $analysis['note'];
         if ($note !== null) {
             $update = db()->prepare('UPDATE content_items SET narrative_note = ? WHERE id = ?');
             $update->execute([$note, $item['id']]);
         }
+        archive_content_links_clear_for_item($item['id']);
+        archive_content_links_apply($item['id'], $analysis['links']);
         $results[] = ['id' => $item['id'], 'title' => $item['title'], 'updated' => $note !== null];
     }
     return $results;

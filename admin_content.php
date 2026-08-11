@@ -74,7 +74,7 @@ require_content_page();
 
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
       <h2 style="margin:0;" id="listHeading">Added content</h2>
-      <button id="backfillBtn" class="ghost-btn">Backfill narrative notes</button>
+      <button id="backfillBtn" class="ghost-btn">Backfill narrative notes &amp; links</button>
     </div>
     <p class="meta" id="status" role="status" style="color:var(--muted); font-size:.85rem;"></p>
     <div class="table-wrap">

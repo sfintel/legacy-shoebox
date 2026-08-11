@@ -421,6 +421,7 @@ function archive_person_public(array $row): array
         'name_note' => $row['name_note'],
         'source_note' => $row['source_note'],
         'citation' => $row['citation'],
+        'relatedContent' => archive_content_links_public('person', $row['id']),
     ];
 }
 
@@ -436,6 +437,7 @@ function archive_place_public(array $row): array
         'notes' => $row['notes'],
         'source_note' => $row['source_note'],
         'citation' => $row['citation'],
+        'relatedContent' => archive_content_links_public('place', $row['id']),
     ];
 }
 
@@ -451,6 +453,7 @@ function archive_timeline_entry_public(array $row): array
         'historical_date' => $row['historical_date'],
         'historical_source' => $row['historical_source'],
         'citation' => $row['citation'],
+        'relatedContent' => archive_content_links_public('timeline', $row['id']),
     ];
 }
 
@@ -463,6 +466,7 @@ function archive_quote_public(array $row): array
         'tags' => json_decode((string) ($row['tags'] ?? '[]'), true) ?: [],
         'quote' => $row['quote_text'],
         'citation' => $row['citation'],
+        'relatedContent' => archive_content_links_public('quote', $row['id']),
     ];
 }
 
@@ -926,6 +930,73 @@ function archive_discrepancy_notes_update(array $fields): array
     return archive_discrepancy_notes();
 }
 
+// --- Content links (content_items <-> people/places/timeline/quotes) ---
+// See sql/schema.sql's content_links comment for the full rationale.
+
+// $links is the AI-suggested list from narrative_analyze() — validates
+// each entry's type/id against the real tables before storing, so a
+// hallucinated or stale id is silently dropped rather than stored.
+function archive_content_links_apply(string $contentItemId, array $links): void
+{
+    $finders = [
+        'person' => 'archive_person_find',
+        'place' => 'archive_place_find',
+        'timeline' => 'archive_timeline_find',
+        'quote' => 'archive_quote_find',
+    ];
+    foreach ($links as $link) {
+        $type = $link['type'] ?? null;
+        $id = $link['id'] ?? null;
+        if (!isset($finders[$type]) || !is_string($id) || $id === '') {
+            continue;
+        }
+        if (!$finders[$type]($id)) {
+            continue;
+        }
+        $stmt = db()->prepare(
+            'INSERT IGNORE INTO content_links (id, content_item_id, entity_type, entity_id) VALUES (?, ?, ?, ?)'
+        );
+        $stmt->execute([make_uuid(), $contentItemId, $type, $id]);
+    }
+}
+
+// Re-running analysis (e.g. the admin backfill action) should replace
+// this item's links rather than accumulate duplicates across runs.
+function archive_content_links_clear_for_item(string $contentItemId): void
+{
+    db()->prepare('DELETE FROM content_links WHERE content_item_id = ?')->execute([$contentItemId]);
+}
+
+// Content items linked to a given archive entity, each with its first
+// file's id/mime type (for display — see archive_content_links_public()
+// below) so e.g. the Timeline tab can show a thumbnail/link without a
+// second round-trip.
+function archive_content_links_for_entity(string $entityType, string $entityId): array
+{
+    $stmt = db()->prepare(
+        "SELECT ci.id, ci.type, ci.title,
+                (SELECT cf.id FROM content_files cf WHERE cf.content_item_id = ci.id ORDER BY cf.sort_order ASC LIMIT 1) AS file_id,
+                (SELECT cf.mime_type FROM content_files cf WHERE cf.content_item_id = ci.id ORDER BY cf.sort_order ASC LIMIT 1) AS mime_type
+         FROM content_links cl
+         JOIN content_items ci ON ci.id = cl.content_item_id
+         WHERE cl.entity_type = ? AND cl.entity_id = ?
+         ORDER BY ci.created_at ASC"
+    );
+    $stmt->execute([$entityType, $entityId]);
+    return $stmt->fetchAll();
+}
+
+function archive_content_links_public(string $entityType, string $entityId): array
+{
+    return array_map(static fn (array $row): array => [
+        'id' => $row['id'],
+        'type' => $row['type'],
+        'title' => $row['title'],
+        'fileId' => $row['file_id'],
+        'isVideo' => $row['mime_type'] !== null && str_starts_with((string) $row['mime_type'], 'video/'),
+    ], archive_content_links_for_entity($entityType, $entityId));
+}
+
 // --- Plain-text formatting for the AI context (includes/knowledge.php) ---
 // Mirrors the old YAML files' own hand-written text shape closely enough
 // that the system prompt's existing expectations (citing "the timeline
@@ -937,7 +1008,8 @@ function archive_format_people_for_context(array $rows): string
     $out = '';
     foreach ($rows as $row) {
         $names = json_decode((string) $row['names'], true) ?: [];
-        $out .= "- names: " . implode(', ', $names) . "\n";
+        $out .= "- id: {$row['id']}\n";
+        $out .= "  names: " . implode(', ', $names) . "\n";
         if ($row['role']) {
             $out .= "  role: {$row['role']}\n";
         }
@@ -966,7 +1038,8 @@ function archive_format_places_for_context(array $rows): string
     $out = '';
     foreach ($rows as $row) {
         $names = json_decode((string) $row['names'], true) ?: [];
-        $out .= "- names: " . implode(', ', $names) . "\n";
+        $out .= "- id: {$row['id']}\n";
+        $out .= "  names: " . implode(', ', $names) . "\n";
         foreach (['wartime_country', 'modern_country', 'approx_coords', 'role', 'notes', 'source_note', 'citation'] as $key) {
             if (!empty($row[$key])) {
                 $out .= "  $key: {$row[$key]}\n";
@@ -981,7 +1054,8 @@ function archive_format_timeline_for_context(array $rows): string
 {
     $out = '';
     foreach ($rows as $row) {
-        $out .= "- date: {$row['date_label']}\n";
+        $out .= "- id: {$row['id']}\n";
+        $out .= "  date: {$row['date_label']}\n";
         $out .= "  event: {$row['event']}\n";
         foreach (['source_note', 'confidence', 'note', 'historical_date', 'historical_source', 'citation'] as $key) {
             if (!empty($row[$key])) {
@@ -998,7 +1072,8 @@ function archive_format_quotes_for_context(array $rows): string
     $out = '';
     foreach ($rows as $row) {
         $tags = json_decode((string) ($row['tags'] ?? '[]'), true) ?: [];
-        $out .= "- speaker: {$row['speaker']}\n";
+        $out .= "- id: {$row['id']}\n";
+        $out .= "  speaker: {$row['speaker']}\n";
         if ($row['source_note']) {
             $out .= "  source_note: {$row['source_note']}\n";
         }

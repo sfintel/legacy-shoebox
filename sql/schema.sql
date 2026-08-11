@@ -132,6 +132,31 @@ CREATE TABLE IF NOT EXISTS content_suggestions (
     REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Links a content_items row (a photo/video/transcript/URL) to a
+-- specific existing archive entry it's relevant to — e.g. a photo that
+-- clearly depicts a named person, so the Timeline/People/Places/Quotes
+-- tabs can surface "related content" alongside that entry, not just the
+-- Ask tab (whose [[photo:ID]] tokens are a separate, chat-time-only
+-- mechanism — see knowledge_system_role()). AI-suggested at the same
+-- time as narrative_note (see includes/narrative.php's
+-- narrative_analyze()), applied by includes/content.php after
+-- validating the referenced entity still exists — never trusted blindly
+-- from the model. entity_id has no FK constraint since it points at one
+-- of four different tables depending on entity_type (no polymorphic FK
+-- support in MySQL); orphaned rows are simply skipped at render time if
+-- the referenced entity was since deleted, rather than requiring every
+-- delete function to also clean this table.
+CREATE TABLE IF NOT EXISTS content_links (
+  id              CHAR(36)     NOT NULL PRIMARY KEY,
+  content_item_id CHAR(36)     NOT NULL,
+  entity_type     ENUM('person','place','timeline','quote') NOT NULL,
+  entity_id       CHAR(36)     NOT NULL,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_content_links_item FOREIGN KEY (content_item_id)
+    REFERENCES content_items(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_content_link (content_item_id, entity_type, entity_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ============================================================
 -- Core archive tables — the database is the source of truth for
 -- the archive itself (not knowledge/*.yaml files). Approving a
