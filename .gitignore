@@ -1,0 +1,14 @@
+# Real secrets — never commit.
+.env
+
+# Local Claude Code tool config — references this machine's own file
+# paths, not app content.
+.claude/
+
+# Uploaded family content, if ARCHIVE_ROOT ever points inside the repo
+# during local testing.
+uploads/
+
+# OS cruft
+.DS_Store
+Thumbs.db

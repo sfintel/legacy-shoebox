@@ -1,0 +1,24 @@
+# Deny direct web access to anything that isn't meant to be public.
+# No mod_rewrite required anywhere in this app (query strings are used
+# instead of pretty URLs) — this is the only Apache config needed beyond
+# whatever your host already has for serving PHP.
+
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+
+<Files "config.php">
+    Require all denied
+</Files>
+
+RewriteEngine Off
+
+DirectoryIndex index.php index.html
+
+# signup.html was replaced by signup.php (adds the audience-mode
+# dropdown), and login.html by login.php (site-name/quote interpolation)
+# — redirect anyone with the old URLs bookmarked/cached rather than
+# 404ing. mod_alias's Redirect, not mod_rewrite, so RewriteEngine stays
+# off per the note above.
+Redirect 301 /signup.html /signup.php
+Redirect 301 /login.html /login.php

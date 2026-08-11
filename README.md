@@ -1,0 +1,256 @@
+# Family Legacy Archive — LAMP Edition
+
+A self-contained PHP/MySQL app for preserving and querying a family
+member's testimony and legacy materials — built to run on plain shared or
+traditional web hosting (cPanel, Plesk, or anywhere that gives you PHP +
+MySQL but no Node, Docker, or shell access). Core features: per-user login
+with admin approval, an AI-grounded Ask tab, a Browse tab (timeline,
+people, places, quotes, full transcript, source notes), an installable
+PWA, and a full admin-facing archive editor.
+
+No Composer, no npm, no build step. Every dependency (SMTP client, JSON
+handling, UUIDs) is hand-rolled in plain PHP so there's nothing to install
+beyond what a standard PHP 8+ / MySQL host already provides. The database
+is the single source of truth for the entire archive — there's no
+YAML/JSON file layer to keep in sync, and nothing to regenerate after an
+edit.
+
+## What you need from your host
+
+- PHP 8.0+ with the `pdo_mysql`, `openssl`, and `curl` extensions (all three
+  are on by default on essentially every shared host).
+- A MySQL or MariaDB database (cPanel: *MySQL Databases*).
+- Apache with `.htaccess` support (`AllowOverride All` — standard on shared
+  hosting; this app does **not** need `mod_rewrite`, only `mod_authz_core`
+  for the `Require all denied` blocks, which is universal).
+- Outgoing SMTP — usually a mailbox on your own domain (cPanel: *Email
+  Accounts*), or any SMTP provider's credentials. Optional — see step 3.
+
+## 1. Create the database
+
+In cPanel: *MySQL Databases* → create a database and a user, add the user
+to the database with **All Privileges**. Note the three values it gives you
+(host is almost always `localhost`).
+
+Then import the schema — either cPanel's *phpMyAdmin* (Import tab, pick
+`sql/schema.sql`), or from a terminal if your host gives you one:
+
+```bash
+mysql -u YOUR_DB_USER -p YOUR_DB_NAME < sql/schema.sql
+```
+
+This creates the full set of tables the app needs — accounts and
+permissions (`users`, `consumed_tokens`, `rate_limits`), the core archive
+(`site_settings`, `audience_modes`, `people`, `places`, `timeline_entries`,
+`quotes`, `primary_testimony`, `discrepancy_notes`), family-contributed
+material (`content_items`, `content_files`, `content_suggestions`), and the
+name-redaction registry (`redacted_names`). See `sql/schema.sql` itself for
+what each one is for — every table has a comment explaining its role.
+
+## 2. Upload the files
+
+The contents of this folder **are your web root** — upload all of it (or
+a subfolder your domain/subdomain points at) via cPanel's File Manager
+(zip it first, upload, then *Extract*) or FTP/SFTP.
+
+## 3. Run the setup wizard
+
+Visit your site. You'll land on `/setup.php` automatically — nothing else
+is reachable until it's finished. It walks through four resumable stages:
+
+1. **Database** — enter the host/name/user/password from step 1. This
+   writes `.env` (including a random `SESSION_SECRET`) and imports
+   `sql/schema.sql` for you — no manual `.env` editing or SQL import
+   needed.
+2. **Archive identity** — the archive's name, the subject's name and
+   pronouns, birth details, and a short bio, plus the default audience
+   categories (e.g. young children vs. researchers). Or skip straight to
+   "Load example archive instead" to see a small fictional archive filled
+   in, if you just want to explore the app first.
+3. **Admin account** — your name/email/password, plus (optional) an AI
+   provider and API key. Choose Anthropic or OpenAI (the OpenAI option
+   also works with any OpenAI-compatible endpoint — Groq, DeepSeek,
+   OpenRouter, Azure OpenAI, a local Ollama/LM Studio server, etc. — via
+   its base-URL field). Without a key, Browse still works but Ask errors
+   and new content is saved without an AI note/suggestions; you can add
+   one later by hand-editing `.env` (see `.env.example`).
+4. **Advanced settings** — public URL, outgoing SMTP, rate limits. Fully
+   skippable; sensible defaults are used and everything here can be
+   changed later by hand in `.env`.
+
+Once finished you're logged in automatically, and `/setup.php` refuses to
+run again — reach it a second time and it just redirects to `/login.php`.
+
+`.htaccess` blocks direct web access to `.env` and `config.php`, but on
+hosts where you can set file permissions, it doesn't hurt to make `.env`
+`600` as well.
+
+## 4. Revisit your archive's identity anytime
+
+`/admin_settings.php`'s **Site identity** tab holds everything the wizard
+asked in stage 2, editable anytime — this drives page titles, the About
+tab, the login page, the installable-app manifest, outgoing email subject
+lines, and — most importantly — the Ask tab's AI prompt, which is built
+entirely from these fields. The same page's **Sources** tab manages your
+citation list (primary interview, plus any additional sources, each
+optionally flagged as a dramatization), and its **Audience categories**
+tab manages the Ask tab's "Telling for:" options — add, edit, reorder,
+delete, or change the default. Each category needs a short note telling
+the AI how to adjust its answers for that audience; that can't be inferred
+automatically, so writing it is part of adding a category.
+
+## Building out the archive
+
+`/admin_archive.php` (admin-only) is where the core archive itself gets
+built: People, Places, Timeline, Quotes, Testimony, and Discrepancy/source
+notes, each with add/edit/delete (Timeline entries also support
+reordering). Everything here is what the Ask tab is grounded in and what
+the Browse tab displays — there's no separate file format to hand-edit or
+keep in sync.
+
+The **Testimony** tab holds one primary recorded interview, if there is
+one: paste its transcript using `## Tape 1` for each session/tape break
+and `**SUBJECT:**` / `**INTERVIEWER:**` to mark speaker turns.
+
+The **Discrepancy notes** tab is freeform curator's notes — e.g. where two
+sources disagree on a name or date — supporting basic `#`/`##` headings,
+`**bold**`, `` `code` ``, and paragraphs (not full Markdown).
+
+### Migrating from an older, file-based app-lamp deployment
+
+If you're moving from the original YAML-file-based version of this app
+(`knowledge/people.yaml`, `places.yaml`, `timeline.yaml`, `quotes.yaml`,
+`testimony/transcript.md`, `discrepancies.md`), the **Import** tab on
+`/admin_archive.php` parses and loads them straight into the database —
+paste in whichever files you have (all optional) and click **Run
+import**. People and places are matched by their YAML `id` field, so
+running it again is safe (it updates existing entries rather than
+duplicating them); timeline entries and quotes have no such matching key
+and will be duplicated if you import the same content twice — best run
+once, on an empty archive. For the transcript, tell it what speaker
+markers your file used (e.g. `SF`/`INT`) and it rewrites them to this
+app's `**SUBJECT:**`/`**INTERVIEWER:**` convention automatically; leave
+those fields blank if your transcript already uses that convention. Any
+`source_X: true` flags in `people.yaml`/`places.yaml` become a citation
+automatically when the file documents them in its own header comments
+(e.g. `# source_vha: confirmed in VHA testimony...`) — otherwise they're
+just recorded as a plain source label you can edit afterward.
+
+## Accounts and permissions
+
+1. New family members visit `/signup.php` ("Request access" link on the
+   login page) and submit name, email, a password they choose, and which
+   of the Ask tab's "Telling for:" audience categories answers should
+   default to for them — they can still change it per-question later.
+2. You get an email at `NOTIFY_EMAIL` with Approve/Reject links (skipped if
+   `SMTP_HOST` is blank — check `/admin.php` instead, which always shows
+   pending requests).
+3. Clicking a link opens a confirmation page — nothing happens until you
+   click again, so email security scanners that prefetch links can't
+   accidentally auto-approve someone.
+4. On approval, they get an email confirming they can log in with the
+   email/password they already chose.
+
+`/admin.php` (an "Admin" link appears in the header for admins only) lists
+everyone with their role, chosen audience category ("Telling for"), and
+Approve/Reject/Revoke/Delete actions, plus Unlock for a locked-out
+account (see "Login lockout"). Admin accounts don't show Revoke/Delete —
+both the buttons and the underlying API reject those actions against an
+admin row, so there's no way to lock everyone out of user management by
+mistake.
+
+Beyond the admin/member role, a member can independently be granted
+`can_add_content` — access to the admin Content page (adding
+transcripts/photos/videos/URLs) without becoming a full admin. Admins
+always have content access regardless of this flag. Grant/revoke it from
+a user's row on `/admin.php`.
+
+### Login lockout
+
+After `LOGIN_ATTEMPT_LIMIT` (default 5) failed attempts within
+`LOGIN_LOCKOUT_SECONDS` (default 900 = 15 min), further attempts are
+blocked. Tracked two ways independently — by the email address being
+attempted, and by the request's IP — so a lockout on one doesn't depend
+on the other: e.g. someone repeatedly mistyping their password locks out
+just that email; a flood of attempts against many different email
+addresses from one place locks out that IP regardless of which addresses
+were tried. Unlock an account from `/admin.php`'s Unlock button, which
+only clears that account's email-side counter — an IP-side lockout isn't
+tied to one account and just expires on its own after the window.
+
+## Content management
+
+`/admin_content.php` (linked from the header for anyone with content
+access — admins or a member with `can_add_content`) lets family members
+add material beyond the core archive built via `/admin_archive.php`:
+transcripts (pasted text), photos, videos, or a URL. Everything added
+here becomes part of what the Ask tab knows about.
+
+- **Transcripts/photos/videos**: title + optional caption; photos/videos
+  get EXIF metadata auto-extracted (date taken, camera, GPS, dimensions/
+  duration) via `exiftool`, editable afterward if the host doesn't have
+  `exiftool` or the auto-read value is wrong. A photo "album" (up to 10
+  files sharing one title/caption) is analyzed together as a set.
+- **URL**: fetches the page, extracts its text, and runs two AI passes —
+  a short narrative-connection note (same as the other types) and a
+  separate structured pass that proposes new timeline/people/places/
+  quotes entries grounded in that source. Proposals never duplicate
+  something already in the archive and are never applied automatically:
+  they sit as pending suggestions under that content item until an admin
+  approves or dismisses each one individually from the item's
+  "Suggestions" panel. Approving inserts the entry straight into the core
+  archive (the same tables `/admin_archive.php` manages) — no separate
+  file format involved, and it appears in the Ask tab and Browse tab
+  immediately.
+- Every item gets a "Backfill narrative notes" pass (admin-only button)
+  to fill in a note for anything added before this feature existed, or
+  where the original AI call failed.
+- A non-admin content contributor only sees and can edit/delete their own
+  items (and, for URL items, only sees their own item's suggestions,
+  read-only — approving/dismissing is admin-only since it mutates the
+  shared archive).
+
+## Name redaction
+
+`/admin_redactions.php` (admin-only) maintains a list of names to strip
+from everything shown to family members — the Ask tab (both its context
+and the model's replies) and the Browse tabs' JSON. Add a name and any
+exact, word-boundary match of it is replaced with "[name withheld]"
+wherever the archive is served. This is a **serve-time filter only** — it
+never modifies the underlying archive data, so removing a name from the
+list immediately un-redacts it. Add variants (nicknames, alternate
+spellings) as separate entries to cover all of them. Admin-facing views
+(Content management, the archive editor, the redaction list itself) are
+never redacted, since the admin needs full visibility to manage the
+archive.
+
+## Security notes
+
+- `.htaccess` files deny direct access to `.env`, `config.php`, and
+  everything under `includes/` and `sql/` — only the PHP entry points and
+  static assets (`css/`, `js/`, `icons/`) are web-reachable.
+- Session cookies are marked `Secure` automatically when the request comes
+  in over HTTPS (checked per-request — no separate "behind a proxy" flag
+  needed, since there's no reverse proxy in front of this deployment by
+  default).
+- Email approve/reject links are signed, expire after 7 days, and are
+  single-use — enforced via a unique key in `consumed_tokens`, so even two
+  simultaneous clicks on the same link can only succeed once.
+- Use HTTPS. Most hosts offer a free Let's Encrypt certificate through
+  cPanel (*SSL/TLS Status* → *Run AutoSSL*) — turn it on before sending
+  anyone a login link.
+- This was built for a small trusted family group, not as a hardened
+  multi-tenant auth system — the login/approval flow keeps casual visitors
+  out and gives you an audit trail of who has access, nothing more.
+
+## A note on how changes get verified
+
+This project is typically edited without a local PHP/MySQL environment —
+changes are staged against a real (but disposable) test database and
+verified there directly (schema changes applied over SSH before deploying
+dependent code, features exercised end-to-end with throwaway test
+accounts/content, always cleaned up afterward) rather than trusted by
+inspection alone. If you're extending this app yourself without a local
+PHP setup, the same approach — a separate test database, throwaway test
+data, verification via direct DB/API inspection — is the practical way to
+do it.
