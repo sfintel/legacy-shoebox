@@ -4,6 +4,15 @@ require_once __DIR__ . '/config.php';
 $user = require_auth_page();
 $ss = site_settings();
 $sources = archive_sources();
+// A user's stored preference can go stale if the audience categories
+// were changed/reseeded after they signed up (e.g. this migration's
+// slugs differ from the old app-lamp's hardcoded ones) — fall back to
+// the current default rather than silently landing on whatever option
+// happens to be first in the list. Same validate-or-fallback pattern
+// api/chat.php already uses per-request.
+$defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_mode_values(), true)
+    ? $user['default_audience_mode']
+    : audience_mode_default();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,7 +57,7 @@ $sources = archive_sources();
       <div class="ask-controls">
         <label for="audienceMode">Telling for:</label>
         <select id="audienceMode">
-          <?= audience_mode_options($user['default_audience_mode'] ?? audience_mode_default()) ?>
+          <?= audience_mode_options($defaultAudienceMode) ?>
         </select>
       </div>
       <div id="chatLog" class="chat-log" role="log" aria-live="polite" aria-relevant="additions">

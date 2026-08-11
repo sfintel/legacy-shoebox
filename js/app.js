@@ -101,14 +101,27 @@
   });
   function renderQuotes(items) {
     const el = document.getElementById("quoteList");
-    el.innerHTML = items.map(q => `
+    el.innerHTML = items.map(q => {
+      const tapeMatch = /Tape\s+(\d+)/i.exec(q.source_note || "");
+      const viewLink = tapeMatch
+        ? `<button type="button" class="ghost-btn view-in-transcript" data-tape="${tapeMatch[1]}" data-quote-id="${esc(q.id)}" style="margin-top:8px;">View in transcript</button>`
+        : "";
+      return `
       <div class="card">
         <h3>${esc(q.speaker)}${q.source_note ? " — " + esc(q.source_note) : ""}</h3>
         <div class="meta">${(q.tags || []).map(t => `<span class="pill">${esc(t)}</span>`).join("")}</div>
         <div class="body">"${esc((q.quote || "").trim())}"</div>
         ${q.citation ? `<div class="meta">source: ${esc(q.citation)}</div>` : ""}
+        ${viewLink}
       </div>
-    `).join("") || `<p class="meta">No results.</p>`;
+    `;
+    }).join("") || `<p class="meta">No results.</p>`;
+    el.querySelectorAll(".view-in-transcript").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const q = quotesData.find(x => x.id === btn.dataset.quoteId);
+        if (q) viewQuoteInTranscript(btn.dataset.tape, q.quote);
+      });
+    });
   }
   function applyQuoteFilter() {
     const q = document.getElementById("quoteSearch").value.toLowerCase();
@@ -173,24 +186,61 @@
   });
 
   // --- Transcript ---
+  let transcriptData = null;
+  function renderTape(n) {
+    if (!transcriptData) return;
+    const tapes = transcriptData.tapes || [];
+    const tape = tapes.find(t => t.tape === Number(n)) || tapes[0];
+    document.getElementById("transcriptView").innerHTML = (tape ? tape.turns : []).map(turn => `
+      <div class="turn ${turn.speaker === "Interviewer" ? "interviewer" : ""}">
+        <div class="who">${esc(turn.speaker)}</div>
+        <div class="text">${esc(turn.text)}</div>
+      </div>
+    `).join("");
+  }
   loadData("transcript").then(data => {
+    transcriptData = data;
     document.getElementById("transcriptMeta").textContent =
       `${data.interview_label || ""} — ${data.interview_date || ""}, ${data.location || ""}. Interviewer: ${data.interviewer || ""}. ` +
       `Videographer: ${data.videographer || ""}. Length: ${data.length_label || ""}.`;
     const sel = document.getElementById("tapeSelect");
     sel.innerHTML = (data.tapes || []).map(t => `<option value="${t.tape}">Tape ${t.tape}</option>`).join("");
-    function renderTape(n) {
-      const tape = (data.tapes || []).find(t => t.tape === Number(n)) || (data.tapes || [])[0];
-      document.getElementById("transcriptView").innerHTML = (tape ? tape.turns : []).map(turn => `
-        <div class="turn ${turn.speaker === "Interviewer" ? "interviewer" : ""}">
-          <div class="who">${esc(turn.speaker)}</div>
-          <div class="text">${esc(turn.text)}</div>
-        </div>
-      `).join("");
-    }
     sel.addEventListener("change", e => renderTape(e.target.value));
     renderTape((data.tapes || [])[0] && data.tapes[0].tape);
   });
+
+  // Jumps from a Quotes-tab card to where it appears in the full
+  // transcript: switches to the Transcript tab, selects the matching
+  // tape, then searches the freshly-rendered turns for one containing
+  // the quote text (quotes are sourced from the same transcript, so
+  // this is normally an exact substring match) and scrolls/highlights
+  // it. Degrades gracefully to "just show the right tape" if no turn
+  // matches closely enough (e.g. a shortened quote or minor wording
+  // difference) — still far more useful than nothing.
+  function viewQuoteInTranscript(tapeNum, quoteText) {
+    const tabBtn = document.getElementById("tab-transcript");
+    if (tabBtn) tabBtn.click();
+    loadData("transcript").then(() => {
+      const sel = document.getElementById("tapeSelect");
+      if (sel && tapeNum != null) {
+        sel.value = String(tapeNum);
+      }
+      renderTape(tapeNum);
+      requestAnimationFrame(() => {
+        const needle = (quoteText || "").trim().slice(0, 60).toLowerCase();
+        document.querySelectorAll("#transcriptView .turn.highlight").forEach(el => el.classList.remove("highlight"));
+        if (!needle) return;
+        for (const turn of document.querySelectorAll("#transcriptView .turn")) {
+          const textEl = turn.querySelector(".text");
+          if (textEl && textEl.textContent.toLowerCase().includes(needle)) {
+            turn.classList.add("highlight");
+            turn.scrollIntoView({ behavior: "smooth", block: "center" });
+            break;
+          }
+        }
+      });
+    });
+  }
 
   // --- Notes / discrepancies ---
   loadData("discrepancies").then(data => {
