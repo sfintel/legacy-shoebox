@@ -5,7 +5,46 @@ archive content) from an older release to a newer one. If you're setting
 up a brand-new deployment instead, you don't need this — just follow
 `README.md`.
 
-## The one thing to understand first
+## The easy way: `upgrade.sh`
+
+As of 1.2.0, this repo carries its own upgrade runner. Two steps:
+
+```bash
+# 1. Deploy the new code (see "Deploy the new code" below for what to
+#    exclude). This brings in the new VERSION file and any new steps in
+#    includes/migrations.php along with everything else.
+
+# 2. From inside the deployed webroot:
+./upgrade.sh
+```
+
+`upgrade.sh` compares the version it finds recorded in the database
+against the `VERSION` file that just got deployed, takes an automatic
+backup (the same engine behind `/admin_backup.php`), then applies every
+step in between via `upgrade.php` + `includes/migrations.php` — in
+order, one version at a time. It's safe to re-run: each version's step
+only applies once, and if you're already caught up it just says so and
+exits. If a step fails partway through a multi-version jump, everything
+before the failure is already recorded as applied — fix the problem (or
+restore the backup it took at the start) and re-run; it picks up where
+it left off rather than redoing earlier versions.
+
+It does **not** deploy code for you (there are too many ways people
+sync a webroot — git, rsync, scp, a host's file manager — for one script
+to cover) and it can't safely rewrite `.env` for you (it holds real
+secrets it has no way to guess). If a version needs an `.env` change,
+`upgrade.sh` prints exactly what's needed at the end, for you to add by
+hand.
+
+If your deployment predates 1.2.0 (no `upgrade.sh` in your webroot yet),
+use the manual procedure below for this one upgrade — `upgrade.sh`
+itself detects that it's the first version-tracked run and treats you as
+starting from the 1.0.0 baseline, so once you're on 1.2.0 or later,
+every upgrade after that can use it.
+
+## The manual way
+
+### The one thing to understand first
 
 `sql/schema.sql` uses `CREATE TABLE IF NOT EXISTS` for every table. That
 makes it **always safe to re-run in full** — it will never touch, alter,
@@ -14,7 +53,8 @@ or drop a table that already exists. But that also means it does
 have (e.g. `content_items` gaining a `tags` column in a later release).
 Re-running `schema.sql` alone will silently skip that change, and the
 new feature that depends on it will fail with a MySQL "unknown column"
-error the first time it's used.
+error the first time it's used. (This is exactly the gap `upgrade.sh`
+exists to close.)
 
 So: `schema.sql` handles brand-new tables automatically. Everything
 else — new columns, renamed `.env` variables, one-time data fixes — is
@@ -23,15 +63,12 @@ changes** / **Environment changes** for the specific release that
 introduced it, and you have to apply those by hand, in order, for every
 release between the one you're on and the one you're upgrading to.
 
-## Procedure
-
 ### 0. Back up everything first
 
-Before touching anything, if your deployment is already on 1.1.0 or
-later, it has the Backup & Restore admin page (`/admin_backup.php`) —
-just click "Create backup now" there — it bundles the database
-and every uploaded file into one .zip you can download. That's the
-easiest way to get a restore point and is all most upgrades need.
+If your deployment is already on 1.1.0 or later, it has the Backup &
+Restore admin page (`/admin_backup.php`) — just click "Create backup
+now" there — it bundles the database and every uploaded file into one
+.zip you can download. That's the easiest way to get a restore point.
 
 If you're upgrading from a release that predates that page (or want a
 backup outside the app itself), do it by hand instead:
@@ -76,9 +113,9 @@ If you're syncing with something that only adds/overwrites files (like
 plain `scp` or `cp -r`), also check for files the new release *removed*
 that are still sitting in your webroot from the old one — they're
 harmless in most cases, but worth a quick look. (This project's own
-`app-lamp-oss/.htaccess` only denies `.env*` and `config.php` — it does
-not block arbitrary leftover files, so don't count on it to make a stray
-file invisible.)
+`app-lamp-oss/.htaccess` only denies `.env*`, `config.php`, and
+`upgrade.php` — it does not block arbitrary leftover files, so don't
+count on it to make a stray file invisible.)
 
 ### 3. Apply the database changes you listed in step 1
 

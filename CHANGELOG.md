@@ -14,6 +14,37 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.2.0] — 2026-08-12
+
+### Added
+
+- Automated upgrade runner: `upgrade.sh` (run after deploying new code)
+  applies every pending database change between your currently-installed
+  version and `VERSION`, in order, via `upgrade.php` and the step list in
+  `includes/migrations.php`. Takes an automatic backup (using the 1.1.0
+  Backup & Restore engine) before changing anything. Safe to re-run —
+  each version's step only applies once. Every future release that needs
+  a database change adds a step to `includes/migrations.php` in the same
+  commit that updates this changelog, so the two stay in sync.
+- `VERSION` file at the repo root — what `upgrade.sh` treats as "the
+  version you just deployed."
+
+### Database changes
+
+Adds `site_settings.schema_version` (defaults existing rows to `1.0.0`,
+since this is the first release that tracks it) — this is how
+`upgrade.sh` knows what's already been applied. If you're upgrading by
+hand instead of with `upgrade.sh`, run:
+
+```sql
+ALTER TABLE site_settings ADD COLUMN schema_version VARCHAR(20) NOT NULL DEFAULT '1.0.0' AFTER setup_completed_at;
+UPDATE site_settings SET schema_version = '1.2.0' WHERE id = 1;
+```
+
+### Environment changes
+
+None.
+
 ## [1.1.0] — 2026-08-12
 
 ### Added
@@ -76,6 +107,7 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.2.0
 [1.1.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.1.0
 [1.0.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.0.0

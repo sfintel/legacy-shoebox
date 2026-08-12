@@ -11,6 +11,10 @@
     Require all denied
 </Files>
 
+<Files "upgrade.php">
+    Require all denied
+</Files>
+
 RewriteEngine Off
 
 DirectoryIndex index.php index.html

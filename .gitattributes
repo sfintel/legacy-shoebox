@@ -1,0 +1,5 @@
+# This app only ever runs on Linux hosts. Force LF everywhere regardless
+# of what platform a contributor commits from — upgrade.sh's shebang
+# line breaks outright if checked out with CRLF, and everything else is
+# safest kept consistent with it.
+* text=auto eol=lf

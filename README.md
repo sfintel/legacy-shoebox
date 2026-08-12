@@ -15,10 +15,11 @@ is the single source of truth for the entire archive — there's no
 YAML/JSON file layer to keep in sync, and nothing to regenerate after an
 edit.
 
-Already running a deployment and upgrading to a newer release? See
-[UPGRADE.md](UPGRADE.md) rather than starting over from this README —
-and check [CHANGELOG.md](CHANGELOG.md) for what changed release to
-release.
+Already running a deployment and upgrading to a newer release? Deploy
+the new code, then run `./upgrade.sh` from inside your webroot — see
+[UPGRADE.md](UPGRADE.md) for details rather than starting over from this
+README, and check [CHANGELOG.md](CHANGELOG.md) for what changed release
+to release.
 
 ## What you need from your host
 
