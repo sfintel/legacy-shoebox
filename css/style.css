@@ -179,4 +179,10 @@ textarea{width:100%; resize:vertical;}
 }
 .btn-primary:hover{filter:brightness(1.1);}
 .btn-primary:disabled{opacity:.5; cursor:default;}
+.btn-danger{
+  background:#7a3b34; color:#f4e9e6; border:none; border-radius:8px; padding:9px 18px;
+  font-weight:700; cursor:pointer; font-size:.9rem; align-self:flex-start;
+}
+.btn-danger:hover{filter:brightness(1.15);}
+.btn-danger:disabled{opacity:.5; cursor:default;}
 .form-error{color:#e08a7d; font-size:.85rem; margin:0;}

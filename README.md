@@ -22,8 +22,8 @@ release.
 
 ## What you need from your host
 
-- PHP 8.0+ with the `pdo_mysql`, `openssl`, and `curl` extensions (all three
-  are on by default on essentially every shared host).
+- PHP 8.0+ with the `pdo_mysql`, `openssl`, `curl`, and `zip` (`ZipArchive`)
+  extensions — all four are on by default on essentially every shared host.
 - A MySQL or MariaDB database (cPanel: *MySQL Databases*).
 - Apache with `.htaccess` support (`AllowOverride All` — standard on shared
   hosting; this app does **not** need `mod_rewrite`, only `mod_authz_core`
@@ -228,6 +228,24 @@ spellings) as separate entries to cover all of them. Admin-facing views
 (Content management, the archive editor, the redaction list itself) are
 never redacted, since the admin needs full visibility to manage the
 archive.
+
+## Backup & Restore
+
+`/admin_backup.php` (admin-only) creates a single downloadable .zip
+containing a full database dump and every file under `ARCHIVE_ROOT/
+uploads/`. Backups are pure PHP (PDO for the dump, the `ZipArchive`
+extension for packaging) — no `mysqldump` or `shell_exec` dependency, so
+it works on hosts that don't allow either. Backups are stored under
+`ARCHIVE_ROOT/backups/`, outside the webroot like `uploads/` already is,
+and are only ever served through an authenticated download endpoint —
+never a direct URL.
+
+Restoring from a backup **replaces the entire database and uploads
+directory** with what's in that .zip — it's a full point-in-time
+restore, not a merge, and requires typing a confirmation phrase before
+the button becomes clickable. Use it to undo a bad upgrade or other
+mistake, not as a way to apply a single schema change (see
+[UPGRADE.md](UPGRADE.md) for why).
 
 ## Security notes
 

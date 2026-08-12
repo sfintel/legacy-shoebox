@@ -27,7 +27,14 @@ release between the one you're on and the one you're upgrading to.
 
 ### 0. Back up everything first
 
-Before touching anything:
+Before touching anything, if your deployment already has the Backup &
+Restore admin page (`/admin_backup.php`, added in the release after
+1.0.0), just click "Create backup now" there — it bundles the database
+and every uploaded file into one .zip you can download. That's the
+easiest way to get a restore point and is all most upgrades need.
+
+If you're upgrading from a release that predates that page (or want a
+backup outside the app itself), do it by hand instead:
 
 ```bash
 mysqldump -u YOUR_DB_USER -p YOUR_DB_NAME > backup_$(date +%Y%m%d).sql
@@ -35,8 +42,12 @@ tar czf webroot_backup_$(date +%Y%m%d).tar.gz /path/to/your/webroot
 tar czf uploads_backup_$(date +%Y%m%d).tar.gz /path/to/ARCHIVE_ROOT/uploads
 ```
 
-Keep all three somewhere outside the webroot until you're confident the
-upgrade went cleanly — a week is a reasonable minimum.
+Keep the backup somewhere outside the webroot until you're confident the
+upgrade went cleanly — a week is a reasonable minimum. Note that the
+admin page's "Restore" is a full replace (database + uploads both), not
+a way to apply a single new column — see the note above about why
+`schema.sql` alone can't do that either. Use it only to undo a bad
+upgrade, then still apply steps 3–4 by hand.
 
 ### 1. Read CHANGELOG.md for every version between yours and the target
 
@@ -95,7 +106,12 @@ secret) stays untouched.
 
 ### If something's wrong
 
-Restore from the step-0 backup: put the old webroot files back, restore
-the database from the dump (`mysql -u USER -p DBNAME < backup_*.sql`),
-and you're back to exactly where you started. Then figure out what went
-wrong before trying again.
+Restore from the step-0 backup. If it was made with `/admin_backup.php`,
+upload that .zip back through the "Restore from backup" form there —
+it replaces the database and uploads directory in one step (the webroot
+code itself isn't part of that backup, so also put the old webroot files
+back by hand). If it was made with `mysqldump`/`tar` instead, put the
+old webroot files back and restore the database from the dump
+(`mysql -u USER -p DBNAME < backup_*.sql`). Either way, you're back to
+exactly where you started — then figure out what went wrong before
+trying again.

@@ -12,7 +12,23 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Backup & Restore admin page (`admin_backup.php`): creates a single
+  downloadable .zip containing a full database dump and every uploaded
+  file, storable/downloadable from the admin UI. Restore replaces the
+  entire database and uploads directory from a previously created
+  backup .zip. Pure PHP (PDO + ZipArchive) — no `mysqldump`/`shell_exec`
+  dependency, so it works on hosts that don't allow either.
+
+### Database changes
+
+None — backups are stored as files under `ARCHIVE_ROOT/backups/`, not
+tracked in a database table.
+
+### Environment changes
+
+None.
 
 ## [1.0.0] — 2026-08-11
 

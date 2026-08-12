@@ -24,6 +24,7 @@ require_admin_page();
       <a class="ghost-btn" href="/admin_content.php" style="text-decoration:none; display:inline-block;">Content</a>
       <a class="ghost-btn" href="/admin_settings.php" style="text-decoration:none; display:inline-block;">Settings</a>
       <a class="ghost-btn" href="/admin_redactions.php" style="text-decoration:none; display:inline-block;">Redactions</a>
+      <a class="ghost-btn" href="/admin_backup.php" style="text-decoration:none; display:inline-block;">Backup</a>
       <a class="ghost-btn" href="/" style="text-decoration:none; display:inline-block;">Back to app</a>
       <button id="logoutBtn" class="ghost-btn">Sign out</button>
     </div>
