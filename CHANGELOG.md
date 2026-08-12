@@ -14,6 +14,21 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.2.1] — 2026-08-12
+
+### Added
+
+- The About tab now shows the running app version (read from `VERSION`),
+  so you can tell at a glance whether a deployment is current.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.2.0] — 2026-08-12
 
 ### Added
@@ -107,7 +122,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.2.1
 [1.2.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.2.0
 [1.1.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.1.0
 [1.0.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.0.0

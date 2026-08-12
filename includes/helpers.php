@@ -171,6 +171,17 @@ function audience_mode_options(string $selected): string
     return $out;
 }
 
+// Read once per request — VERSION never changes mid-request, and this
+// gets called from the About panel on every page load.
+function app_version(): string
+{
+    static $version = null;
+    if ($version === null) {
+        $version = trim((string) @file_get_contents(__DIR__ . '/../VERSION')) ?: 'unknown';
+    }
+    return $version;
+}
+
 function simple_page(string $title, string $body): void
 {
     echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'

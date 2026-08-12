@@ -155,6 +155,8 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
         <?php if ($ss['closing_quote']): ?>
         <blockquote>"<?= h($ss['closing_quote']) ?>"<?= $ss['closing_quote_attribution'] ? ' — ' . h($ss['closing_quote_attribution']) : '' ?></blockquote>
         <?php endif; ?>
+
+        <p class="meta" style="color:var(--muted); font-size:.8rem;">Family Legacy Archive — v<?= h(app_version()) ?></p>
       </div>
     </section>
 

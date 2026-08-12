@@ -41,6 +41,11 @@ function migrations_steps(): array
             },
             'env' => [],
         ],
+        '1.2.1' => [
+            'description' => 'Show app version on the About tab',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 
