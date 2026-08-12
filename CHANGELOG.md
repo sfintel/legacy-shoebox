@@ -12,6 +12,10 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.1.0] — 2026-08-12
+
 ### Added
 
 - Backup & Restore admin page (`admin_backup.php`): creates a single
@@ -72,5 +76,6 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.1.0
 [1.0.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.0.0

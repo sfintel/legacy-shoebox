@@ -27,9 +27,9 @@ release between the one you're on and the one you're upgrading to.
 
 ### 0. Back up everything first
 
-Before touching anything, if your deployment already has the Backup &
-Restore admin page (`/admin_backup.php`, added in the release after
-1.0.0), just click "Create backup now" there — it bundles the database
+Before touching anything, if your deployment is already on 1.1.0 or
+later, it has the Backup & Restore admin page (`/admin_backup.php`) —
+just click "Create backup now" there — it bundles the database
 and every uploaded file into one .zip you can download. That's the
 easiest way to get a restore point and is all most upgrades need.
 
