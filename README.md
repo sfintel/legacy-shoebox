@@ -15,6 +15,11 @@ is the single source of truth for the entire archive — there's no
 YAML/JSON file layer to keep in sync, and nothing to regenerate after an
 edit.
 
+Already running a deployment and upgrading to a newer release? See
+[UPGRADE.md](UPGRADE.md) rather than starting over from this README —
+and check [CHANGELOG.md](CHANGELOG.md) for what changed release to
+release.
+
 ## What you need from your host
 
 - PHP 8.0+ with the `pdo_mysql`, `openssl`, and `curl` extensions (all three
