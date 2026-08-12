@@ -10,9 +10,13 @@ declare(strict_types=1);
 // whose kw_apply_suggestion() inserts into these same tables when an
 // admin approves an AI-suggested addition.
 
+// The survivor/subject of the archive (role='subject') always sorts
+// first, regardless of when they were added, since they're the person
+// every other entry here relates to — everyone else stays in the order
+// they were added.
 function archive_people(): array
 {
-    return db()->query('SELECT * FROM people ORDER BY created_at ASC')->fetchAll();
+    return db()->query("SELECT * FROM people ORDER BY (role = 'subject') DESC, created_at ASC")->fetchAll();
 }
 
 function archive_places(): array

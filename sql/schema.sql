@@ -65,6 +65,11 @@ CREATE TABLE IF NOT EXISTS content_items (
   -- Set only for type='url' — the source page the family member submitted.
   source_url    VARCHAR(2048) NULL,
   narrative_note TEXT         NULL,
+  -- Admin-picked keywords (see the Content page's keyword picker) — a
+  -- separate, human-curated concept from content_links (AI-suggested,
+  -- points at specific archive entries); tags are just free labels for
+  -- browsing/filtering content itself.
+  tags          JSON          NULL,
   created_by    CHAR(36)      NOT NULL,
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_content_items_user FOREIGN KEY (created_by)

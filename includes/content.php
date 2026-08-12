@@ -10,6 +10,16 @@ declare(strict_types=1);
 // includes/users.php's style. See includes/knowledge.php for how these
 // feed the Ask tab's context.
 
+// archive_normalize_tags() (shared with quotes.tags) only trims and
+// drops empties — fine there, but a content-item keyword picker should
+// never be able to produce visible duplicates in its own suggestion
+// pool, so dedupe here rather than changing the shared helper's
+// behavior for its other callers.
+function content_normalize_tags(array $tags): array
+{
+    return array_values(array_unique(archive_normalize_tags($tags)));
+}
+
 function content_allowed_extensions(string $type): array
 {
     return match ($type) {
@@ -75,6 +85,7 @@ function content_public(array $item): array
         'description' => $item['description'],
         'sourceUrl' => $item['source_url'] ?? null,
         'narrativeNote' => $item['narrative_note'],
+        'tags' => json_decode((string) ($item['tags'] ?? '[]'), true) ?: [],
         'createdAt' => $item['created_at'],
         'files' => array_map('content_file_public', content_files_for_item($item['id'])),
         'suggestions' => $item['type'] === 'url' ? content_suggestions_for_item($item['id']) : [],
@@ -334,7 +345,7 @@ function content_fetch_url(string $url): array
 // ARCHIVE_ROOT/uploads/transcript/ so every item has a real file on
 // disk — knowledge_context() and content_file.php never need a separate
 // "text stored in the DB" code path.
-function content_create_transcript(string $title, string $text, string $userId): array
+function content_create_transcript(string $title, string $text, string $userId, array $tags = []): array
 {
     $title = trim($title);
     $text = trim($text);
@@ -354,9 +365,9 @@ function content_create_transcript(string $title, string $text, string $userId):
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, narrative_note, created_by)
-         VALUES (?, \'transcript\', ?, NULL, ?, ?)'
-    )->execute([$itemId, $title, $analysis['note'], $userId]);
+        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, created_by)
+         VALUES (?, \'transcript\', ?, NULL, ?, ?, ?)'
+    )->execute([$itemId, $title, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
     content_insert_file($pdo, $itemId, [
         'fileId' => $fileId, 'fileName' => $fileName, 'originalName' => "$title.md",
         'mimeType' => 'text/markdown', 'size' => strlen($text), 'metadata' => null,
@@ -373,7 +384,7 @@ function content_create_transcript(string $title, string $text, string $userId):
 // timeline/person/place/quote proposals — stored as pending
 // content_suggestions rows, never applied until an admin approves each
 // one via includes/knowledge_writer.php.
-function content_create_url(string $title, string $url, string $userId): array
+function content_create_url(string $title, string $url, string $userId, array $tags = []): array
 {
     $title = trim($title);
     $url = trim($url);
@@ -394,9 +405,9 @@ function content_create_url(string $title, string $url, string $userId): array
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, source_url, narrative_note, created_by)
-         VALUES (?, \'url\', ?, NULL, ?, ?, ?)'
-    )->execute([$itemId, $title, $url, $analysis['note'], $userId]);
+        'INSERT INTO content_items (id, type, title, description, source_url, narrative_note, tags, created_by)
+         VALUES (?, \'url\', ?, NULL, ?, ?, ?, ?)'
+    )->execute([$itemId, $title, $url, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
     content_insert_file($pdo, $itemId, [
         'fileId' => $fileId, 'fileName' => $fileName, 'originalName' => "$title.md",
         'mimeType' => 'text/markdown', 'size' => strlen($fetched['text']), 'metadata' => null,
@@ -456,7 +467,7 @@ function content_suggestion_set_status(string $id, string $status, string $decid
     $stmt->execute([$status, $deciderId, $id]);
 }
 
-function content_create_video(string $title, ?string $description, array $file, string $userId): array
+function content_create_video(string $title, ?string $description, array $file, string $userId, array $tags = []): array
 {
     $title = trim($title);
     if ($title === '') {
@@ -472,9 +483,9 @@ function content_create_video(string $title, ?string $description, array $file, 
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, narrative_note, created_by)
-         VALUES (?, \'video\', ?, ?, ?, ?)'
-    )->execute([$itemId, $title, $description !== '' ? $description : null, $analysis['note'], $userId]);
+        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, created_by)
+         VALUES (?, \'video\', ?, ?, ?, ?, ?)'
+    )->execute([$itemId, $title, $description !== '' ? $description : null, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
     content_insert_file($pdo, $itemId, $stored, 0);
     archive_content_links_apply($itemId, $analysis['links']);
 
@@ -485,7 +496,7 @@ function content_create_video(string $title, ?string $description, array $file, 
 // one per selected photo. All photos share one title/caption and get a
 // single combined narrative analysis considering them together, rather
 // than N independent ones.
-function content_create_photo_album(string $title, ?string $description, array $files, string $userId): array
+function content_create_photo_album(string $title, ?string $description, array $files, string $userId, array $tags = []): array
 {
     $title = trim($title);
     if ($title === '') {
@@ -520,9 +531,9 @@ function content_create_photo_album(string $title, ?string $description, array $
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, narrative_note, created_by)
-         VALUES (?, \'photo\', ?, ?, ?, ?)'
-    )->execute([$itemId, $title, $description !== '' ? $description : null, $analysis['note'], $userId]);
+        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, created_by)
+         VALUES (?, \'photo\', ?, ?, ?, ?, ?)'
+    )->execute([$itemId, $title, $description !== '' ? $description : null, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
     foreach ($stored as $i => $s) {
         content_insert_file($pdo, $itemId, $s, $i);
     }
@@ -592,7 +603,7 @@ function content_merge_metadata_update(?array $current, array $incoming): ?array
 // {id, metadata} — each file id is only honored if it actually belongs
 // to $id, so one item's edit request can never touch another item's
 // (or another user's) file.
-function content_update_item(string $id, ?string $ownerId, ?string $narrativeNote, array $fileUpdates): array
+function content_update_item(string $id, ?string $ownerId, ?string $narrativeNote, array $fileUpdates, ?array $tags = null): array
 {
     $item = content_find($id);
     if (!$item || ($ownerId !== null && $item['created_by'] !== $ownerId)) {
@@ -603,6 +614,11 @@ function content_update_item(string $id, ?string $ownerId, ?string $narrativeNot
         $note = trim($narrativeNote);
         $stmt = db()->prepare('UPDATE content_items SET narrative_note = ? WHERE id = ?');
         $stmt->execute([$note !== '' ? $note : null, $id]);
+    }
+
+    if ($tags !== null) {
+        $stmt = db()->prepare('UPDATE content_items SET tags = ? WHERE id = ?');
+        $stmt->execute([json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $id]);
     }
 
     if ($fileUpdates) {

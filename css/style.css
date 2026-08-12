@@ -154,6 +154,13 @@ input[type=search]{min-width:180px;}
 .admin-actions button:hover, .admin-actions a:hover{filter:brightness(1.15);}
 .table-wrap{overflow-x:auto;}
 
+/* Content-page keyword picker — reuses .tag-chip/.tag-chip.active
+   (defined above for the Quotes tab's filter chips) for appearance;
+   selected chips get .active, suggestion chips don't. */
+.tag-picker-selected{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; min-height:1px;}
+.tag-picker-suggestions{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+.tag-picker-input{width:100%;}
+
 /* Admin content-add form */
 input[type=text], input[type=file], textarea{
   background:var(--panel); border:1px solid var(--border); color:var(--text);

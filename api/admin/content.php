@@ -17,19 +17,20 @@ if ($method === 'POST') {
     $title = (string) ($_POST['title'] ?? '');
     $description = $_POST['description'] ?? null;
     $files = content_normalize_multi_files($_FILES['files'] ?? ['name' => []]);
+    $tags = is_array($_POST['tags'] ?? null) ? $_POST['tags'] : [];
 
     try {
         if ($type === 'transcript') {
-            $item = content_create_transcript($title, (string) ($_POST['text'] ?? ''), $user['id']);
+            $item = content_create_transcript($title, (string) ($_POST['text'] ?? ''), $user['id'], $tags);
         } elseif ($type === 'video') {
             if (count($files) !== 1) {
                 json_response(['error' => 'A video upload needs exactly one file.'], 400);
             }
-            $item = content_create_video($title, $description, $files[0], $user['id']);
+            $item = content_create_video($title, $description, $files[0], $user['id'], $tags);
         } elseif ($type === 'photo') {
-            $item = content_create_photo_album($title, $description, $files, $user['id']);
+            $item = content_create_photo_album($title, $description, $files, $user['id'], $tags);
         } elseif ($type === 'url') {
-            $item = content_create_url($title, (string) ($_POST['url'] ?? ''), $user['id']);
+            $item = content_create_url($title, (string) ($_POST['url'] ?? ''), $user['id'], $tags);
         } else {
             json_response(['error' => 'Unknown content type.'], 400);
         }

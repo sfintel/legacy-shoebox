@@ -68,6 +68,10 @@ require_content_page();
         <label for="descInput">Description / caption</label>
         <textarea id="descInput" name="description" rows="3" placeholder="Optional — helps the Ask tab describe it"></textarea>
       </div>
+      <div class="form-row">
+        <label id="tagsPickerLabel" for="tagsPickerInput">Keywords (optional)</label>
+        <div id="tagsPicker"></div>
+      </div>
       <p class="form-error" id="formError" role="alert" style="display:none;"></p>
       <button type="submit" class="btn-primary" id="submitBtn">Add content</button>
     </form>

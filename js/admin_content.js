@@ -61,7 +61,60 @@
     return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
   }
 
+  // Shared by the add-content form and each item's edit row: selected
+  // chips (removable), an input to type a new keyword, and a row of
+  // suggestion chips drawn from every keyword already used on any other
+  // content item (so a recurring keyword like "Piotr Bielewicz" only
+  // needs to be typed out once, ever). Returns a live state object —
+  // callers read .tags at submit time.
+  function renderTagPicker(containerId, selected, inputId) {
+    const allTags = [...new Set(currentItems.flatMap((i) => i.tags || []))].sort();
+    const container = document.getElementById(containerId);
+    const state = { tags: [...selected] };
+
+    function draw() {
+      const selectedHtml = state.tags.map((t) =>
+        `<button type="button" class="tag-chip active" data-tag="${esc(t)}">${esc(t)} &times;</button>`
+      ).join("");
+      const suggestionsHtml = allTags.filter((t) => !state.tags.includes(t)).map((t) =>
+        `<button type="button" class="tag-chip" data-tag="${esc(t)}">${esc(t)}</button>`
+      ).join("");
+      container.innerHTML = `
+        <div class="tag-picker-selected">${selectedHtml}</div>
+        <input type="text" id="${inputId}" class="tag-picker-input" placeholder="Add a keyword and press Enter…">
+        ${suggestionsHtml ? `<div class="tag-picker-suggestions">${suggestionsHtml}</div>` : ""}
+      `;
+      container.querySelectorAll(".tag-picker-selected .tag-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          state.tags = state.tags.filter((t) => t !== chip.dataset.tag);
+          draw();
+        });
+      });
+      container.querySelectorAll(".tag-picker-suggestions .tag-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          if (!state.tags.includes(chip.dataset.tag)) state.tags.push(chip.dataset.tag);
+          draw();
+        });
+      });
+      const input = container.querySelector(".tag-picker-input");
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === ",") {
+          e.preventDefault();
+          const val = input.value.trim().replace(/,$/, "");
+          if (val) {
+            if (!state.tags.includes(val)) state.tags.push(val);
+            input.value = "";
+            draw();
+          }
+        }
+      });
+    }
+    draw();
+    return state;
+  }
+
   let currentItems = [];
+  let addTagPickerState = { tags: [] };
 
   async function load() {
     const res = await fetch("/api/admin/content.php");
@@ -72,6 +125,7 @@
     const data = await res.json();
     currentItems = data.items || [];
     render(currentItems);
+    addTagPickerState = renderTagPicker("tagsPicker", addTagPickerState.tags, "tagsPickerInput");
   }
 
   function fmtDuration(seconds) {
@@ -131,9 +185,12 @@
         const sizeLabel = (item.files || []).length > 1
           ? `${item.files.length} files, ${fmtSize(totalSize)}`
           : fmtSize(totalSize);
-        const titleCell = item.type === "url" && item.sourceUrl
+        const tagsHtml = (item.tags || []).length
+          ? `<div>${item.tags.map((t) => `<span class="pill">${esc(t)}</span>`).join("")}</div>`
+          : "";
+        const titleCell = (item.type === "url" && item.sourceUrl
           ? `${esc(item.title)}<br><a href="${esc(item.sourceUrl)}" target="_blank" rel="noopener" class="meta">${esc(item.sourceUrl)}</a>`
-          : esc(item.title);
+          : esc(item.title)) + tagsHtml;
         return `<tr data-item-id="${item.id}">
           <td>${titleCell}</td>
           <td>${esc(item.type)}</td>
@@ -269,6 +326,10 @@
             <label>Narrative connection</label>
             <textarea rows="3" class="edit-narrative">${esc(item.narrativeNote || "")}</textarea>
           </div>
+          <div class="form-row">
+            <label>Keywords</label>
+            <div id="tagsPicker-edit-${item.id}"></div>
+          </div>
           ${filesHtml}
           <div style="display:flex; gap:8px;">
             <button type="button" class="btn-primary save-edit">Save</button>
@@ -292,6 +353,7 @@
     if (!row) return;
     row.insertAdjacentHTML("afterend", renderEditRow(item));
     const editRow = document.querySelector(`tr.edit-row[data-edit-for="${id}"]`);
+    editRow._tagPickerState = renderTagPicker(`tagsPicker-edit-${id}`, item.tags || [], `tagsPickerInput-edit-${id}`);
     editRow.querySelector(".cancel-edit").addEventListener("click", () => editRow.remove());
     editRow.querySelector(".save-edit").addEventListener("click", () => saveEdit(item, editRow));
   }
@@ -316,6 +378,8 @@
       return { id: f.id, metadata };
     });
 
+    const tags = editRow._tagPickerState ? editRow._tagPickerState.tags : (item.tags || []);
+
     const errEl = editRow.querySelector(".edit-error");
     errEl.style.display = "none";
     const saveBtn = editRow.querySelector(".save-edit");
@@ -324,7 +388,7 @@
       const res = await fetch("/api/admin/content_update.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: item.id, narrativeNote, files }),
+        body: JSON.stringify({ id: item.id, narrativeNote, files, tags }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Update failed");
@@ -386,14 +450,17 @@
     formError.style.display = "none";
     submitBtn.disabled = true;
     try {
+      const formData = new FormData(form);
+      addTagPickerState.tags.forEach((t) => formData.append("tags[]", t));
       const res = await fetch("/api/admin/content.php", {
         method: "POST",
-        body: new FormData(form),
+        body: formData,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to add content");
       form.reset();
       syncFormFields();
+      addTagPickerState = { tags: [] };
       load();
     } catch (err) {
       formError.textContent = err.message;
