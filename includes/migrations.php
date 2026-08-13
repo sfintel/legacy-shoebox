@@ -103,6 +103,26 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.5.0' => [
+            'description' => 'Family Stories: a new content type for family-recounted stories, held for admin approval before appearing on the new Stories tab / in the AI knowledge base',
+            'db' => static function (PDO $pdo): void {
+                $typeCol = (string) $pdo->query(
+                    "SELECT COLUMN_TYPE FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'content_items' AND column_name = 'type'"
+                )->fetchColumn();
+                if (!str_contains($typeCol, "'story'")) {
+                    $pdo->exec("ALTER TABLE content_items MODIFY COLUMN type ENUM('transcript','photo','video','url','story') NOT NULL");
+                }
+                $hasCol = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'content_items' AND column_name = 'story_approved_at'"
+                )->fetchColumn();
+                if ($hasCol === 0) {
+                    $pdo->exec('ALTER TABLE content_items ADD COLUMN story_approved_at DATETIME NULL AFTER tags');
+                }
+            },
+            'env' => [],
+        ],
     ];
 }
 

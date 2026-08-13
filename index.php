@@ -43,6 +43,7 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
     <button class="tab-btn active" data-tab="ask" id="tab-ask" role="tab" aria-selected="true" aria-controls="panel-ask">Ask</button>
     <button class="tab-btn" data-tab="timeline" id="tab-timeline" role="tab" aria-selected="false" aria-controls="panel-timeline">Timeline</button>
     <button class="tab-btn" data-tab="quotes" id="tab-quotes" role="tab" aria-selected="false" aria-controls="panel-quotes">Quotes</button>
+    <button class="tab-btn" data-tab="stories" id="tab-stories" role="tab" aria-selected="false" aria-controls="panel-stories">Stories</button>
     <button class="tab-btn" data-tab="people" id="tab-people" role="tab" aria-selected="false" aria-controls="panel-people">People</button>
     <button class="tab-btn" data-tab="places" id="tab-places" role="tab" aria-selected="false" aria-controls="panel-places">Places</button>
     <button class="tab-btn" data-tab="transcript" id="tab-transcript" role="tab" aria-selected="false" aria-controls="panel-transcript">Transcript</button>
@@ -89,6 +90,18 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
       </div>
       <div id="tagFilters" class="tag-filters"></div>
       <div id="quoteList" class="stack"></div>
+    </section>
+
+    <!-- STORIES -->
+    <section class="panel" id="panel-stories" role="tabpanel" aria-labelledby="tab-stories" tabindex="0">
+      <div class="panel-head">
+        <h2>Family Stories</h2>
+        <input type="search" id="storiesSearch" placeholder="Search stories…" aria-label="Search stories">
+      </div>
+      <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
+        Told by family, not <?= h($ss['subject_name']) ?>'s own words — see the Transcript tab for that.
+      </p>
+      <div id="storiesList" class="stack"></div>
     </section>
 
     <!-- PEOPLE -->

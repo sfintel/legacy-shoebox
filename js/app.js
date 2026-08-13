@@ -164,6 +164,32 @@
   }
   document.getElementById("quoteSearch").addEventListener("input", applyQuoteFilter);
 
+  // --- Stories ---
+  let storiesData = [];
+  loadData("stories").then(data => {
+    storiesData = data;
+    renderStories(storiesData);
+  });
+  function bodyParagraphs(text) {
+    return (text || "").split(/\n{2,}/).map(p => `<p>${esc(p)}</p>`).join("");
+  }
+  function renderStories(items) {
+    const el = document.getElementById("storiesList");
+    el.innerHTML = items.map(s => `
+      <div class="card">
+        <h3>${esc(s.title)}</h3>
+        <div class="meta">${(s.tags || []).map(t => `<span class="pill">${esc(t)}</span>`).join("")}</div>
+        <div class="body">${bodyParagraphs(s.body)}</div>
+      </div>
+    `).join("") || `<p class="meta">No results.</p>`;
+  }
+  document.getElementById("storiesSearch").addEventListener("input", e => {
+    const q = e.target.value.toLowerCase();
+    renderStories(storiesData.filter(s =>
+      (s.title || "").toLowerCase().includes(q) || (s.body || "").toLowerCase().includes(q)
+    ));
+  });
+
   // --- People ---
   let peopleData = [];
   loadData("people").then(data => { peopleData = data; renderPeople(peopleData); });

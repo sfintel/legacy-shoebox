@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 -- a single analysis pass, not per-photo.
 CREATE TABLE IF NOT EXISTS content_items (
   id            CHAR(36)      NOT NULL PRIMARY KEY,
-  type          ENUM('transcript','photo','video','url') NOT NULL,
+  type          ENUM('transcript','photo','video','url','story') NOT NULL,
   title         VARCHAR(255)  NOT NULL,
   description   TEXT          NULL,
   -- Set only for type='url' — the source page the family member submitted.
@@ -68,6 +68,12 @@ CREATE TABLE IF NOT EXISTS content_items (
   -- points at specific archive entries); tags are just free labels for
   -- browsing/filtering content itself.
   tags          JSON          NULL,
+  -- Only meaningful for type='story': NULL until an admin approves it
+  -- (see content_approve_story() in includes/content.php) — a pending
+  -- story isn't shown on the Stories tab and isn't in the AI's
+  -- knowledge base yet. NULL for every other type (always immediately
+  -- visible, same as before this column existed).
+  story_approved_at DATETIME  NULL,
   created_by    CHAR(36)      NOT NULL,
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_content_items_user FOREIGN KEY (created_by)

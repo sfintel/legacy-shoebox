@@ -95,6 +95,13 @@ function narrative_prompt_for_url(string $title, string $url, string $text): str
         . 'How does this connect to the existing archive material provided as context? Follow the rules above.';
 }
 
+function narrative_prompt_for_story(string $title, string $text): string
+{
+    return "New family-recounted story added to the archive (not the subject's own testimony — a story "
+        . "family members tell about them).\nTitle: $title\n\nText:\n$text\n\n"
+        . 'How does this connect to the existing archive material provided as context? Follow the rules above.';
+}
+
 function narrative_prompt_for_media(string $title, ?string $description, ?array $metadata): string
 {
     $lines = ['New video added to the archive.', "Title: $title"];

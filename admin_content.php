@@ -44,6 +44,7 @@ require_content_page();
           <option value="photo">Photo</option>
           <option value="video">Video</option>
           <option value="url">URL</option>
+          <option value="story">Story</option>
         </select>
       </div>
       <div class="form-row">
@@ -51,8 +52,10 @@ require_content_page();
         <input type="text" id="titleInput" name="title">
       </div>
       <div class="form-row" id="textRow">
-        <label for="textInput">Transcript text</label>
+        <label for="textInput" id="textLabel">Transcript text</label>
         <textarea id="textInput" name="text" rows="8" placeholder="Paste the transcript text here…"></textarea>
+        <p class="meta" id="storyHint" style="display:none; margin:4px 0 0;">An admin needs to approve this
+          before it appears on the Stories tab and in the Ask tab's knowledge base.</p>
       </div>
       <div class="form-row" id="fileRow" style="display:none;">
         <label for="fileInput" id="fileLabel">File</label>

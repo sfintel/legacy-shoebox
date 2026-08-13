@@ -31,6 +31,8 @@ if ($method === 'POST') {
             $item = content_create_photo_album($title, $description, $files, $user['id'], $tags);
         } elseif ($type === 'url') {
             $item = content_create_url($title, (string) ($_POST['url'] ?? ''), $user['id'], $tags);
+        } elseif ($type === 'story') {
+            $item = content_create_story($title, (string) ($_POST['text'] ?? ''), $user['id'], $tags);
         } else {
             json_response(['error' => 'Unknown content type.'], 400);
         }

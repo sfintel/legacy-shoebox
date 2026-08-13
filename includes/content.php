@@ -89,6 +89,7 @@ function content_public(array $item): array
         'createdAt' => $item['created_at'],
         'files' => array_map('content_file_public', content_files_for_item($item['id'])),
         'suggestions' => $item['type'] === 'url' ? content_suggestions_for_item($item['id']) : [],
+        'storyApprovedAt' => $item['type'] === 'story' ? $item['story_approved_at'] : null,
     ];
 }
 
@@ -375,6 +376,97 @@ function content_create_transcript(string $title, string $text, string $userId, 
     archive_content_links_apply($itemId, $analysis['links']);
 
     return content_find($itemId);
+}
+
+// A family-recounted story — told about the subject, not by them (that's
+// what primary_testimony/transcripts are for). Treated as a level below
+// direct testimony: held back from the Stories tab and the AI's
+// knowledge base until an admin approves it (see content_approve_story()
+// below), unlike every other content type which is visible immediately.
+// No AI analysis runs at creation time — deliberately: computing
+// content_links here would let an unapproved story's title/connections
+// leak into other entries' relatedContent before anyone's reviewed it.
+function content_create_story(string $title, string $body, string $userId, array $tags = []): array
+{
+    $title = trim($title);
+    $body = trim($body);
+    if ($title === '') {
+        throw new RuntimeException('Title is required.');
+    }
+    if ($body === '') {
+        throw new RuntimeException('Story text is required.');
+    }
+
+    $fileId = make_uuid();
+    $fileName = "$fileId.md";
+    $dir = content_upload_dir('story');
+    file_put_contents("$dir/$fileName", $body);
+
+    $itemId = make_uuid();
+    $pdo = db();
+    $pdo->prepare(
+        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, story_approved_at, created_by)
+         VALUES (?, \'story\', ?, NULL, NULL, ?, NULL, ?)'
+    )->execute([$itemId, $title, json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
+    content_insert_file($pdo, $itemId, [
+        'fileId' => $fileId, 'fileName' => $fileName, 'originalName' => "$title.md",
+        'mimeType' => 'text/markdown', 'size' => strlen($body), 'metadata' => null,
+    ], 0);
+
+    return content_find($itemId);
+}
+
+function content_story_body(array $item): string
+{
+    $file = content_files_for_item($item['id'])[0] ?? null;
+    $path = $file ? content_upload_dir('story') . '/' . $file['file_name'] : null;
+    return $path && is_file($path) ? (string) file_get_contents($path) : '';
+}
+
+// Runs the same narrative-connection analysis every other content type
+// gets at creation time, but deferred until now — see the comment on
+// content_create_story() above for why. Idempotent-safe to re-run
+// (content_links has a UNIQUE KEY, same as content_backfill_narrative_notes()).
+function content_approve_story(string $itemId): array
+{
+    $item = content_find($itemId);
+    if ($item === null || $item['type'] !== 'story') {
+        throw new RuntimeException('Story not found.');
+    }
+    $body = content_story_body($item);
+    $analysis = narrative_analyze(narrative_prompt_for_story($item['title'], $body));
+
+    $pdo = db();
+    $pdo->prepare('UPDATE content_items SET narrative_note = ?, story_approved_at = NOW() WHERE id = ?')
+        ->execute([$analysis['note'], $itemId]);
+    archive_content_links_clear_for_item($itemId);
+    archive_content_links_apply($itemId, $analysis['links']);
+
+    return content_find($itemId);
+}
+
+function content_stories_pending(): array
+{
+    return db()->query("SELECT * FROM content_items WHERE type = 'story' AND story_approved_at IS NULL ORDER BY created_at ASC")->fetchAll();
+}
+
+// Oldest-first, matching content_context()'s own reasoning for why
+// family-added material reads oldest-first (so it reads as later
+// context, not because recency matters here more than there).
+function content_stories_approved(): array
+{
+    return db()->query("SELECT * FROM content_items WHERE type = 'story' AND story_approved_at IS NOT NULL ORDER BY created_at ASC")->fetchAll();
+}
+
+function content_story_public(array $item): array
+{
+    return [
+        'id' => $item['id'],
+        'title' => $item['title'],
+        'body' => content_story_body($item),
+        'tags' => json_decode((string) ($item['tags'] ?? '[]'), true) ?: [],
+        'createdAt' => $item['created_at'],
+    ];
 }
 
 // Fetches $url, stores its extracted text as a .md file (same "always a
@@ -712,7 +804,13 @@ function content_analyze_existing_item(array $item): array
 // accumulate duplicate links.
 function content_backfill_narrative_notes(): array
 {
-    $items = db()->query('SELECT * FROM content_items WHERE narrative_note IS NULL ORDER BY created_at ASC')->fetchAll();
+    // Excludes type='story': a pending (unapproved) story has
+    // narrative_note = NULL by design, same as anything else this query
+    // targets — but a story is only ever analyzed via
+    // content_approve_story(), never backfilled. An approved story
+    // already has its narrative_note set by that function, so it's
+    // naturally excluded too (nothing left to backfill for it).
+    $items = db()->query("SELECT * FROM content_items WHERE narrative_note IS NULL AND type != 'story' ORDER BY created_at ASC")->fetchAll();
 
     $results = [];
     foreach ($items as $item) {

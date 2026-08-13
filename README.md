@@ -199,8 +199,9 @@ tied to one account and just expires on its own after the window.
 `/admin_content.php` (linked from the header for anyone with content
 access — admins and authors) lets family members
 add material beyond the core archive built via `/admin_archive.php`:
-transcripts (pasted text), photos, videos, or a URL. Everything added
-here becomes part of what the Ask tab knows about.
+transcripts (pasted text), photos, videos, a URL, or a Story. Everything
+added here becomes part of what the Ask tab knows about — except a
+pending Story, see below.
 
 - **Transcripts/photos/videos**: title + optional caption; photos/videos
   get EXIF metadata auto-extracted (date taken, camera, GPS, dimensions/
@@ -218,9 +219,19 @@ here becomes part of what the Ask tab knows about.
   archive (the same tables `/admin_archive.php` manages) — no separate
   file format involved, and it appears in the Ask tab and Browse tab
   immediately.
+- **Story**: a story family members tell about the subject — distinct
+  from their own testimony, so it's held pending until an admin approves
+  it (a badge + Approve button appear on the item's row). Only once
+  approved does it appear on the public "Stories" tab and get included
+  in the Ask tab's knowledge base, explicitly weighted below the primary
+  testimony transcript ("recounted by family — reliable, but
+  secondhand"). Nothing about a pending story — including its narrative
+  connections to other archive entries — is computed or visible anywhere
+  until it's approved.
 - Every item gets a "Backfill narrative notes" pass (admin-only button)
   to fill in a note for anything added before this feature existed, or
-  where the original AI call failed.
+  where the original AI call failed. Pending Stories are skipped by
+  design — they're only ever analyzed at approval time.
 - A non-admin content contributor only sees and can edit/delete their own
   items (and, for URL items, only sees their own item's suggestions,
   read-only — approving/dismissing is admin-only since it mutates the

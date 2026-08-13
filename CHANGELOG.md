@@ -14,6 +14,36 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.5.0] — 2026-08-13
+
+### Added
+
+- **Family Stories**: a new "Story" content type (`admin_content.php`,
+  any author can add) for stories family members tell about the
+  subject, distinct from their own testimony. Held pending until an
+  admin approves it (`admin_content.php` shows a pending badge + an
+  Approve button) — only then does it appear on the new "Stories" tab
+  and get included in the Ask tab's knowledge base, explicitly weighted
+  below the primary testimony transcript ("recounted by family, not the
+  subject's own words — reliable but secondhand"). No AI analysis runs
+  until approval, so nothing about a pending story is visible anywhere
+  (including via other entries' related-content links) before review.
+
+### Database changes
+
+Adds `'story'` to `content_items.type` and a new
+`content_items.story_approved_at` column (`upgrade.sh` handles this
+automatically). Manual equivalent:
+
+```sql
+ALTER TABLE content_items MODIFY COLUMN type ENUM('transcript','photo','video','url','story') NOT NULL;
+ALTER TABLE content_items ADD COLUMN story_approved_at DATETIME NULL AFTER tags;
+```
+
+### Environment changes
+
+None.
+
 ## [1.4.1] — 2026-08-13
 
 ### Fixed
@@ -261,7 +291,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.0
 [1.4.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.4.1
 [1.4.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.4.0
 [1.3.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.2

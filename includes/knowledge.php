@@ -61,6 +61,10 @@ function knowledge_system_role(): string
 
     $rules[] = 'When sources disagree (names, dates, details), say so and explain why, per the '
         . 'discrepancy/source notes in the knowledge base below. Do not silently pick one.';
+    $rules[] = "Material in the FAMILY STORIES section is recounted by family members, not $pPoss own "
+        . "testimony — always distinguish it from $pPoss own words (e.g. \"as the family tells it\" or "
+        . '"according to a family story"), never present it as something they themselves said or as '
+        . 'verified fact the way the primary testimony is.';
     $rules[] = "Preserve $pPoss own hedging about dates or facts — where the record is uncertain, say so "
         . 'rather than resolving it for them.';
     $rules[] = 'Do not invent quotes, events, conversations, or feelings not in the source material. '
@@ -132,6 +136,7 @@ function knowledge_context(): string
         . "## Discrepancy / source notes\n" . $discText . "\n\n"
         . "## Quotes (verbatim quote bank)\n" . $quotes . "\n"
         . "## Primary testimony transcript (full verbatim, by tape)\n" . $transcriptText . "\n"
+        . stories_context()
         . content_context();
 
     // Serve-time only — never mutates the DB rows just read above. See
@@ -139,6 +144,29 @@ function knowledge_context(): string
     $cached = redact_text($cached, redacted_names());
 
     return $cached;
+}
+
+// Approved family-recounted stories (see includes/content.php) — held
+// deliberately below the primary testimony transcript above: these are
+// told ABOUT the subject by family, not the subject's own words, so
+// they're weighted as reliable-but-secondhand rather than primary
+// testimony. Only approved stories ever reach this function — a pending
+// one has no narrative_note/content_links yet and isn't queried by
+// content_stories_approved() at all, so there's nothing for an admin to
+// review that could leak in ahead of approval.
+function stories_context(): string
+{
+    $stories = content_stories_approved();
+    if (!$stories) {
+        return '';
+    }
+    $s = site_settings();
+    $out = "\n## Family Stories (recounted by family members, not {$s['subject_name']}'s own words — "
+        . "treat as reliable but secondhand, below the primary testimony above)\n";
+    foreach ($stories as $story) {
+        $out .= "\n### {$story['title']}\n" . content_story_body($story) . "\n";
+    }
+    return $out . "\n";
 }
 
 // Family-added material from the admin Content page (see

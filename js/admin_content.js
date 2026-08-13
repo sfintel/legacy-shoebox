@@ -187,8 +187,12 @@
     const suggestionsBtn = item.type === "url" && suggestions.length
       ? `<button data-id="${item.id}" data-action="suggestions">Suggestions${pending ? ` (${pending})` : ""}</button>`
       : "";
+    const approveBtn = item.type === "story" && !item.storyApprovedAt && isAdmin
+      ? `<button class="primary" data-id="${item.id}" data-action="approve-story">Approve</button>`
+      : "";
     return `<div class="admin-actions">${viewLinks}
       ${suggestionsBtn}
+      ${approveBtn}
       <button data-id="${item.id}" data-action="edit">Edit</button>
       <button class="danger" data-id="${item.id}">Delete</button></div>`;
   }
@@ -203,9 +207,12 @@
         const tagsHtml = (item.tags || []).length
           ? `<div>${item.tags.map((t) => `<span class="pill">${esc(t)}</span>`).join("")}</div>`
           : "";
+        const storyBadge = item.type === "story"
+          ? ` <span class="status-badge status-${item.storyApprovedAt ? "approved" : "pending"}">${item.storyApprovedAt ? "approved" : "pending"}</span>`
+          : "";
         const titleCell = (item.type === "url" && item.sourceUrl
           ? `${esc(item.title)}<br><a href="${esc(item.sourceUrl)}" target="_blank" rel="noopener" class="meta">${esc(item.sourceUrl)}</a>`
-          : esc(item.title)) + tagsHtml;
+          : esc(item.title) + storyBadge) + tagsHtml;
         return `<tr data-item-id="${item.id}">
           <td>${titleCell}</td>
           <td>${esc(item.type)}</td>
@@ -229,6 +236,25 @@
     document.querySelectorAll('#contentRows button[data-action="suggestions"]').forEach((btn) => {
       btn.addEventListener("click", () => toggleSuggestions(btn.dataset.id));
     });
+    document.querySelectorAll('#contentRows button[data-action="approve-story"]').forEach((btn) => {
+      btn.addEventListener("click", () => handleApproveStory(btn.dataset.id));
+    });
+  }
+
+  async function handleApproveStory(id) {
+    if (!confirm("Approve this story? It will appear on the Stories tab and become part of the Ask tab's knowledge base.")) return;
+    try {
+      const res = await fetch("/api/admin/content_approve_story.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Approval failed");
+      load();
+    } catch (err) {
+      alert(err.message);
+    }
   }
 
   // --- Suggestions review (URL content items) ---
@@ -331,7 +357,7 @@
   }
 
   function renderEditRow(item) {
-    const filesHtml = item.type === "transcript"
+    const filesHtml = (item.type === "transcript" || item.type === "story")
       ? ""
       : (item.files || []).map((f) => renderFileEditFields(item, f)).join("");
     return `<tr class="edit-row" data-edit-for="${item.id}">
@@ -445,12 +471,19 @@
     const isTranscript = typeSelect.value === "transcript";
     const isPhoto = typeSelect.value === "photo";
     const isUrl = typeSelect.value === "url";
-    textRow.style.display = isTranscript ? "" : "none";
-    fileRow.style.display = !isTranscript && !isUrl ? "" : "none";
+    const isStory = typeSelect.value === "story";
+    const hasText = isTranscript || isStory;
+    textRow.style.display = hasText ? "" : "none";
+    fileRow.style.display = !hasText && !isUrl ? "" : "none";
     urlRow.style.display = isUrl ? "" : "none";
-    descRow.style.display = !isTranscript && !isUrl ? "" : "none";
-    document.getElementById("textInput").required = isTranscript;
-    document.getElementById("fileInput").required = !isTranscript && !isUrl;
+    descRow.style.display = !hasText && !isUrl ? "" : "none";
+    document.getElementById("textLabel").textContent = isStory ? "Story" : "Transcript text";
+    document.getElementById("textInput").placeholder = isStory
+      ? "What's the story? Write it as you'd tell it…"
+      : "Paste the transcript text here…";
+    document.getElementById("storyHint").style.display = isStory ? "" : "none";
+    document.getElementById("textInput").required = hasText;
+    document.getElementById("fileInput").required = !hasText && !isUrl;
     document.getElementById("fileInput").multiple = isPhoto;
     document.getElementById("fileLabel").textContent = isPhoto ? "Photo(s)" : "File";
     document.getElementById("fileHint").style.display = isPhoto ? "" : "none";

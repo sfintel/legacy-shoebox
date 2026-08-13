@@ -4,7 +4,7 @@ require_once __DIR__ . '/../config.php';
 
 require_auth_api();
 
-$allowed = ['quotes', 'people', 'places', 'timeline', 'transcript', 'discrepancies'];
+$allowed = ['quotes', 'people', 'places', 'timeline', 'transcript', 'discrepancies', 'stories'];
 $name = $_GET['name'] ?? '';
 
 if (!in_array($name, $allowed, true)) {
@@ -24,6 +24,7 @@ $data = match ($name) {
     'quotes' => array_map('archive_quote_public', archive_quotes()),
     'transcript' => archive_transcript_payload(),
     'discrepancies' => archive_discrepancies_payload(),
+    'stories' => array_map('content_story_public', content_stories_approved()),
 };
 
 $json = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
