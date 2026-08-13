@@ -14,6 +14,23 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.5.1] — 2026-08-13
+
+### Added
+
+- The admin now gets an email (same `NOTIFY_EMAIL`/SMTP setup as the
+  signup-request notification) when an author submits a new story —
+  linking to `admin_content.php` to review it. An admin submitting their
+  own story doesn't trigger it (they can just approve it themselves).
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.5.0] — 2026-08-13
 
 ### Added
@@ -291,7 +308,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.1
 [1.5.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.0
 [1.4.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.4.1
 [1.4.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.4.0

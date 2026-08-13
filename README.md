@@ -227,7 +227,9 @@ pending Story, see below.
   testimony transcript ("recounted by family — reliable, but
   secondhand"). Nothing about a pending story — including its narrative
   connections to other archive entries — is computed or visible anywhere
-  until it's approved.
+  until it's approved. When an author (not an admin) submits one, the
+  admin gets an email — same `NOTIFY_EMAIL` setup as the signup-request
+  notification — linking straight to `admin_content.php` to review it.
 - Every item gets a "Backfill narrative notes" pass (admin-only button)
   to fill in a note for anything added before this feature existed, or
   where the original AI call failed. Pending Stories are skipped by

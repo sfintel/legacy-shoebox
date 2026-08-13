@@ -33,6 +33,15 @@ if ($method === 'POST') {
             $item = content_create_url($title, (string) ($_POST['url'] ?? ''), $user['id'], $tags);
         } elseif ($type === 'story') {
             $item = content_create_story($title, (string) ($_POST['text'] ?? ''), $user['id'], $tags);
+            // An admin submitting their own story doesn't need an email
+            // nudge — they can just approve it themselves right away.
+            // Only an author's submission actually needs the admin's
+            // attention. Same fail-quiet posture as the signup
+            // notification this mirrors: a mail hiccup never blocks the
+            // actual action, which already succeeded above.
+            if ($user['role'] !== 'admin') {
+                content_notify_story_pending($item, $user);
+            }
         } else {
             json_response(['error' => 'Unknown content type.'], 400);
         }

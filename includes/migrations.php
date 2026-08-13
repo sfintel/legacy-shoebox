@@ -123,6 +123,11 @@ function migrations_steps(): array
             },
             'env' => [],
         ],
+        '1.5.1' => [
+            'description' => 'Email the admin when an author submits a new story pending approval',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

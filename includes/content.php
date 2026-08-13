@@ -416,6 +416,35 @@ function content_create_story(string $title, string $body, string $userId, array
     return content_find($itemId);
 }
 
+// Same fail-quiet posture as api/signup.php's admin notification email
+// (which this mirrors): a mail hiccup is logged, never thrown — the
+// story itself is already saved by the time this runs, so a failed
+// email must not look like the submission failed.
+function content_notify_story_pending(array $item, array $author): void
+{
+    $notifyEmail = env('NOTIFY_EMAIL') ?: user_first_admin_email();
+    if (!$notifyEmail) {
+        error_log('NOTIFY_EMAIL not set and no admin account exists yet — skipping story-pending notification email.');
+        return;
+    }
+    $reviewUrl = APP_URL . '/admin_content.php';
+    try {
+        send_mail(
+            $notifyEmail,
+            mail_subject('Story pending approval: ' . $item['title']),
+            "{$author['name']} ({$author['email']}) submitted a new story: \"{$item['title']}\".\n\n"
+                . "It won't appear on the Stories tab or in the Ask tab's knowledge base until you "
+                . "approve it at $reviewUrl",
+            '<p><strong>' . h($author['name']) . '</strong> (' . h($author['email']) . ') submitted a new story: '
+                . '"' . h($item['title']) . '".</p>'
+                . '<p>It won\'t appear on the Stories tab or in the Ask tab\'s knowledge base until you approve it '
+                . 'at <a href="' . h($reviewUrl) . '">' . h($reviewUrl) . '</a></p>'
+        );
+    } catch (Throwable $e) {
+        error_log('Failed to send story-pending notification email: ' . $e->getMessage());
+    }
+}
+
 function content_story_body(array $item): string
 {
     $file = content_files_for_item($item['id'])[0] ?? null;
