@@ -146,6 +146,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.5.4' => [
+            'description' => 'Sync the site identity date of passing into the subject-role person\'s People-tab fate field',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

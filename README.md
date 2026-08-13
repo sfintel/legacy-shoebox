@@ -116,6 +116,16 @@ reordering). Everything here is what the Ask tab is grounded in and what
 the Browse tab displays — there's no separate file format to hand-edit or
 keep in sync.
 
+**Note on the subject's own People-tab entry**: `admin_settings.php`'s
+"Date of passing" field (site identity — feeds the About tab and the Ask
+tab's system prompt) and the subject-role person's own `fate` field here
+in People are separate columns in different tables, kept in sync
+one-directionally: setting/changing the date of passing overwrites that
+person's `fate` to "Survived. Died {date}." If you've written a fuller
+fate for them than that, re-apply it after changing the date — this is
+a real overwrite, not a merge (there's no reliable way to merge into
+free text automatically).
+
 The **Testimony** tab holds one primary recorded interview, if there is
 one: paste its transcript using `## Tape 1` for each session/tape break
 and `**SUBJECT:**` / `**INTERVIEWER:**` to mark speaker turns.

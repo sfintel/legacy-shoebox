@@ -188,7 +188,48 @@ function archive_site_settings_update(array $fields, bool $markSetupComplete = f
         archive_trim_or_null($pick('ask_placeholder_text')),
         $setupCompletedAt,
     ]);
+
+    // Site identity's death date and the subject-role person's own
+    // People-tab fate field are otherwise unrelated columns in
+    // different tables — sync them one-directionally so editing the
+    // former updates the latter, since that's the natural expectation
+    // (see archive_sync_subject_death_date()'s own comment for what
+    // "sync" means here — it's a real overwrite, not a merge).
+    $newDeathDate = array_key_exists('subject_death_date', $fields)
+        ? archive_trim_or_null($fields['subject_death_date'])
+        : null;
+    $oldDeathDate = $current['subject_death_date'] ?? null;
+    if ($newDeathDate !== null && $newDeathDate !== $oldDeathDate) {
+        archive_sync_subject_death_date($newDeathDate);
+    }
+
     return archive_site_settings();
+}
+
+// Overwrites the subject-role person's `fate` field to reflect a newly
+// set site-identity death date — deliberately a real overwrite, not an
+// attempt to merge into whatever narrative is already there (parsing
+// free text reliably isn't possible, and a silent partial edit would be
+// worse than an obvious one). If you've written a richer fate for them
+// than "Survived. Died X.", re-apply it after changing the date. No-op
+// if no subject-role person exists yet (e.g. in the setup wizard,
+// before any People entries — this is also called from there via
+// archive_site_settings_update()).
+function archive_sync_subject_death_date(string $deathDate): void
+{
+    $subject = db()->query("SELECT * FROM people WHERE role = 'subject' LIMIT 1")->fetch();
+    if (!$subject) {
+        return;
+    }
+    archive_person_update($subject['id'], [
+        'names' => json_decode((string) $subject['names'], true) ?: [],
+        'role' => $subject['role'],
+        'fate' => "Survived. Died {$deathDate}.",
+        'notes' => $subject['notes'],
+        'name_note' => $subject['name_note'],
+        'source_note' => $subject['source_note'],
+        'citation' => $subject['citation'],
+    ]);
 }
 
 // --- Sources (the archive's source material — a list, not a fixed

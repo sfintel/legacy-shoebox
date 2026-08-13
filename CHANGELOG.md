@@ -14,6 +14,27 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.5.4] — 2026-08-13
+
+### Added
+
+- The site identity's "Date of passing" (added in 1.5.2) now syncs
+  one-directionally into the subject-role person's own `fate` field in
+  the People registry — the two were separate columns in different
+  tables with no connection, which read as a bug ("I set it and it's
+  not showing in People") but was really just two unrelated fields.
+  Setting/changing the date overwrites that person's `fate` to
+  "Survived. Died {date}." — a real overwrite, not a merge; see
+  README.md for the tradeoff if you've written a fuller fate for them.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.5.3] — 2026-08-13
 
 ### Fixed
@@ -355,7 +376,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.5.3...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.5.4...HEAD
+[1.5.4]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.4
 [1.5.3]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.3
 [1.5.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.2
 [1.5.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.1
