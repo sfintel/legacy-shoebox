@@ -33,6 +33,7 @@ function settings_admin_shape(array $s): array
         'subjectPronounPossessive' => $s['subject_pronoun_possessive'],
         'subjectBirthDate' => $s['subject_birth_date'],
         'subjectBirthplace' => $s['subject_birthplace'],
+        'subjectDeathDate' => $s['subject_death_date'],
         'subjectShortBio' => $s['subject_short_bio'],
         'closingQuote' => $s['closing_quote'],
         'closingQuoteAttribution' => $s['closing_quote_attribution'],

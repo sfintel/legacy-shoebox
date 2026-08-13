@@ -54,6 +54,7 @@ require_admin_page();
         </div>
         <div class="form-row"><label for="subjectBirthDate">Birth date (approximate is fine)</label><input type="text" id="subjectBirthDate" placeholder="e.g. ~1930 or June 2, 1930"></div>
         <div class="form-row"><label for="subjectBirthplace">Birthplace</label><input type="text" id="subjectBirthplace"></div>
+        <div class="form-row"><label for="subjectDeathDate">Date of passing (leave blank if living — approximate is fine)</label><input type="text" id="subjectDeathDate" placeholder="e.g. ~2020 or March 5, 2020"></div>
         <div class="form-row"><label for="subjectShortBio">Short bio (shown on the About tab)</label><textarea id="subjectShortBio" rows="3"></textarea></div>
 
         <div class="form-row"><label for="closingQuote">Closing quote (optional — shown on the About tab and login page)</label><textarea id="closingQuote" rows="2"></textarea></div>

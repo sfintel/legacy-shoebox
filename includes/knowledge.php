@@ -27,7 +27,11 @@ function knowledge_system_role(): string
     $pPoss = $s['subject_pronoun_possessive'];
 
     $birthBits = array_filter([$s['subject_birth_date'], $s['subject_birthplace']]);
-    $birthLine = $birthBits ? ' (born ' . implode(', ', $birthBits) . ')' : '';
+    $lifeBits = array_filter([
+        $birthBits ? 'born ' . implode(', ', $birthBits) : null,
+        $s['subject_death_date'] ? "died {$s['subject_death_date']}" : null,
+    ]);
+    $birthLine = $lifeBits ? ' (' . implode('; ', $lifeBits) . ')' : '';
 
     // The archive can draw on any number of sources (a recorded
     // interview, a memoir, a documentary...), not just a fixed

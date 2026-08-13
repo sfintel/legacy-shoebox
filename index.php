@@ -146,6 +146,7 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
         $bioBits = array_filter([
             $ss['subject_birth_date'] ? "b. {$ss['subject_birth_date']}" : null,
             $ss['subject_birthplace'] ?: null,
+            $ss['subject_death_date'] ? "d. {$ss['subject_death_date']}" : null,
         ]);
         $bioParen = $bioBits ? ' (' . implode(', ', $bioBits) . ')' : '';
         ?>

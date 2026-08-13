@@ -71,6 +71,7 @@ function site_settings(): array
         'subject_pronoun_possessive' => 'their',
         'subject_birth_date' => null,
         'subject_birthplace' => null,
+        'subject_death_date' => null,
         'subject_short_bio' => null,
         'closing_quote' => null,
         'closing_quote_attribution' => null,
@@ -158,9 +159,9 @@ function archive_site_settings_update(array $fields, bool $markSetupComplete = f
     $stmt = db()->prepare(
         'REPLACE INTO site_settings
          (id, site_name, subject_name, subject_pronoun_subject, subject_pronoun_object, subject_pronoun_possessive,
-          subject_birth_date, subject_birthplace, subject_short_bio,
+          subject_birth_date, subject_birthplace, subject_death_date, subject_short_bio,
           closing_quote, closing_quote_attribution, ask_placeholder_text, setup_completed_at)
-         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         archive_trim_or_null($pick('site_name')) ?? '',
@@ -170,6 +171,7 @@ function archive_site_settings_update(array $fields, bool $markSetupComplete = f
         archive_trim_or_null($pick('subject_pronoun_possessive')) ?? 'their',
         archive_trim_or_null($pick('subject_birth_date')),
         archive_trim_or_null($pick('subject_birthplace')),
+        archive_trim_or_null($pick('subject_death_date')),
         archive_trim_or_null($pick('subject_short_bio')),
         archive_trim_or_null($pick('closing_quote')),
         archive_trim_or_null($pick('closing_quote_attribution')),

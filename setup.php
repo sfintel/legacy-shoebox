@@ -119,6 +119,8 @@ $stepNumber = array_search($stage, $stageOrder, true) + 1;
         <input type="text" id="subjectBirthDate" placeholder="e.g. ~1930 or June 2, 1930">
         <label for="subjectBirthplace">Birthplace</label>
         <input type="text" id="subjectBirthplace">
+        <label for="subjectDeathDate">Date of passing (leave blank if living — approximate is fine)</label>
+        <input type="text" id="subjectDeathDate" placeholder="e.g. ~2020 or March 5, 2020">
         <label for="subjectShortBio">Short bio</label>
         <textarea id="subjectShortBio" rows="3"></textarea>
         <p class="err" id="identityError" role="alert"></p>

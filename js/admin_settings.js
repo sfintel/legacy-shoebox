@@ -43,6 +43,7 @@
     document.getElementById("pronounPossessive").value = s.subjectPronounPossessive || "";
     document.getElementById("subjectBirthDate").value = s.subjectBirthDate || "";
     document.getElementById("subjectBirthplace").value = s.subjectBirthplace || "";
+    document.getElementById("subjectDeathDate").value = s.subjectDeathDate || "";
     document.getElementById("subjectShortBio").value = s.subjectShortBio || "";
     document.getElementById("closingQuote").value = s.closingQuote || "";
     document.getElementById("closingQuoteAttribution").value = s.closingQuoteAttribution || "";
@@ -72,6 +73,7 @@
           subject_pronoun_possessive: document.getElementById("pronounPossessive").value,
           subject_birth_date: document.getElementById("subjectBirthDate").value,
           subject_birthplace: document.getElementById("subjectBirthplace").value,
+          subject_death_date: document.getElementById("subjectDeathDate").value,
           subject_short_bio: document.getElementById("subjectShortBio").value,
           closing_quote: document.getElementById("closingQuote").value,
           closing_quote_attribution: document.getElementById("closingQuoteAttribution").value,

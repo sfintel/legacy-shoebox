@@ -195,6 +195,9 @@ CREATE TABLE IF NOT EXISTS site_settings (
   -- ("~1930") and should be preserved as the subject/family stated them.
   subject_birth_date                 VARCHAR(100) NULL,
   subject_birthplace                 VARCHAR(255) NULL,
+  -- NULL is the common case (the subject is living) — not an omission
+  -- to flag, unlike a missing birth date.
+  subject_death_date                 VARCHAR(100) NULL,
   subject_short_bio                  TEXT         NULL,
   closing_quote                      TEXT         NULL,
   closing_quote_attribution          VARCHAR(255) NULL,

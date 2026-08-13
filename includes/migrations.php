@@ -128,6 +128,19 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.5.2' => [
+            'description' => 'Add subject_death_date (About tab, Ask tab context, setup wizard, admin settings)',
+            'db' => static function (PDO $pdo): void {
+                $hasCol = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'site_settings' AND column_name = 'subject_death_date'"
+                )->fetchColumn();
+                if ($hasCol === 0) {
+                    $pdo->exec('ALTER TABLE site_settings ADD COLUMN subject_death_date VARCHAR(100) NULL AFTER subject_birthplace');
+                }
+            },
+            'env' => [],
+        ],
     ];
 }
 

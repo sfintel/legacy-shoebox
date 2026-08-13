@@ -14,6 +14,28 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.5.2] — 2026-08-13
+
+### Added
+
+- A "Date of passing" field alongside the existing birth date (setup
+  wizard and `admin_settings.php`) — optional, blank if the subject is
+  living. Shows on the About tab and feeds the Ask tab's system prompt
+  the same way birth date already did.
+
+### Database changes
+
+Adds `site_settings.subject_death_date` (`upgrade.sh` handles this
+automatically). Manual equivalent:
+
+```sql
+ALTER TABLE site_settings ADD COLUMN subject_death_date VARCHAR(100) NULL AFTER subject_birthplace;
+```
+
+### Environment changes
+
+None.
+
 ## [1.5.1] — 2026-08-13
 
 ### Added
@@ -308,7 +330,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.5.2...HEAD
+[1.5.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.2
 [1.5.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.1
 [1.5.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.0
 [1.4.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.4.1

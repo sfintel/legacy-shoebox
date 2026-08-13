@@ -49,6 +49,7 @@
     subject_pronoun_possessive: document.getElementById("pronounPossessive").value,
     subject_birth_date: document.getElementById("subjectBirthDate").value,
     subject_birthplace: document.getElementById("subjectBirthplace").value,
+    subject_death_date: document.getElementById("subjectDeathDate").value,
     subject_short_bio: document.getElementById("subjectShortBio").value,
   }), "/api/setup/identity.php");
 
