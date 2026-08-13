@@ -14,6 +14,34 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.4.1] — 2026-08-13
+
+### Fixed
+
+- `upgrade.php` wrapped each version's `db` step in an explicit
+  `beginTransaction()`/`commit()` — but MySQL's `ALTER TABLE` (and other
+  DDL) causes an implicit commit, silently ending that transaction the
+  moment it runs. Any step mixing DDL with other statements (like
+  1.4.0's role migration) then failed on `commit()` with "There is no
+  active transaction" — even though every SQL statement in the step had
+  already executed and committed successfully; only the bookkeeping
+  call failed, after the real work was done. `upgrade.php` no longer
+  wraps steps in a transaction (DDL can't be rolled back in MySQL
+  regardless, so it was never real protection — the actual safety net
+  is the automatic backup taken before any step runs).
+
+### Database changes
+
+None beyond what 1.4.0 already applies (this only touches the runner,
+not the schema). If you hit the "There is no active transaction" error
+running 1.4.0's upgrade, check whether it actually finished — see this
+version's fix description; you likely just need `upgrade.sh` re-run
+after updating to record `schema_version` correctly.
+
+### Environment changes
+
+None.
+
 ## [1.4.0] — 2026-08-13
 
 ### Added
@@ -233,7 +261,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.4.1
 [1.4.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.4.0
 [1.3.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.2
 [1.3.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.1

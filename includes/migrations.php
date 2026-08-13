@@ -98,6 +98,11 @@ function migrations_steps(): array
             },
             'env' => [],
         ],
+        '1.4.1' => [
+            'description' => 'Fix upgrade.php: DDL causes an implicit MySQL commit, breaking the per-step transaction wrapper on any migration mixing ALTER TABLE with other statements',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

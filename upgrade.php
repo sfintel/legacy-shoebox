@@ -87,13 +87,18 @@ foreach (migrations_ordered() as $version => $step) {
 
     if ($step['db'] !== null) {
         try {
-            $pdo->beginTransaction();
+            // Deliberately NOT wrapped in beginTransaction()/commit():
+            // MySQL's ALTER TABLE (and other DDL) causes an implicit
+            // commit, silently ending any transaction the moment the
+            // first ALTER runs — a step that mixes DDL with other
+            // statements would then hit "There is no active
+            // transaction" on PDO's own commit() call, since the
+            // transaction MySQL thinks it's tracking no longer exists.
+            // DDL can't be rolled back in MySQL anyway, so the wrapping
+            // was never real protection — the actual safety net is the
+            // backup taken above.
             $step['db']($pdo);
-            $pdo->commit();
         } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
             fwrite(STDERR, "  FAILED: " . $e->getMessage() . "\n");
             fwrite(STDERR, "\nStopped at $version. Versions before this one were applied successfully");
             fwrite(STDERR, " and schema_version reflects that. Fix the problem above, or restore\n");
