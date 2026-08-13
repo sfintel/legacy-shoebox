@@ -32,12 +32,19 @@ echo "== Syncing into $TARGET =="
 # release (e.g. a retired page) — safe here because the webroot should
 # be 100% code; user data (uploads, backups) always lives under
 # ARCHIVE_ROOT, outside the webroot, and .env/.git are excluded below.
-# --omit-dir-times: on hosts where the webroot itself is owned by root
-# (typical for a cPanel subdomain docroot, group-writable to the site
-# user) rsync can update file contents fine but can't set the *directory
-# entry's own* mtime — harmless to skip, rsync doesn't rely on it for
-# correctness here.
-rsync -a --delete --omit-dir-times \
+#
+# Deliberately NOT plain `-a`: on hosts where the webroot itself is
+# owned by root (typical for a cPanel subdomain docroot, group-writable
+# to the site user) rsync can update file *contents* fine but can't set
+# attributes on the top-level target directory it doesn't own — tried
+# --omit-dir-times alone first, still failed on permissions next. So:
+# skip preserving times/perms/owner/group entirely (none of it matters
+# for a code deploy — PHP doesn't care about file mtimes, and a new
+# file still gets the source's permission bits, e.g. upgrade.sh's +x,
+# via rsync's normal "new file" behavior even without --perms) and use
+# checksums (-c) instead of the mtime+size quick-check, since skipping
+# --times means source mtimes can't be trusted for change detection.
+rsync -rlc --delete --no-times --no-perms --no-owner --no-group \
     --exclude '.git' \
     --exclude '.env' \
     "./" "$TARGET/"

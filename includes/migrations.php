@@ -56,6 +56,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.3.2' => [
+            'description' => '--omit-dir-times alone was not enough (rsync also failed on --perms) — deploy.sh now skips times/perms/owner/group entirely and uses checksums',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

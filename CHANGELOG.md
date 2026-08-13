@@ -14,6 +14,29 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.3.2] — 2026-08-13
+
+### Fixed
+
+- 1.3.1's `--omit-dir-times` fix was incomplete — rsync then failed the
+  same way trying to set *permissions* on a root-owned webroot's
+  top-level directory. `deploy.sh` now skips times/perms/owner/group
+  entirely (`--no-times --no-perms --no-owner --no-group`) and compares
+  by checksum instead of the mtime+size quick-check, since skipping
+  `--times` means source mtimes can't be trusted for change detection.
+  Verified: a brand-new file (`deploy.sh` itself, syncing into
+  `oss-test` for the first time) still landed with the correct `755`
+  from rsync's normal new-file behavior, and an existing file
+  (`upgrade.sh`) kept its already-correct `+x`.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.3.1] — 2026-08-13
 
 ### Fixed
@@ -159,7 +182,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.2
 [1.3.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.1
 [1.3.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.0
 [1.2.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.2.1
