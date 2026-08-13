@@ -14,6 +14,24 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.3.0] — 2026-08-13
+
+### Added
+
+- `deploy.sh`: run from inside a git clone kept outside any webroot
+  (see UPGRADE.md) — does `git pull`, syncs the result into a target
+  webroot with `rsync -a --delete` (excluding `.env` and `.git`), then
+  runs that webroot's `upgrade.sh`. The full "get current" cycle in one
+  command instead of three.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.2.1] — 2026-08-12
 
 ### Added
@@ -122,7 +140,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.0
 [1.2.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.2.1
 [1.2.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.2.0
 [1.1.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.1.0

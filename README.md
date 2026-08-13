@@ -15,10 +15,12 @@ is the single source of truth for the entire archive — there's no
 YAML/JSON file layer to keep in sync, and nothing to regenerate after an
 edit.
 
-Already running a deployment and upgrading to a newer release? Deploy
-the new code, then run `./upgrade.sh` from inside your webroot — see
-[UPGRADE.md](UPGRADE.md) for details rather than starting over from this
-README, and check [CHANGELOG.md](CHANGELOG.md) for what changed release
+Already running a deployment and upgrading to a newer release? If you
+keep a git clone of this repo, `./deploy.sh /path/to/webroot` does the
+whole cycle in one command. Otherwise, deploy the new code yourself and
+run `./upgrade.sh` from inside your webroot. See [UPGRADE.md](UPGRADE.md)
+for details rather than starting over from this README, and check
+[CHANGELOG.md](CHANGELOG.md) for what changed release
 to release.
 
 ## What you need from your host

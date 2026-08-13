@@ -46,6 +46,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.3.0' => [
+            'description' => 'deploy.sh — one-command git pull + sync + upgrade.sh',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

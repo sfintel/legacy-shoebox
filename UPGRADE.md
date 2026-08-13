@@ -5,6 +5,27 @@ archive content) from an older release to a newer one. If you're setting
 up a brand-new deployment instead, you don't need this — just follow
 `README.md`.
 
+## The easiest way: `deploy.sh` (if you're deploying from a git clone)
+
+As of 1.3.0, if you keep a git clone of this repo on your host — outside
+any webroot, since a webroot itself must never be a git working tree
+(see the note under "Deploy the new code" below for why) — one command
+does the whole cycle:
+
+```bash
+cd /path/to/your/clone
+./deploy.sh /path/to/your/webroot
+```
+
+That's `git pull`, then `rsync -a --delete` (excluding `.git` and
+`.env`) into the target webroot, then that webroot's `upgrade.sh` — in
+one go. Safe to run repeatedly for the same reason `upgrade.sh` is: if
+there's nothing new, `git pull` says so and `upgrade.sh` exits
+immediately after.
+
+If you don't keep a git clone (you deploy via scp, a host file manager,
+etc.), use `upgrade.sh` directly instead — see below.
+
 ## The easy way: `upgrade.sh`
 
 As of 1.2.0, this repo carries its own upgrade runner. Two steps:
