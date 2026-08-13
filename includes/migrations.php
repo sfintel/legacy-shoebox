@@ -51,6 +51,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.3.1' => [
+            'description' => 'Fix deploy.sh rsync failure on root-owned webroots (--omit-dir-times)',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

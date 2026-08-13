@@ -32,7 +32,12 @@ echo "== Syncing into $TARGET =="
 # release (e.g. a retired page) — safe here because the webroot should
 # be 100% code; user data (uploads, backups) always lives under
 # ARCHIVE_ROOT, outside the webroot, and .env/.git are excluded below.
-rsync -a --delete \
+# --omit-dir-times: on hosts where the webroot itself is owned by root
+# (typical for a cPanel subdomain docroot, group-writable to the site
+# user) rsync can update file contents fine but can't set the *directory
+# entry's own* mtime — harmless to skip, rsync doesn't rely on it for
+# correctness here.
+rsync -a --delete --omit-dir-times \
     --exclude '.git' \
     --exclude '.env' \
     "./" "$TARGET/"

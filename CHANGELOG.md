@@ -14,6 +14,25 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.3.1] — 2026-08-13
+
+### Fixed
+
+- `deploy.sh` failed with `rsync error ... code 23` when the target
+  webroot's own directory is owned by `root` (typical for a cPanel
+  subdomain docroot, group-writable to the site user) — rsync could
+  sync file contents fine but not the directory entry's own mtime.
+  Added `--omit-dir-times`, which rsync doesn't need for correctness
+  here.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.3.0] — 2026-08-13
 
 ### Added
@@ -140,7 +159,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.1
 [1.3.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.0
 [1.2.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.2.1
 [1.2.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.2.0
