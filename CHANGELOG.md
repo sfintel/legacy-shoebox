@@ -14,6 +14,31 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.5.3] — 2026-08-13
+
+### Fixed
+
+- `archive_site_settings_update()` used `REPLACE INTO`, which deletes
+  and reinserts the row — so any column not in its explicit list
+  silently reverted to its schema default. In practice this meant
+  **every settings save reset `schema_version` back to `1.0.0`**, found
+  while testing 1.5.2. It also meant any *future* column added to
+  `site_settings` would have needed a matching edit here to survive a
+  save, with no error if someone forgot. Replaced with a real `UPDATE`
+  (plus `INSERT IGNORE` up front to guarantee the row exists on a
+  brand-new install) — now only the columns actually listed are ever
+  touched, and unlisted columns (like `schema_version`, or any later
+  addition) are never touched. No action needed: the next `upgrade.sh`
+  run corrects `schema_version` regardless of what it was reset to.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.5.2] — 2026-08-13
 
 ### Added
@@ -330,7 +355,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.5.2...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.5.3...HEAD
+[1.5.3]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.3
 [1.5.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.2
 [1.5.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.1
 [1.5.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.0

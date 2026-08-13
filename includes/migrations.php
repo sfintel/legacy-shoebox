@@ -141,6 +141,11 @@ function migrations_steps(): array
             },
             'env' => [],
         ],
+        '1.5.3' => [
+            'description' => 'Fix archive_site_settings_update(): REPLACE INTO silently reset schema_version (and would have reset any other unlisted column) on every settings save — now a real UPDATE',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

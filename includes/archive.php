@@ -156,12 +156,22 @@ function archive_site_settings_update(array $fields, bool $markSetupComplete = f
         return $current[$key] ?? $default;
     };
 
+    // A plain UPDATE, not REPLACE INTO — REPLACE deletes and reinserts
+    // the row, so any column not in its explicit list (schema_version,
+    // or any future column this function's author forgets to add here)
+    // silently reverts to its schema DEFAULT. Found via testing:
+    // schema_version was getting reset to '1.0.0' on every settings
+    // save. INSERT IGNORE first guarantees the id=1 row exists (a
+    // brand-new install, before setup, has no row yet) without
+    // clobbering it if it already does.
+    db()->exec('INSERT IGNORE INTO site_settings (id) VALUES (1)');
     $stmt = db()->prepare(
-        'REPLACE INTO site_settings
-         (id, site_name, subject_name, subject_pronoun_subject, subject_pronoun_object, subject_pronoun_possessive,
-          subject_birth_date, subject_birthplace, subject_death_date, subject_short_bio,
-          closing_quote, closing_quote_attribution, ask_placeholder_text, setup_completed_at)
-         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'UPDATE site_settings SET
+          site_name = ?, subject_name = ?, subject_pronoun_subject = ?, subject_pronoun_object = ?,
+          subject_pronoun_possessive = ?, subject_birth_date = ?, subject_birthplace = ?,
+          subject_death_date = ?, subject_short_bio = ?, closing_quote = ?,
+          closing_quote_attribution = ?, ask_placeholder_text = ?, setup_completed_at = ?
+         WHERE id = 1'
     );
     $stmt->execute([
         archive_trim_or_null($pick('site_name')) ?? '',
