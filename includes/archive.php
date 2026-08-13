@@ -978,7 +978,7 @@ function archive_content_links_clear_for_item(string $contentItemId): void
 function archive_content_links_for_entity(string $entityType, string $entityId): array
 {
     $stmt = db()->prepare(
-        "SELECT ci.id, ci.type, ci.title,
+        "SELECT ci.id, ci.type, ci.title, ci.source_url,
                 (SELECT cf.id FROM content_files cf WHERE cf.content_item_id = ci.id ORDER BY cf.sort_order ASC LIMIT 1) AS file_id,
                 (SELECT cf.mime_type FROM content_files cf WHERE cf.content_item_id = ci.id ORDER BY cf.sort_order ASC LIMIT 1) AS mime_type
          FROM content_links cl
@@ -997,6 +997,7 @@ function archive_content_links_public(string $entityType, string $entityId): arr
         'type' => $row['type'],
         'title' => $row['title'],
         'fileId' => $row['file_id'],
+        'sourceUrl' => $row['source_url'],
         'isVideo' => $row['mime_type'] !== null && str_starts_with((string) $row['mime_type'], 'video/'),
     ], archive_content_links_for_entity($entityType, $entityId));
 }

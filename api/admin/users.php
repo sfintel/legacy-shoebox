@@ -13,7 +13,7 @@ if ($method === 'GET') {
             'name' => $u['name'],
             'email' => $u['email'],
             'role' => $u['role'],
-            'canAddContent' => (bool) $u['can_add_content'],
+            'canAddContent' => user_can_add_content($u),
             'audienceMode' => $u['default_audience_mode'],
             'audienceModeLabel' => audience_mode_label($u['default_audience_mode']),
             'status' => $u['status'],
@@ -30,7 +30,7 @@ if ($method === 'POST') {
     $id = (string) ($body['id'] ?? '');
     $action = (string) ($body['action'] ?? '');
 
-    if (!in_array($action, ['approve', 'reject', 'revoke', 'delete', 'grant_content', 'revoke_content', 'unlock'], true)) {
+    if (!in_array($action, ['approve', 'reject', 'revoke', 'delete', 'set_author', 'set_reader', 'unlock'], true)) {
         json_response(['error' => 'Unknown action.'], 400);
     }
     $target = user_find_by_id($id);
@@ -46,8 +46,11 @@ if ($method === 'POST') {
         json_response(['ok' => true]);
     }
 
-    if ($action === 'grant_content' || $action === 'revoke_content') {
-        user_set_content_permission($id, $action === 'grant_content');
+    if ($action === 'set_author' || $action === 'set_reader') {
+        if ($target['role'] === 'admin') {
+            json_response(['error' => "Admin accounts can't be changed here."], 400);
+        }
+        user_set_role($id, $action === 'set_author' ? 'author' : 'reader');
         json_response(['ok' => true]);
     }
 

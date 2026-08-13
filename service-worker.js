@@ -1,4 +1,4 @@
-const CACHE_NAME = "app-lamp-v1";
+const CACHE_NAME = "app-lamp-v2";
 const APP_SHELL = [
   "/",
   "/login.php",
@@ -7,12 +7,6 @@ const APP_SHELL = [
   "/manifest.json",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
-  "/api/data.php?name=quotes",
-  "/api/data.php?name=people",
-  "/api/data.php?name=places",
-  "/api/data.php?name=timeline",
-  "/api/data.php?name=transcript",
-  "/api/data.php?name=discrepancies",
 ];
 
 // Endpoints that must always hit the network directly — auth state, chat,
@@ -43,13 +37,38 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Network-first for auth/chat/admin calls (never cache these), cache-first
-// for everything else — including /api/data.php, which stands in for the
-// Node version's static /data/*.json files.
+// /api/data.php stands in for the Node version's static /data/*.json
+// files, but unlike a static file it changes whenever an admin edits
+// the archive — a cache-first (stale-while-revalidate) strategy meant
+// an edit wouldn't show up until a *second* page load (the first load
+// serves the stale cached copy while quietly refreshing it for next
+// time). Network-first here instead: always try the network, only fall
+// back to cache when actually offline.
+const NETWORK_FIRST_PREFIXES = ["/api/data.php"];
+
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (NO_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p))) return;
 
+  if (NETWORK_FIRST_PREFIXES.some((p) => url.pathname.startsWith(p))) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.ok) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first (stale-while-revalidate) for the app shell — this is
+  // fine here since JS/CSS/icons only change on a deploy, not on every
+  // admin edit, and cache-first is what makes the PWA feel instant and
+  // work offline.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request)

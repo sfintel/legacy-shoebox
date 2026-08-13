@@ -14,6 +14,57 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.4.0] — 2026-08-13
+
+### Added
+
+- Three-tier user roles: **admin** (unchanged), **author** (can add
+  content and edit/delete their own — replaces the old `member` +
+  `can_add_content` flag combo), **reader** (view archive, use Ask tab,
+  can't add content). New signups start as readers. Manage from
+  `/admin.php` ("Make author"/"Make reader").
+- Keyword picker suggestions now filter live as you type, instead of
+  always showing every existing keyword.
+
+### Fixed
+
+- Related-content links (Timeline/Quotes/People/Places cards) for a URL
+  source pointed at our locally-cached scrape of the page instead of the
+  actual source (e.g. a Wikipedia link "dumped raw HTML" instead of
+  opening Wikipedia) — now links straight to the source URL. Also fixed
+  the fallback for non-photo/video content types, which previously
+  rendered as a broken image with no icon; text/URL links now get a
+  proper icon.
+- `service-worker.js` treated `/api/data.php` (Timeline/Quotes/People/
+  Places data) as cache-first, so an admin's edit — e.g. changing
+  someone's Fate in the Archive editor — didn't show up in the app until
+  a *second* page load. Now network-first: always tries the network,
+  only falls back to cache when actually offline. (Note: the AI-facing
+  narrative notes on existing content items don't auto-update when
+  Archive data changes — that's what `admin_content.php`'s existing
+  "Backfill narrative notes & links" button is for, unrelated to this
+  caching bug.)
+
+### Database changes
+
+Migrates `users.role` from `ENUM('admin','member')` + a separate
+`can_add_content` flag to `ENUM('admin','author','reader')`, then drops
+`can_add_content`. `upgrade.sh` handles this automatically (widens the
+enum, migrates every row's data, narrows it back down, drops the old
+column). Manual equivalent if you're not using `upgrade.sh`:
+
+```sql
+ALTER TABLE users MODIFY COLUMN role ENUM('admin','author','reader','member') NOT NULL DEFAULT 'reader';
+UPDATE users SET role = 'author' WHERE role = 'member' AND can_add_content = 1;
+UPDATE users SET role = 'reader' WHERE role = 'member';
+ALTER TABLE users MODIFY COLUMN role ENUM('admin','author','reader') NOT NULL DEFAULT 'reader';
+ALTER TABLE users DROP COLUMN can_add_content;
+```
+
+### Environment changes
+
+None.
+
 ## [1.3.2] — 2026-08-13
 
 ### Fixed
@@ -182,7 +233,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.3.2...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.4.0
 [1.3.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.2
 [1.3.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.1
 [1.3.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.3.0

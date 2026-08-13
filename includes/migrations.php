@@ -61,6 +61,43 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.4.0' => [
+            'description' => 'Fix related-content links/icons for URL sources, network-first api/data.php caching, keyword-picker live filtering, admin/author/reader roles',
+            'db' => static function (PDO $pdo): void {
+                // Widen role to accept the new values alongside the old
+                // 'member' one, migrate every row off 'member' using
+                // whatever can_add_content said (if that column is still
+                // there — a from-scratch 1.4.0+ install never has it),
+                // then narrow the enum back down. Checking for 'member'
+                // in the current COLUMN_TYPE is what makes this safe to
+                // replay: a database already migrated has no 'member'
+                // left, so this whole block is skipped on a second run.
+                $roleType = (string) $pdo->query(
+                    "SELECT COLUMN_TYPE FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'role'"
+                )->fetchColumn();
+                if (str_contains($roleType, "'member'")) {
+                    $pdo->exec("ALTER TABLE users MODIFY COLUMN role ENUM('admin','author','reader','member') NOT NULL DEFAULT 'reader'");
+                    $hasCanAddContent = (int) $pdo->query(
+                        "SELECT COUNT(*) FROM information_schema.columns
+                         WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'can_add_content'"
+                    )->fetchColumn() > 0;
+                    if ($hasCanAddContent) {
+                        $pdo->exec("UPDATE users SET role = 'author' WHERE role = 'member' AND can_add_content = 1");
+                    }
+                    $pdo->exec("UPDATE users SET role = 'reader' WHERE role = 'member'");
+                    $pdo->exec("ALTER TABLE users MODIFY COLUMN role ENUM('admin','author','reader') NOT NULL DEFAULT 'reader'");
+                }
+                $hasCanAddContent = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'can_add_content'"
+                )->fetchColumn();
+                if ($hasCanAddContent > 0) {
+                    $pdo->exec('ALTER TABLE users DROP COLUMN can_add_content');
+                }
+            },
+            'env' => [],
+        ],
     ];
 }
 

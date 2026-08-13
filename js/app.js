@@ -58,10 +58,24 @@
   function renderRelatedContent(items) {
     if (!items || !items.length) return "";
     const links = items.map(c => {
+      if (c.isVideo) {
+        const url = "/api/file.php?fileId=" + encodeURIComponent(c.fileId);
+        return `<a href="${url}" target="_blank" rel="noopener" class="pill related-content-link">&#9654; ${esc(c.title)}</a>`;
+      }
+      if (c.type === "photo") {
+        const url = "/api/file.php?fileId=" + encodeURIComponent(c.fileId);
+        return `<a href="${url}" target="_blank" rel="noopener" class="related-content-thumb" title="${esc(c.title)}"><img src="${url}" alt="${esc(c.title)}" loading="lazy"></a>`;
+      }
+      if (c.type === "url" && c.sourceUrl) {
+        // Link straight to the original page, not our locally-cached
+        // scrape of it (that file exists only to ground the AI's
+        // narrative note, not as something a person should read).
+        return `<a href="${esc(c.sourceUrl)}" target="_blank" rel="noopener" class="pill related-content-link">&#128279; ${esc(c.title)}</a>`;
+      }
+      // transcript, or a url item with no source recorded — link to our
+      // own copy, since there's nothing else to point at.
       const url = "/api/file.php?fileId=" + encodeURIComponent(c.fileId);
-      return c.isVideo
-        ? `<a href="${url}" target="_blank" rel="noopener" class="pill related-content-link">&#9654; ${esc(c.title)}</a>`
-        : `<a href="${url}" target="_blank" rel="noopener" class="related-content-thumb" title="${esc(c.title)}"><img src="${url}" alt="${esc(c.title)}" loading="lazy"></a>`;
+      return `<a href="${url}" target="_blank" rel="noopener" class="pill related-content-link">&#128196; ${esc(c.title)}</a>`;
     }).join("");
     return `<div class="meta related-content">${links}</div>`;
   }

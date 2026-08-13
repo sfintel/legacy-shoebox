@@ -36,16 +36,16 @@
         if (u.status !== "approved") actions.push(`<button class="primary" data-id="${u.id}" data-action="approve">Approve</button>`);
         if (u.role !== "admin" && u.status !== "rejected") actions.push(`<button data-id="${u.id}" data-action="reject">${u.status === "approved" ? "Revoke" : "Reject"}</button>`);
         if (u.role !== "admin" && u.status === "approved") {
-          actions.push(u.canAddContent
-            ? `<button data-id="${u.id}" data-action="revoke_content">Revoke content access</button>`
-            : `<button data-id="${u.id}" data-action="grant_content">Grant content access</button>`);
+          actions.push(u.role === "author"
+            ? `<button data-id="${u.id}" data-action="set_reader">Make reader</button>`
+            : `<button data-id="${u.id}" data-action="set_author">Make author</button>`);
         }
         if (u.isLockedOut) actions.push(`<button data-id="${u.id}" data-action="unlock">Unlock</button>`);
         if (u.role !== "admin") actions.push(`<button class="danger" data-id="${u.id}" data-action="delete">Delete</button>`);
         return `<tr>
           <td>${esc(u.name)}</td>
           <td>${esc(u.email)}</td>
-          <td>${esc(u.role)}${u.canAddContent && u.role !== "admin" ? ' <span class="status-badge status-approved">content</span>' : ""}</td>
+          <td>${esc(u.role)}</td>
           <td>${esc(u.audienceModeLabel || u.audienceMode || "—")}</td>
           <td><span class="status-badge status-${esc(u.status)}">${esc(u.status)}</span>${u.isLockedOut ? ' <span class="status-badge status-rejected">locked out</span>' : ""}</td>
           <td>${esc(fmtDate(u.createdAt))}</td>

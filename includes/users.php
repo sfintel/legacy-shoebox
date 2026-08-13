@@ -71,7 +71,7 @@ function user_create_pending(string $name, string $email, string $password, ?str
     $id = make_uuid();
     $stmt = db()->prepare(
         'INSERT INTO users (id, name, email, password_hash, role, status, default_audience_mode)
-         VALUES (?, ?, ?, ?, \'member\', \'pending\', ?)'
+         VALUES (?, ?, ?, ?, \'reader\', \'pending\', ?)'
     );
     $stmt->execute([$id, trim($name), $normalizedEmail, password_hash($password, PASSWORD_DEFAULT), $mode]);
     return user_find_by_id($id);
@@ -89,10 +89,16 @@ function user_set_status(string $id, string $status): ?array
     return user_find_by_id($id);
 }
 
-function user_set_content_permission(string $id, bool $canAdd): ?array
+// Only ever moves a user between 'author' and 'reader' — never touches
+// an admin's role (see the guard in api/admin/users.php, which is the
+// only caller).
+function user_set_role(string $id, string $role): ?array
 {
-    $stmt = db()->prepare('UPDATE users SET can_add_content = ? WHERE id = ?');
-    $stmt->execute([$canAdd ? 1 : 0, $id]);
+    if (!in_array($role, ['author', 'reader'], true)) {
+        throw new InvalidArgumentException("Invalid role: $role");
+    }
+    $stmt = db()->prepare('UPDATE users SET role = ? WHERE id = ?');
+    $stmt->execute([$role, $id]);
     return user_find_by_id($id);
 }
 

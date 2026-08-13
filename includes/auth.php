@@ -94,12 +94,11 @@ function require_admin_api(): array
     return $user;
 }
 
-// Admins always have content access; a member can also be granted it
-// individually (see includes/users.php's user_set_content_permission())
-// without becoming a full admin.
+// admin and author can both add content; reader cannot. See the `role`
+// column comment in sql/schema.sql.
 function user_can_add_content(array $user): bool
 {
-    return $user['role'] === 'admin' || (bool) $user['can_add_content'];
+    return $user['role'] === 'admin' || $user['role'] === 'author';
 }
 
 function require_content_page(): array

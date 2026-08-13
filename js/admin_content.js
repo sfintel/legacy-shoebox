@@ -72,17 +72,34 @@
     const container = document.getElementById(containerId);
     const state = { tags: [...selected] };
 
+    // Only touches the suggestions sub-element, never the input itself —
+    // rebuilding the whole container on every keystroke (as draw() does)
+    // would drop focus/cursor position out from under the person typing.
+    function renderSuggestions(filterText) {
+      const suggestionsEl = container.querySelector(".tag-picker-suggestions");
+      if (!suggestionsEl) return;
+      const matches = allTags.filter((t) =>
+        !state.tags.includes(t) && (!filterText || t.toLowerCase().includes(filterText))
+      );
+      suggestionsEl.innerHTML = matches.map((t) =>
+        `<button type="button" class="tag-chip" data-tag="${esc(t)}">${esc(t)}</button>`
+      ).join("");
+      suggestionsEl.querySelectorAll(".tag-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          if (!state.tags.includes(chip.dataset.tag)) state.tags.push(chip.dataset.tag);
+          draw();
+        });
+      });
+    }
+
     function draw() {
       const selectedHtml = state.tags.map((t) =>
         `<button type="button" class="tag-chip active" data-tag="${esc(t)}">${esc(t)} &times;</button>`
       ).join("");
-      const suggestionsHtml = allTags.filter((t) => !state.tags.includes(t)).map((t) =>
-        `<button type="button" class="tag-chip" data-tag="${esc(t)}">${esc(t)}</button>`
-      ).join("");
       container.innerHTML = `
         <div class="tag-picker-selected">${selectedHtml}</div>
-        <input type="text" id="${inputId}" class="tag-picker-input" placeholder="Add a keyword and press Enter…">
-        ${suggestionsHtml ? `<div class="tag-picker-suggestions">${suggestionsHtml}</div>` : ""}
+        <input type="text" id="${inputId}" class="tag-picker-input" placeholder="Add a keyword and press Enter…" autocomplete="off">
+        <div class="tag-picker-suggestions"></div>
       `;
       container.querySelectorAll(".tag-picker-selected .tag-chip").forEach((chip) => {
         chip.addEventListener("click", () => {
@@ -90,13 +107,11 @@
           draw();
         });
       });
-      container.querySelectorAll(".tag-picker-suggestions .tag-chip").forEach((chip) => {
-        chip.addEventListener("click", () => {
-          if (!state.tags.includes(chip.dataset.tag)) state.tags.push(chip.dataset.tag);
-          draw();
-        });
-      });
+      renderSuggestions("");
       const input = container.querySelector(".tag-picker-input");
+      input.addEventListener("input", () => {
+        renderSuggestions(input.value.trim().toLowerCase());
+      });
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === ",") {
           e.preventDefault();

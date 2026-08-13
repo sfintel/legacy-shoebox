@@ -7,13 +7,11 @@ CREATE TABLE IF NOT EXISTS users (
   name            VARCHAR(255)  NOT NULL,
   email           VARCHAR(255)  NOT NULL,
   password_hash   VARCHAR(255)  NOT NULL,
-  role            ENUM('admin','member') NOT NULL DEFAULT 'member',
-  -- Independent of role: lets an admin grant a specific approved member
-  -- access to the admin Content page (see includes/content.php) without
-  -- making them a full admin (which would also grant user management).
-  -- Admins always have content access regardless of this flag — see
+  -- admin: full access, including user management. author: can add
+  -- content and edit/delete their own (see includes/content.php).
+  -- reader: can view the archive and use the Ask tab, nothing more. See
   -- user_can_add_content() in includes/auth.php.
-  can_add_content TINYINT(1)    NOT NULL DEFAULT 0,
+  role            ENUM('admin','author','reader') NOT NULL DEFAULT 'reader',
   -- Chosen at signup from the same options as the Ask tab's "Telling
   -- for:" dropdown (see audience_modes() in includes/helpers.php) —
   -- VARCHAR rather than ENUM so adding a new mode never needs a schema

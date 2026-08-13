@@ -167,11 +167,19 @@ both the buttons and the underlying API reject those actions against an
 admin row, so there's no way to lock everyone out of user management by
 mistake.
 
-Beyond the admin/member role, a member can independently be granted
-`can_add_content` — access to the admin Content page (adding
-transcripts/photos/videos/URLs) without becoming a full admin. Admins
-always have content access regardless of this flag. Grant/revoke it from
-a user's row on `/admin.php`.
+Every account has one of three roles:
+
+- **admin** — full access, including user management.
+- **author** — can add content (transcripts/photos/videos/URLs, via
+  `/admin_content.php`) and edit/delete their own; everything else a
+  reader can do.
+- **reader** — can view the archive and use the Ask tab; can't add
+  content.
+
+New signups start as readers; an admin promotes/demotes between author
+and reader from a user's row on `/admin.php` ("Make author"/"Make
+reader" — admin accounts aren't changeable this way, same protection as
+Revoke/Delete).
 
 ### Login lockout
 
@@ -189,7 +197,7 @@ tied to one account and just expires on its own after the window.
 ## Content management
 
 `/admin_content.php` (linked from the header for anyone with content
-access — admins or a member with `can_add_content`) lets family members
+access — admins and authors) lets family members
 add material beyond the core archive built via `/admin_archive.php`:
 transcripts (pasted text), photos, videos, or a URL. Everything added
 here becomes part of what the Ask tab knows about.
