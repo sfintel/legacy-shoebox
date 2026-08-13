@@ -30,7 +30,7 @@ if ($method === 'POST') {
     $id = (string) ($body['id'] ?? '');
     $action = (string) ($body['action'] ?? '');
 
-    if (!in_array($action, ['approve', 'reject', 'revoke', 'delete', 'set_author', 'set_reader', 'unlock'], true)) {
+    if (!in_array($action, ['approve', 'reject', 'revoke', 'delete', 'set_author', 'set_reader', 'set_admin', 'unlock'], true)) {
         json_response(['error' => 'Unknown action.'], 400);
     }
     $target = user_find_by_id($id);
@@ -51,6 +51,17 @@ if ($method === 'POST') {
             json_response(['error' => "Admin accounts can't be changed here."], 400);
         }
         user_set_role($id, $action === 'set_author' ? 'author' : 'reader');
+        json_response(['ok' => true]);
+    }
+
+    if ($action === 'set_admin') {
+        if ($target['role'] === 'admin') {
+            json_response(['error' => 'Already an admin.'], 400);
+        }
+        if ($target['status'] !== 'approved') {
+            json_response(['error' => 'Approve this account before making it an admin.'], 400);
+        }
+        user_promote_to_admin($id);
         json_response(['ok' => true]);
     }
 

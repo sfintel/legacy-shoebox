@@ -39,6 +39,7 @@
           actions.push(u.role === "author"
             ? `<button data-id="${u.id}" data-action="set_reader">Make reader</button>`
             : `<button data-id="${u.id}" data-action="set_author">Make author</button>`);
+          actions.push(`<button data-id="${u.id}" data-action="set_admin">Make admin</button>`);
         }
         if (u.isLockedOut) actions.push(`<button data-id="${u.id}" data-action="unlock">Unlock</button>`);
         if (u.role !== "admin") actions.push(`<button class="danger" data-id="${u.id}" data-action="delete">Delete</button>`);
@@ -63,6 +64,7 @@
 
   async function handleAction(id, action) {
     if (action === "delete" && !confirm("Delete this user permanently?")) return;
+    if (action === "set_admin" && !confirm("Make this user a full admin? They'll be able to manage other users (including making or deleting other admins) and access every part of the site. This can't be undone from here afterward — admin accounts aren't changeable through this page.")) return;
     try {
       const res = await fetch("/api/admin/users.php", {
         method: "POST",

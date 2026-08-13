@@ -102,6 +102,20 @@ function user_set_role(string $id, string $role): ?array
     return user_find_by_id($id);
 }
 
+// Deliberately a separate function from user_set_role() rather than
+// just widening its allowed-role list — promoting someone TO admin is a
+// meaningfully different, higher-stakes operation (full user management
+// + access to every part of the site) than moving between author and
+// reader, and keeping it distinct makes that a one-line, easy-to-audit
+// call site (see api/admin/users.php's set_admin action) rather than
+// something a future caller could pass by accident.
+function user_promote_to_admin(string $id): ?array
+{
+    $stmt = db()->prepare("UPDATE users SET role = 'admin' WHERE id = ?");
+    $stmt->execute([$id]);
+    return user_find_by_id($id);
+}
+
 function user_delete(string $id): bool
 {
     $stmt = db()->prepare('DELETE FROM users WHERE id = ?');

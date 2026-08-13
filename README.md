@@ -188,8 +188,12 @@ Every account has one of three roles:
 
 New signups start as readers; an admin promotes/demotes between author
 and reader from a user's row on `/admin.php` ("Make author"/"Make
-reader" — admin accounts aren't changeable this way, same protection as
-Revoke/Delete).
+reader"), or promotes straight to admin ("Make admin", with a
+confirmation given how much access that grants). Admin accounts aren't
+changeable through this page at all afterward — same protection as
+Revoke/Delete, and there's deliberately no "Make author"/"Make reader"
+demotion path for an existing admin either, to rule out ever locking
+everyone out of user management by mistake.
 
 ### Login lockout
 

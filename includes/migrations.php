@@ -151,6 +151,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.6.0' => [
+            'description' => 'Add "Make admin" action on /admin.php, promoting a reader/author straight to admin',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

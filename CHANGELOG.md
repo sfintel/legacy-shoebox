@@ -14,6 +14,26 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.6.0] — 2026-08-13
+
+### Added
+
+- "Make admin" action on `/admin.php` — promotes a reader or author
+  straight to a full admin, with a confirmation dialog given how much
+  access that grants (user management, every part of the site). Admin
+  accounts still aren't changeable through this page afterward — there's
+  deliberately no demotion path back to author/reader for an existing
+  admin, same reasoning as the existing Revoke/Delete protection (rules
+  out ever locking everyone out of user management by mistake).
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.5.4] — 2026-08-13
 
 ### Added
@@ -376,7 +396,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.5.4...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.6.0
 [1.5.4]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.4
 [1.5.3]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.3
 [1.5.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.2
