@@ -14,6 +14,36 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.8.0] — 2026-08-15
+
+### Added
+
+- **Passkey (WebAuthn) login** for admin and author accounts — additive
+  to password login, never a replacement; readers keep password-only.
+  Register a passkey (fingerprint, face, screen lock, or a security
+  key) at the new `/account.php`, then use "Sign in with a passkey" on
+  the login page instead of typing a password. Built on a vendored copy
+  of [lbuchs/WebAuthn](https://github.com/lbuchs/WebAuthn) (MIT, see
+  `includes/webauthn/NOTICE.md`) — the one deliberate exception to this
+  project's otherwise dependency-free approach, since hand-rolling
+  WebAuthn's signature/attestation verification is genuine
+  account-takeover risk if gotten wrong, not just a display bug.
+  `includes/webauthn_helper.php` is this project's own thin wrapper
+  around it.
+- `/account.php`: new self-service page (admin/author) to register,
+  name, and remove passkeys. Linked from the main app header.
+
+### Database changes
+
+Adds `webauthn_credentials` (`upgrade.sh` handles this automatically —
+see `sql/schema.sql` for the exact definition, or run that file's
+`CREATE TABLE IF NOT EXISTS webauthn_credentials` block by hand).
+
+### Environment changes
+
+None — no new `.env` variables. (PHP's `openssl` extension was already
+a stated requirement; this doesn't add a new one.)
+
 ## [1.7.0] — 2026-08-15
 
 ### Added
@@ -420,7 +450,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.8.0
 [1.7.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.7.0
 [1.6.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.6.0
 [1.5.4]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.4

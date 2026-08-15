@@ -71,6 +71,7 @@ require_once __DIR__ . '/includes/knowledge.php';
 require_once __DIR__ . '/includes/narrative.php';
 require_once __DIR__ . '/includes/knowledge_writer.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/webauthn_helper.php';
 require_once __DIR__ . '/includes/setup.php';
 require_once __DIR__ . '/includes/backup.php';
 

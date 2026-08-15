@@ -169,6 +169,29 @@ function migrations_steps(): array
             },
             'env' => [],
         ],
+        '1.8.0' => [
+            'description' => 'Passkey (WebAuthn) login for admin/author accounts, additive to password login',
+            'db' => static function (PDO $pdo): void {
+                // CREATE TABLE IF NOT EXISTS is safe unconditionally
+                // here (a genuinely new table, not an ALTER on an
+                // existing one) — matches sql/schema.sql's own copy of
+                // this statement exactly, so both stay in sync.
+                $pdo->exec("CREATE TABLE IF NOT EXISTS webauthn_credentials (
+                    id             CHAR(36)       NOT NULL PRIMARY KEY,
+                    user_id        CHAR(36)       NOT NULL,
+                    credential_id  VARBINARY(1023) NOT NULL,
+                    public_key     TEXT           NOT NULL,
+                    sign_count     INT UNSIGNED   NOT NULL DEFAULT 0,
+                    label          VARCHAR(255)   NULL,
+                    created_at     DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    last_used_at   DATETIME       NULL,
+                    UNIQUE KEY uniq_credential_id (credential_id),
+                    CONSTRAINT fk_webauthn_credentials_user FOREIGN KEY (user_id)
+                        REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            },
+            'env' => [],
+        ],
     ];
 }
 

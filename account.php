@@ -1,0 +1,63 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/config.php';
+$user = require_passkey_page();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>My Account — <?= h(site_name()) ?></title>
+<meta name="theme-color" content="#1b1a17">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <a href="#app" class="skip-link">Skip to main content</a>
+  <header class="topbar">
+    <div class="brand">
+      <h1 class="brand-title"><?= h(site_name()) ?></h1>
+      <span class="brand-sub">My Account</span>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <a class="ghost-btn" href="/" style="text-decoration:none; display:inline-block;">Back to app</a>
+      <button id="logoutBtn" class="ghost-btn">Sign out</button>
+    </div>
+  </header>
+
+  <main id="app" tabindex="-1" style="max-width:700px;">
+    <h2>Passkeys</h2>
+    <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
+      A passkey lets you sign in with your device's fingerprint, face, screen lock, or a security key —
+      no password to type. Your password still works too; this is an additional way in, not a
+      replacement. Each device you register shows up below.
+    </p>
+    <p class="meta" id="unsupportedNotice" role="alert" style="display:none; color:var(--muted); font-size:.85rem;">
+      This browser doesn't support passkeys — try a recent version of Chrome, Safari, Edge, or Firefox.
+    </p>
+
+    <form id="registerForm" class="content-form" style="max-width:500px;">
+      <div class="form-row">
+        <label for="labelInput">Name this passkey (optional)</label>
+        <input type="text" id="labelInput" placeholder="e.g. MacBook Touch ID, YubiKey">
+      </div>
+      <p class="form-error" id="registerError" role="alert" style="display:none;"></p>
+      <button type="submit" class="btn-primary" id="registerBtn">Add a passkey</button>
+    </form>
+
+    <h2>Registered passkeys</h2>
+    <p class="meta" id="status" role="status" style="color:var(--muted); font-size:.85rem;"></p>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Name</th><th>Added</th><th>Last used</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="credentialRows"></tbody>
+      </table>
+    </div>
+  </main>
+
+<script src="/js/webauthn.js"></script>
+<script src="/js/account.js"></script>
+</body>
+</html>

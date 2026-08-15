@@ -19,6 +19,10 @@ const NO_CACHE_PREFIXES = [
   "/api/signup.php",
   "/api/admin_confirm_action.php",
   "/api/admin/",
+  // Passkey ceremonies are POST requests carrying one-time challenges —
+  // aside from cache.put() throwing on non-GET requests anyway, a
+  // cached response here would be actively wrong, not just stale.
+  "/api/webauthn/",
 ];
 
 self.addEventListener("install", (event) => {

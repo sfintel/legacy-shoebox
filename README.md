@@ -10,10 +10,13 @@ PWA, and a full admin-facing archive editor.
 
 No Composer, no npm, no build step. Every dependency (SMTP client, JSON
 handling, UUIDs) is hand-rolled in plain PHP so there's nothing to install
-beyond what a standard PHP 8+ / MySQL host already provides. The database
-is the single source of truth for the entire archive — there's no
-YAML/JSON file layer to keep in sync, and nothing to regenerate after an
-edit.
+beyond what a standard PHP 8+ / MySQL host already provides — with one
+deliberate exception: passkey login vendors a small, dependency-free
+WebAuthn library (see "Passkey login" below) rather than hand-rolling
+signature verification, since that's genuine account-takeover risk to
+get wrong, not just a display bug. The database is the single source of
+truth for the entire archive — there's no YAML/JSON file layer to keep
+in sync, and nothing to regenerate after an edit.
 
 Already running a deployment and upgrading to a newer release? If you
 keep a git clone of this repo, `./deploy.sh /path/to/webroot` does the
@@ -209,6 +212,25 @@ addresses from one place locks out that IP regardless of which addresses
 were tried. Unlock an account from `/admin.php`'s Unlock button, which
 only clears that account's email-side counter — an IP-side lockout isn't
 tied to one account and just expires on its own after the window.
+
+### Passkey login
+
+Admin and author accounts can additionally sign in with a passkey
+(fingerprint, face, screen lock, or a security key) — always alongside
+password login, never replacing it. Register one at `/account.php`
+(linked from the main app header once signed in), then use "Sign in
+with a passkey" on the login page. A user can register several (one per
+device) and remove any of them at any time from that same page; removing
+a passkey never touches the account's password.
+
+Built on a vendored copy of [lbuchs/WebAuthn](https://github.com/lbuchs/WebAuthn)
+(`includes/webauthn/`, MIT-licensed — see `NOTICE.md` in that directory)
+rather than hand-rolled, since WebAuthn's signature/attestation
+verification is genuine security-critical code. `includes/webauthn_helper.php`
+is this project's own thin wrapper around it, translating between the
+library's shapes and this app's session/database conventions.
+`webauthn_credentials` is a new table (one row per registered device);
+nothing else about the `users` table or password login changes.
 
 ## Content management
 

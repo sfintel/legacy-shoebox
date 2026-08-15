@@ -24,6 +24,9 @@ $ss = site_settings();
   button{width:100%;padding:12px;border:none;border-radius:8px;background:var(--accent);
     color:#1b1a17;font-weight:700;font-size:1rem;cursor:pointer;}
   button:hover{background:#c99a4e;}
+  button.secondary{background:transparent;border:1px solid #45413a;color:var(--text);margin-top:12px;}
+  button.secondary:hover{background:#171613;}
+  button:disabled{opacity:.6;cursor:default;}
   .err{color:#e08a7d;font-size:.85rem;min-height:1.2em;margin-top:10px;}
   .quote{margin-top:26px;padding-top:18px;border-top:1px solid #38352f;color:var(--muted);
     font-style:italic;font-size:.82rem;line-height:1.5;}
@@ -43,11 +46,14 @@ $ss = site_settings();
       <button type="submit">Sign in</button>
       <div class="err" id="err" role="alert"></div>
     </form>
+    <button type="button" class="secondary" id="passkeyBtn" style="display:none;">Sign in with a passkey</button>
+    <div class="err" id="passkeyErr" role="alert"></div>
     <div class="signup-link">New to the archive? <a href="/signup.php">Request access</a></div>
     <?php if ($ss['closing_quote']): ?>
     <div class="quote">"<?= h($ss['closing_quote']) ?>"<?= $ss['closing_quote_attribution'] ? ' — ' . h($ss['closing_quote_attribution']) : '' ?></div>
     <?php endif; ?>
   </div>
+<script src="/js/webauthn.js"></script>
 <script>
   const form = document.getElementById('loginForm');
   const err = document.getElementById('err');
@@ -70,6 +76,35 @@ $ss = site_settings();
       }
     } catch (e2) {
       err.textContent = 'Could not reach the server.';
+    }
+  });
+
+  // Progressive enhancement — only offered if the browser actually
+  // supports WebAuthn, and only ever an addition to the password form
+  // above, never a replacement for it.
+  const passkeyBtn = document.getElementById('passkeyBtn');
+  const passkeyErr = document.getElementById('passkeyErr');
+  if (window.PasskeyAuth && window.PasskeyAuth.isSupported()) {
+    passkeyBtn.style.display = '';
+  }
+  passkeyBtn.addEventListener('click', async () => {
+    passkeyErr.textContent = '';
+    const email = document.getElementById('email').value;
+    if (!email) {
+      passkeyErr.textContent = 'Enter your email above first.';
+      return;
+    }
+    passkeyBtn.disabled = true;
+    const originalText = passkeyBtn.textContent;
+    passkeyBtn.textContent = "Follow your device's prompt…";
+    try {
+      await window.PasskeyAuth.loginWithPasskey(email, '/api/webauthn/login_options.php', '/api/webauthn/login_verify.php');
+      window.location.href = '/';
+    } catch (e3) {
+      passkeyErr.textContent = e3.message || 'Passkey sign-in failed.';
+    } finally {
+      passkeyBtn.disabled = false;
+      passkeyBtn.textContent = originalText;
     }
   });
 </script>

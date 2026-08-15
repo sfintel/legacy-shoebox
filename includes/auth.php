@@ -121,3 +121,31 @@ function require_content_api(): array
     }
     return $user;
 }
+
+// admin/author only, per the scoping decision when passkeys were added
+// — readers keep password-only login. Also requires an approved
+// account, matching every other login path.
+function user_can_use_passkey(array $user): bool
+{
+    return $user['status'] === 'approved' && in_array($user['role'], ['admin', 'author'], true);
+}
+
+function require_passkey_page(): array
+{
+    $user = require_auth_page();
+    if (!user_can_use_passkey($user)) {
+        http_response_code(403);
+        simple_page('Not authorized', '<h1>Not authorized</h1><p>Passkeys are available to admin and author accounts.</p>');
+        exit;
+    }
+    return $user;
+}
+
+function require_passkey_api(): array
+{
+    $user = require_auth_api();
+    if (!user_can_use_passkey($user)) {
+        json_response(['error' => 'Passkeys are available to admin and author accounts.'], 403);
+    }
+    return $user;
+}

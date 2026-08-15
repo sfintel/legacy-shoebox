@@ -25,6 +25,28 @@ CREATE TABLE IF NOT EXISTS users (
   UNIQUE KEY uniq_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Registered passkeys (WebAuthn credentials) — admin/author only (see
+-- includes/webauthn_helper.php), additive to password login, never a
+-- replacement for it. One row per registered device/authenticator; a
+-- user can have several. credential_id and public_key come straight
+-- from the authenticator via the vendored includes/webauthn/ library —
+-- never generated or interpreted by this app itself.
+CREATE TABLE IF NOT EXISTS webauthn_credentials (
+  id             CHAR(36)       NOT NULL PRIMARY KEY,
+  user_id        CHAR(36)       NOT NULL,
+  credential_id  VARBINARY(1023) NOT NULL,
+  public_key     TEXT           NOT NULL,
+  sign_count     INT UNSIGNED   NOT NULL DEFAULT 0,
+  -- User-chosen at registration time (e.g. "MacBook Touch ID") so a
+  -- person with several passkeys can tell them apart later.
+  label          VARCHAR(255)   NULL,
+  created_at     DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_used_at   DATETIME       NULL,
+  UNIQUE KEY uniq_credential_id (credential_id),
+  CONSTRAINT fk_webauthn_credentials_user FOREIGN KEY (user_id)
+    REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Records which single-use approve/reject email links have already been
 -- acted on, so replaying an old link is a harmless no-op.
 CREATE TABLE IF NOT EXISTS consumed_tokens (
