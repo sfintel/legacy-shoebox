@@ -14,6 +14,30 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.8.1] — 2026-08-15
+
+### Fixed
+
+- Registering a passkey always failed with "Call to a member function
+  getBinaryString() on string" — `includes/webauthn_helper.php` assumed
+  the vendored library's `processCreate()` returned `credentialId` as a
+  `ByteBuffer` (like several other fields in that same response
+  object), but it's actually already a raw PHP string
+  (`AuthenticatorData.php` builds it via `substr()`, never wraps it).
+  The crash happened *after* the library had already cryptographically
+  validated the passkey, only while saving it — so a browser password
+  manager that stores the passkey at creation time (e.g. Bitwarden)
+  would correctly decline to keep it, since the server never confirmed
+  the registration completed.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.8.0] — 2026-08-15
 
 ### Added
@@ -450,7 +474,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.8.1...HEAD
+[1.8.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.8.1
 [1.8.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.8.0
 [1.7.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.7.0
 [1.6.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.6.0

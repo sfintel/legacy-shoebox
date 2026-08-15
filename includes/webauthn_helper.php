@@ -124,7 +124,7 @@ function webauthn_registration_verify(string $userId, string $clientDataJSON, st
     )->execute([
         $id,
         $userId,
-        $data->credentialId->getBinaryString(),
+        $data->credentialId,
         $data->credentialPublicKey,
         (int) ($data->signatureCounter ?? 0),
         trim($label) !== '' ? trim($label) : null,

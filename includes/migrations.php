@@ -192,6 +192,11 @@ function migrations_steps(): array
             },
             'env' => [],
         ],
+        '1.8.1' => [
+            'description' => 'Fix passkey registration crash: credentialId is a raw string from the library, not a ByteBuffer',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 
