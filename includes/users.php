@@ -155,3 +155,9 @@ function user_verify_password(string $password, string $hash): bool
 {
     return password_verify($password, $hash);
 }
+
+function user_set_password(string $id, string $newPassword): void
+{
+    db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+        ->execute([password_hash($newPassword, PASSWORD_DEFAULT), $id]);
+}

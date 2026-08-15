@@ -14,9 +14,9 @@
     if (d.role === "admin" || d.canAddContent) {
       const contentLink = document.getElementById("contentLink");
       if (contentLink) contentLink.style.display = "inline-block";
-      const accountLink = document.getElementById("accountLink");
-      if (accountLink) accountLink.style.display = "inline-block";
     }
+    const accountLink = document.getElementById("accountLink");
+    if (accountLink) accountLink.style.display = "inline-block";
   });
 
   document.getElementById("logoutBtn").addEventListener("click", async () => {

@@ -6,6 +6,46 @@
     window.location.href = "/login.php";
   });
 
+  // --- Password change (every logged-in user, readers included) ---
+  const passwordForm = document.getElementById("passwordForm");
+  const passwordBtn = document.getElementById("passwordBtn");
+  const passwordError = document.getElementById("passwordError");
+  const passwordSuccess = document.getElementById("passwordSuccess");
+
+  passwordForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    passwordError.style.display = "none";
+    passwordSuccess.style.display = "none";
+    passwordBtn.disabled = true;
+    try {
+      const res = await fetch("/api/account/change_password.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: document.getElementById("currentPasswordInput").value,
+          newPassword: document.getElementById("newPasswordInput").value,
+          confirmPassword: document.getElementById("confirmPasswordInput").value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not change password.");
+      passwordForm.reset();
+      passwordSuccess.style.display = "";
+    } catch (err) {
+      passwordError.textContent = err.message;
+      passwordError.style.display = "";
+    } finally {
+      passwordBtn.disabled = false;
+    }
+  });
+
+  // --- Passkeys (admin/author only — these elements aren't on the page
+  // at all for readers, see account.php) ---
+  const registerForm = document.getElementById("registerForm");
+  if (!registerForm) {
+    return;
+  }
+
   if (!window.PasskeyAuth || !window.PasskeyAuth.isSupported()) {
     document.getElementById("unsupportedNotice").style.display = "";
     document.getElementById("registerBtn").disabled = true;

@@ -197,6 +197,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.9.0' => [
+            'description' => 'Self-service password change + fix pending-account login lockout',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

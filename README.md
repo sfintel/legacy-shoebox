@@ -213,6 +213,19 @@ were tried. Unlock an account from `/admin.php`'s Unlock button, which
 only clears that account's email-side counter — an IP-side lockout isn't
 tied to one account and just expires on its own after the window.
 
+A correct password against a not-yet-approved account doesn't count
+against this limit — it gets a distinct "still awaiting approval"
+message instead of the generic wrong-password error, so a new user
+trying to log in before you've approved them can't lock themselves out.
+
+### Changing your password
+
+Every account (reader, author, or admin) can change its own password
+from `/account.php` ("Account" link in the header once signed in) —
+enter the current password plus a new one (8+ characters). There's no
+separate "forgot password" flow yet; a locked-out or forgotten password
+currently has to be handled by an admin from `/admin.php`.
+
 ### Passkey login
 
 Admin and author accounts can additionally sign in with a passkey

@@ -14,6 +14,36 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.9.0] — 2026-08-15
+
+### Added
+
+- Self-service password change at `/account.php`, available to every
+  logged-in user (readers included, not just admin/author) — until now
+  there was no way to change a password after signup at all. Requires
+  the current password; rate-limited per account the same way login is.
+
+### Fixed
+
+- A pending (not-yet-approved) account trying to log in got the same
+  "Incorrect email or password" error as a genuinely wrong password —
+  and each attempt counted against the 5-try lockout, so a new user
+  logging in before an admin approved them could lock themselves out
+  for 15 minutes for doing nothing wrong. `api/login.php` now checks
+  the password first: if it's actually correct but the account just
+  isn't approved yet, it shows a specific "still awaiting approval"
+  message and doesn't touch the lockout counter. An incorrect password
+  still gets the same generic error as before either way, so this can't
+  be used to tell whether an email has an account.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.8.1] — 2026-08-15
 
 ### Fixed
@@ -474,7 +504,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.8.1...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.9.0
 [1.8.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.8.1
 [1.8.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.8.0
 [1.7.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.7.0

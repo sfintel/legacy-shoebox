@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/config.php';
-$user = require_passkey_page();
+$user = require_auth_page();
+$showPasskeys = user_can_use_passkey($user);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -26,6 +27,26 @@ $user = require_passkey_page();
   </header>
 
   <main id="app" tabindex="-1" style="max-width:700px;">
+    <h2>Password</h2>
+    <form id="passwordForm" class="content-form" style="max-width:500px;">
+      <div class="form-row">
+        <label for="currentPasswordInput">Current password</label>
+        <input type="password" id="currentPasswordInput" autocomplete="current-password" required>
+      </div>
+      <div class="form-row">
+        <label for="newPasswordInput">New password</label>
+        <input type="password" id="newPasswordInput" autocomplete="new-password" minlength="8" required>
+      </div>
+      <div class="form-row">
+        <label for="confirmPasswordInput">Confirm new password</label>
+        <input type="password" id="confirmPasswordInput" autocomplete="new-password" minlength="8" required>
+      </div>
+      <p class="form-error" id="passwordError" role="alert" style="display:none;"></p>
+      <p class="meta" id="passwordSuccess" role="status" style="display:none; color:var(--muted); font-size:.85rem;">Password updated.</p>
+      <button type="submit" class="btn-primary" id="passwordBtn">Change password</button>
+    </form>
+
+    <?php if ($showPasskeys): ?>
     <h2>Passkeys</h2>
     <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
       A passkey lets you sign in with your device's fingerprint, face, screen lock, or a security key —
@@ -55,9 +76,12 @@ $user = require_passkey_page();
         <tbody id="credentialRows"></tbody>
       </table>
     </div>
+    <?php endif; ?>
   </main>
 
+<?php if ($showPasskeys): ?>
 <script src="/js/webauthn.js"></script>
+<?php endif; ?>
 <script src="/js/account.js"></script>
 </body>
 </html>
