@@ -156,6 +156,19 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.7.0' => [
+            'description' => 'Track last login per user (/admin.php) + client-side user search',
+            'db' => static function (PDO $pdo): void {
+                $hasCol = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'last_login_at'"
+                )->fetchColumn();
+                if ($hasCol === 0) {
+                    $pdo->exec('ALTER TABLE users ADD COLUMN last_login_at DATETIME NULL AFTER approved_at');
+                }
+            },
+            'env' => [],
+        ],
     ];
 }
 

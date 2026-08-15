@@ -170,12 +170,14 @@ just recorded as a plain source label you can edit afterward.
    email/password they already chose.
 
 `/admin.php` (an "Admin" link appears in the header for admins only) lists
-everyone with their role, chosen audience category ("Telling for"), and
-Approve/Reject/Revoke/Delete actions, plus Unlock for a locked-out
-account (see "Login lockout"). Admin accounts don't show Revoke/Delete —
-both the buttons and the underlying API reject those actions against an
-admin row, so there's no way to lock everyone out of user management by
-mistake.
+everyone with their role, chosen audience category ("Telling for"), when
+they last logged in, and Approve/Reject/Revoke/Delete actions, plus
+Unlock for a locked-out account (see "Login lockout"). Admin accounts
+don't show Revoke/Delete — both the buttons and the underlying API
+reject those actions against an admin row, so there's no way to lock
+everyone out of user management by mistake. A search box filters the
+list by name/email/role/status client-side, once it grows past a
+glance.
 
 Every account has one of three roles:
 

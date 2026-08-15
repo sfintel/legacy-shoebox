@@ -30,12 +30,15 @@ require_admin_page();
     </div>
   </header>
 
-  <main id="app" tabindex="-1" style="max-width:900px;">
-    <p class="meta" id="status" role="status" style="color:var(--muted); font-size:.85rem;"></p>
+  <main id="app" tabindex="-1" style="max-width:1000px;">
+    <div class="panel-head">
+      <p class="meta" id="status" role="status" style="color:var(--muted); font-size:.85rem;"></p>
+      <input type="search" id="userSearch" placeholder="Search users…" aria-label="Search users">
+    </div>
     <div class="table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th>Name</th><th>Email</th><th>Role</th><th>Telling for</th><th>Status</th><th>Requested</th><th>Actions</th></tr>
+          <tr><th>Name</th><th>Email</th><th>Role</th><th>Telling for</th><th>Status</th><th>Requested</th><th>Last login</th><th>Actions</th></tr>
         </thead>
         <tbody id="userRows"></tbody>
       </table>

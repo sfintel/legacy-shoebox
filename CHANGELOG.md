@@ -14,6 +14,30 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.7.0] — 2026-08-15
+
+### Added
+
+- `/admin.php` now shows each user's last login time, recorded via
+  `auth_login()` (the single choke point every login method already
+  goes through, so any future login method — passkeys included — gets
+  this for free with no extra wiring).
+- Client-side search box on `/admin.php`, filtering by name/email/role/
+  status — useful once the user list grows past a glance.
+
+### Database changes
+
+Adds `users.last_login_at` (`upgrade.sh` handles this automatically).
+Manual equivalent:
+
+```sql
+ALTER TABLE users ADD COLUMN last_login_at DATETIME NULL AFTER approved_at;
+```
+
+### Environment changes
+
+None.
+
 ## [1.6.0] — 2026-08-13
 
 ### Added
@@ -396,7 +420,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.7.0
 [1.6.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.6.0
 [1.5.4]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.4
 [1.5.3]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.5.3

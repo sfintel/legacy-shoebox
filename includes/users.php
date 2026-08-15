@@ -77,6 +77,15 @@ function user_create_pending(string $name, string $email, string $password, ?str
     return user_find_by_id($id);
 }
 
+// Called from auth_login() (includes/auth.php) — the single choke point
+// every successful login already goes through, password or otherwise —
+// so every login method records this the same way with no extra
+// call-site wiring needed.
+function user_record_login(string $id): void
+{
+    db()->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?')->execute([$id]);
+}
+
 function user_set_status(string $id, string $status): ?array
 {
     $pdo = db();

@@ -17,6 +17,8 @@
     try { return new Date(iso).toLocaleString(); } catch { return iso; }
   }
 
+  let allUsers = [];
+
   async function load() {
     const res = await fetch("/api/admin/users.php");
     if (res.status === 403) {
@@ -24,8 +26,22 @@
       return;
     }
     const data = await res.json();
-    render(data.users || []);
+    allUsers = data.users || [];
+    applyUserFilter();
   }
+
+  function applyUserFilter() {
+    const q = document.getElementById("userSearch").value.trim().toLowerCase();
+    const filtered = q
+      ? allUsers.filter((u) =>
+          (u.name || "").toLowerCase().includes(q) ||
+          (u.email || "").toLowerCase().includes(q) ||
+          (u.role || "").toLowerCase().includes(q) ||
+          (u.status || "").toLowerCase().includes(q))
+      : allUsers;
+    render(filtered);
+  }
+  document.getElementById("userSearch").addEventListener("input", applyUserFilter);
 
   function render(users) {
     const rows = users
@@ -50,12 +66,15 @@
           <td>${esc(u.audienceModeLabel || u.audienceMode || "—")}</td>
           <td><span class="status-badge status-${esc(u.status)}">${esc(u.status)}</span>${u.isLockedOut ? ' <span class="status-badge status-rejected">locked out</span>' : ""}</td>
           <td>${esc(fmtDate(u.createdAt))}</td>
+          <td>${esc(fmtDate(u.lastLoginAt))}</td>
           <td><div class="admin-actions">${actions.join("")}</div></td>
         </tr>`;
       })
       .join("");
-    document.getElementById("userRows").innerHTML = rows || `<tr><td colspan="7" class="meta">No users yet.</td></tr>`;
-    document.getElementById("status").textContent = `${users.length} user${users.length === 1 ? "" : "s"}`;
+    document.getElementById("userRows").innerHTML = rows || `<tr><td colspan="8" class="meta">No matching users.</td></tr>`;
+    document.getElementById("status").textContent = users.length === allUsers.length
+      ? `${allUsers.length} user${allUsers.length === 1 ? "" : "s"}`
+      : `${users.length} of ${allUsers.length} users`;
 
     document.querySelectorAll(".admin-actions button").forEach((btn) => {
       btn.addEventListener("click", () => handleAction(btn.dataset.id, btn.dataset.action));

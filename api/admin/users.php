@@ -19,6 +19,7 @@ if ($method === 'GET') {
             'status' => $u['status'],
             'createdAt' => $u['created_at'],
             'approvedAt' => $u['approved_at'],
+            'lastLoginAt' => $u['last_login_at'],
             'isLockedOut' => rate_limit_exceeded(login_email_key($u['email']), LOGIN_ATTEMPT_LIMIT, LOGIN_LOCKOUT_SECONDS),
         ];
     }, user_all());

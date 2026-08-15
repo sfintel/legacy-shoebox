@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
   status          ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   approved_at     DATETIME      NULL,
+  last_login_at   DATETIME      NULL,
   UNIQUE KEY uniq_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
