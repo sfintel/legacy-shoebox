@@ -207,6 +207,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => ['FORGOT_PASSWORD_RATE_LIMIT (optional, defaults to 5)'],
         ],
+        '1.10.1' => [
+            'description' => 'Add "Back to login" link to the expired/used reset-link screen',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

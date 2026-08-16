@@ -51,14 +51,17 @@ if ($valid) {
   .ok{color:var(--muted);font-size:.9rem;margin-top:10px;line-height:1.4;}
   a.btn{display:inline-block;margin-top:14px;padding:11px 22px;border-radius:8px;
     background:var(--accent);color:#1b1a17;font-weight:700;font-size:.95rem;text-decoration:none;}
+  .login-link{margin-top:18px;text-align:center;font-size:.85rem;color:var(--muted);}
+  .login-link a{color:var(--accent-2,#c99a4e);}
 </style>
 </head>
 <body>
   <div class="card">
     <h1><?= h(site_name()) ?></h1>
     <?php if (!$valid): ?>
-      <p class="sub">This link has expired or already been used.</p>
+      <p class="sub">This link has expired or already been used. If you already reset your password successfully, you're all set — just sign in with the new one.</p>
       <a class="btn" href="/forgot_password.php">Request a new link</a>
+      <div class="login-link"><a href="/login.php">Back to login</a></div>
     <?php else: ?>
       <p class="sub">Choose a new password.</p>
       <form id="resetForm">

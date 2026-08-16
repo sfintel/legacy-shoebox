@@ -14,6 +14,26 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.10.1] — 2026-08-16
+
+### Fixed
+
+- The expired/already-used screen on `/reset_password.php` was a dead
+  end — a "Request a new link" button but no way back to login. Real
+  scenario: the reset link is single-use, so opening/submitting it
+  twice (e.g. two tabs, a resubmit after going back) shows this screen
+  even when the first attempt already succeeded, which read as an
+  unexplained failure. Added a "Back to login" link and reworded the
+  message to say so explicitly when that's likely what happened.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.10.0] — 2026-08-16
 
 ### Added
@@ -531,7 +551,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.10.1...HEAD
+[1.10.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.10.1
 [1.10.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.10.0
 [1.9.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.9.0
 [1.8.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.8.1
