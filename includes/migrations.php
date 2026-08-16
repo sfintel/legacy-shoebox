@@ -202,6 +202,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.10.0' => [
+            'description' => 'Forgot-password email reset flow',
+            'db' => null,
+            'env' => ['FORGOT_PASSWORD_RATE_LIMIT (optional, defaults to 5)'],
+        ],
     ];
 }
 

@@ -222,9 +222,17 @@ trying to log in before you've approved them can't lock themselves out.
 
 Every account (reader, author, or admin) can change its own password
 from `/account.php` ("Account" link in the header once signed in) —
-enter the current password plus a new one (8+ characters). There's no
-separate "forgot password" flow yet; a locked-out or forgotten password
-currently has to be handled by an admin from `/admin.php`.
+enter the current password plus a new one (8+ characters).
+
+If the password is forgotten entirely, use "Forgot password?" on the
+sign-in page (`/forgot_password.php`) — it emails a reset link to the
+account's address, valid for 1 hour and usable once. Requests are
+rate-limited per IP (`FORGOT_PASSWORD_RATE_LIMIT`, default 5/hour) and
+the response is identical whether or not the email has an account, so
+the endpoint can't be used to test which addresses are registered.
+There's no admin override to force-reset someone else's password; the
+only way into an account without email access is a passkey (if one's
+registered) or direct database access.
 
 ### Passkey login
 

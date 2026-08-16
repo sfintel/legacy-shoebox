@@ -32,6 +32,8 @@ $ss = site_settings();
     font-style:italic;font-size:.82rem;line-height:1.5;}
   .signup-link{margin-top:18px;text-align:center;font-size:.85rem;color:var(--muted);}
   .signup-link a{color:var(--accent-2,#c99a4e);}
+  .forgot-link{text-align:right;margin:-10px 0 16px;font-size:.82rem;}
+  .forgot-link a{color:var(--muted);}
 </style>
 </head>
 <body>
@@ -43,6 +45,7 @@ $ss = site_settings();
       <input type="email" id="email" name="email" autocomplete="username" autofocus required>
       <label for="password">Password</label>
       <input type="password" id="password" name="password" autocomplete="current-password" required>
+      <div class="forgot-link"><a href="/forgot_password.php">Forgot password?</a></div>
       <button type="submit">Sign in</button>
       <div class="err" id="err" role="alert"></div>
     </form>

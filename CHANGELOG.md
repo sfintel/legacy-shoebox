@@ -14,6 +14,33 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.10.0] — 2026-08-16
+
+### Added
+
+- Forgot-password flow: `/forgot_password.php` emails a time-limited
+  (1 hour), single-use reset link to the account's address; the link
+  lands on `/reset_password.php` to set a new password. Until now, a
+  user who forgot their password with no passkey registered had no way
+  back into their account short of someone with direct database access
+  resetting it by hand. Uses the same signed-token pattern as the
+  signup approve/reject links. Requesting a reset always returns the
+  same "if that email has an account…" response and only ever sends
+  mail to an address that's actually registered, so the endpoint can't
+  be used to test which emails have accounts. Rate-limited per IP
+  (`FORGOT_PASSWORD_RATE_LIMIT`, default 5/hour). A successful reset
+  also clears any existing login lockout on that account and emails a
+  "your password was changed" notice as a tamper alert.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+New optional `.env` var: `FORGOT_PASSWORD_RATE_LIMIT` (defaults to 5 if
+unset).
+
 ## [1.9.0] — 2026-08-15
 
 ### Added
@@ -504,7 +531,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.10.0...HEAD
+[1.10.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.10.0
 [1.9.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.9.0
 [1.8.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.8.1
 [1.8.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.8.0

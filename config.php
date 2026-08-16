@@ -55,6 +55,7 @@ define('CHAT_RATE_LIMIT', (int) env('CHAT_RATE_LIMIT', '60'));
 define('SIGNUP_RATE_LIMIT', (int) env('SIGNUP_RATE_LIMIT', '10'));
 define('LOGIN_ATTEMPT_LIMIT', (int) env('LOGIN_ATTEMPT_LIMIT', '5'));
 define('LOGIN_LOCKOUT_SECONDS', (int) env('LOGIN_LOCKOUT_SECONDS', '900'));
+define('FORGOT_PASSWORD_RATE_LIMIT', (int) env('FORGOT_PASSWORD_RATE_LIMIT', '5'));
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/ai_provider.php';
 require_once __DIR__ . '/includes/helpers.php';
