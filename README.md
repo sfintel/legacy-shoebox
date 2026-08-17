@@ -330,6 +330,31 @@ the button becomes clickable. Use it to undo a bad upgrade or other
 mistake, not as a way to apply a single schema change (see
 [UPGRADE.md](UPGRADE.md) for why).
 
+### Moving to a new host
+
+A backup is a valid way to move the whole archive to a different
+host — including one with a completely different database server or
+credentials. `database.sql` inside the .zip is a full rebuild (`DROP
+TABLE IF EXISTS` + `CREATE TABLE` + `INSERT` for every table), and
+restoring just runs that through whatever DB connection the *new*
+host's own `.env` already points at — it never reads or restores
+`DB_HOST`/`DB_USER`/`DB_PASS` itself, since connection details are
+never included in the backup in the first place. To migrate:
+
+1. Deploy the codebase to the new host with its own fresh `.env`
+   pointing at its own database (an empty database is fine).
+2. Run the setup wizard once, just to get a working admin login — it
+   only creates one admin account and a site-settings row, no real
+   content.
+3. Log in and restore the old host's backup from `/admin_backup.php`.
+   This replaces that throwaway admin (and everything else) with the
+   real data from the backup.
+
+The one thing a restore never carries over is `.env` itself — secrets
+are deliberately excluded from the backup, so `SESSION_SECRET`,
+`AI_API_KEY`, SMTP credentials, etc. need to be set up fresh on the
+new host regardless of how the database migration goes.
+
 ## Security notes
 
 - `.htaccess` files deny direct access to `.env`, `config.php`, and
