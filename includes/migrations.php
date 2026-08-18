@@ -222,6 +222,19 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.13.0' => [
+            'description' => 'Surface unreviewed status of AI-generated narrative notes on the Content page (Ask tab accuracy safeguard)',
+            'db' => static function (PDO $pdo): void {
+                $hasCol = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'content_items' AND column_name = 'narrative_note_reviewed_at'"
+                )->fetchColumn();
+                if ($hasCol === 0) {
+                    $pdo->exec('ALTER TABLE content_items ADD COLUMN narrative_note_reviewed_at DATETIME NULL AFTER narrative_note');
+                }
+            },
+            'env' => [],
+        ],
     ];
 }
 

@@ -295,6 +295,14 @@ pending Story, see below.
   to fill in a note for anything added before this feature existed, or
   where the original AI call failed. Pending Stories are skipped by
   design — they're only ever analyzed at approval time.
+- Every "Narrative connection" note is unattended AI output with no
+  approval gate — it starts feeding the Ask tab's knowledge base the
+  moment it's written. An `unreviewed` badge (list and edit views) marks
+  any note no admin has looked at yet; it's visibility only, not a gate.
+  An admin edit that changes the note text clears the badge automatically
+  (a human edit is definitionally a review); a "Mark reviewed" checkbox
+  in the edit row clears it without changing the text. The badge
+  reappears if a later AI pass (approval, backfill) rewrites the note.
 - A non-admin content contributor only sees and can edit/delete their own
   items (and, for URL items, only sees their own item's suggestions,
   read-only — approving/dismissing is admin-only since it mutates the

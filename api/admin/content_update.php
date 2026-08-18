@@ -13,12 +13,14 @@ $id = (string) ($body['id'] ?? '');
 $narrativeNote = array_key_exists('narrativeNote', $body) ? (string) $body['narrativeNote'] : null;
 $fileUpdates = is_array($body['files'] ?? null) ? $body['files'] : [];
 $tags = is_array($body['tags'] ?? null) ? $body['tags'] : null;
+$markReviewed = ($body['markReviewed'] ?? false) === true;
 
 // Admins can edit any item; a permitted non-admin only their own.
-$ownerId = $user['role'] === 'admin' ? null : $user['id'];
+$isAdmin = $user['role'] === 'admin';
+$ownerId = $isAdmin ? null : $user['id'];
 
 try {
-    $item = content_update_item($id, $ownerId, $narrativeNote, $fileUpdates, $tags);
+    $item = content_update_item($id, $ownerId, $narrativeNote, $fileUpdates, $tags, $isAdmin, $markReviewed);
 } catch (RuntimeException $e) {
     $status = $e->getMessage() === 'Content item not found.' ? 404 : 400;
     json_response(['error' => $e->getMessage()], $status);

@@ -14,6 +14,38 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.13.0] — 2026-08-18
+
+### Added
+
+- Content page now surfaces which AI-generated "Narrative connection"
+  notes no admin has ever reviewed — an `unreviewed` badge in both the
+  item list and the edit row (new `narrative_note_reviewed_at` column,
+  set only by an explicit admin action: editing the note text, or a new
+  "Mark reviewed" checkbox in the edit row). These notes are written
+  unattended on upload/approval/backfill and feed the Ask tab's
+  knowledge base with no gate today — this is visibility, not a gate, so
+  existing notes remain part of the knowledge base either way. Last of
+  three planned Ask-tab accuracy safeguards. Every code path that
+  (re)writes a note's text with fresh AI output also clears the review
+  flag, so a stale "reviewed" mark can't survive an approval or backfill
+  rewrite. `content_update_item()` gained two new parameters
+  (`$isAdmin`, `$markReviewed`); its one caller
+  (`api/admin/content_update.php`) was updated to match.
+
+### Database changes
+
+- `content_items` gains `narrative_note_reviewed_at DATETIME NULL`.
+  Existing rows are **not backfilled to NOW()** — every item added before
+  this upgrade will show as unreviewed, which is the honest answer (we
+  don't actually know). On `slava.fintelfamily.com` this will surface a
+  burst of badges on upgrade — expected, and worth working through as an
+  actual review pass, not just letting the badges age.
+
+### Environment changes
+
+None.
+
 ## [1.12.0] — 2026-08-18
 
 ### Added
@@ -600,7 +632,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.13.0
 [1.12.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.12.0
 [1.11.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.11.0
 [1.10.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.10.1

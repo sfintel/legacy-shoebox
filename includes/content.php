@@ -85,6 +85,10 @@ function content_public(array $item): array
         'description' => $item['description'],
         'sourceUrl' => $item['source_url'] ?? null,
         'narrativeNote' => $item['narrative_note'],
+        // `?? null`: a webroot can be deployed before upgrade.sh applies
+        // the narrative_note_reviewed_at column (deploy.sh syncs code,
+        // then runs the upgrade) — don't fatal in that window.
+        'narrativeNoteReviewedAt' => $item['narrative_note_reviewed_at'] ?? null,
         'tags' => json_decode((string) ($item['tags'] ?? '[]'), true) ?: [],
         'createdAt' => $item['created_at'],
         'files' => array_map('content_file_public', content_files_for_item($item['id'])),
@@ -466,7 +470,11 @@ function content_approve_story(string $itemId): array
     $analysis = narrative_analyze(narrative_prompt_for_story($item['title'], $body));
 
     $pdo = db();
-    $pdo->prepare('UPDATE content_items SET narrative_note = ?, story_approved_at = NOW() WHERE id = ?')
+    // narrative_note_reviewed_at reset to NULL here — this note is fresh
+    // unattended AI output, even if an admin had marked a since-replaced
+    // note reviewed while the story was still pending. See the schema
+    // comment on narrative_note_reviewed_at.
+    $pdo->prepare('UPDATE content_items SET narrative_note = ?, story_approved_at = NOW(), narrative_note_reviewed_at = NULL WHERE id = ?')
         ->execute([$analysis['note'], $itemId]);
     archive_content_links_clear_for_item($itemId);
     archive_content_links_apply($itemId, $analysis['links']);
@@ -723,8 +731,18 @@ function content_merge_metadata_update(?array $current, array $incoming): ?array
 // user — same posture as content_delete(). $fileUpdates is a list of
 // {id, metadata} — each file id is only honored if it actually belongs
 // to $id, so one item's edit request can never touch another item's
-// (or another user's) file.
-function content_update_item(string $id, ?string $ownerId, ?string $narrativeNote, array $fileUpdates, ?array $tags = null): array
+// (or another user's) file. $isAdmin is passed explicitly rather than
+// inferred from $ownerId === null, so that inference doesn't silently
+// become load-bearing for narrative_note_reviewed_at too. Only an
+// admin's action ever sets narrative_note_reviewed_at — this feature is
+// about admin oversight of AI text, and a non-admin author saving their
+// own item says nothing about that. It's set when either the submitted
+// note text actually differs from what's stored (a human edit is
+// definitionally a review) or $markReviewed is explicitly true (an
+// admin confirming a note as-is, via a "Mark reviewed" control) — an
+// unrelated save of the same unmodified text does NOT set it, since
+// that would turn "unknown" into a false "checked".
+function content_update_item(string $id, ?string $ownerId, ?string $narrativeNote, array $fileUpdates, ?array $tags = null, bool $isAdmin = false, bool $markReviewed = false): array
 {
     $item = content_find($id);
     if (!$item || ($ownerId !== null && $item['created_by'] !== $ownerId)) {
@@ -733,8 +751,18 @@ function content_update_item(string $id, ?string $ownerId, ?string $narrativeNot
 
     if ($narrativeNote !== null) {
         $note = trim($narrativeNote);
-        $stmt = db()->prepare('UPDATE content_items SET narrative_note = ? WHERE id = ?');
-        $stmt->execute([$note !== '' ? $note : null, $id]);
+        $note = $note !== '' ? $note : null;
+        $noteChanged = $note !== $item['narrative_note'];
+        if ($isAdmin && ($noteChanged || $markReviewed)) {
+            db()->prepare('UPDATE content_items SET narrative_note = ?, narrative_note_reviewed_at = NOW() WHERE id = ?')
+                ->execute([$note, $id]);
+        } else {
+            db()->prepare('UPDATE content_items SET narrative_note = ? WHERE id = ?')
+                ->execute([$note, $id]);
+        }
+    } elseif ($isAdmin && $markReviewed) {
+        db()->prepare('UPDATE content_items SET narrative_note_reviewed_at = NOW() WHERE id = ?')
+            ->execute([$id]);
     }
 
     if ($tags !== null) {
@@ -846,7 +874,12 @@ function content_backfill_narrative_notes(): array
         $analysis = content_analyze_existing_item($item);
         $note = $analysis['note'];
         if ($note !== null) {
-            $update = db()->prepare('UPDATE content_items SET narrative_note = ? WHERE id = ?');
+            // Reset (not just leave) narrative_note_reviewed_at — this
+            // row's note was NULL a moment ago (this query's own WHERE
+            // clause), but reviewed_at can still be non-NULL if an admin
+            // cleared the note by hand and that save marked it reviewed.
+            // See the schema comment on narrative_note_reviewed_at.
+            $update = db()->prepare('UPDATE content_items SET narrative_note = ?, narrative_note_reviewed_at = NULL WHERE id = ?');
             $update->execute([$note, $item['id']]);
         }
         archive_content_links_clear_for_item($item['id']);

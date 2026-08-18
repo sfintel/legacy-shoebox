@@ -34,7 +34,10 @@ require_content_page();
     <h2>Add content</h2>
     <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
       Anything added here becomes part of what the Ask tab knows — transcript text is read in full;
-      photos and videos are included by their title and description.
+      photos and videos are included by their title and description. Each item's "Narrative connection"
+      note is written automatically by AI; an <span class="status-badge status-pending">unreviewed</span>
+      badge means no admin has looked at that note yet — it's already part of the Ask tab's knowledge
+      base either way, so it's worth checking rather than a gate.
     </p>
     <form id="contentForm" class="content-form">
       <div class="form-row">

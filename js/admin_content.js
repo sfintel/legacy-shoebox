@@ -197,6 +197,18 @@
       <button class="danger" data-id="${item.id}">Delete</button></div>`;
   }
 
+  // A note that exists but has never been reviewed by an admin (see
+  // narrative_note_reviewed_at in sql/schema.sql) gets an "unreviewed"
+  // badge — visibility only, the note already feeds the Ask tab's
+  // knowledge base either way.
+  function renderNarrativeNoteCell(item) {
+    if (!item.narrativeNote) return "—";
+    const badge = item.narrativeNoteReviewedAt
+      ? ""
+      : ` <span class="status-badge status-pending">unreviewed</span>`;
+    return esc(item.narrativeNote) + badge;
+  }
+
   function render(items) {
     const rows = items
       .map((item) => {
@@ -218,14 +230,16 @@
           <td>${esc(item.type)}</td>
           <td>${esc(sizeLabel)}</td>
           <td>${renderCaptured(item)}</td>
-          <td>${item.narrativeNote ? esc(item.narrativeNote) : "—"}</td>
+          <td>${renderNarrativeNoteCell(item)}</td>
           <td>${esc(fmtDate(item.createdAt))}</td>
           <td>${renderActions(item)}</td>
         </tr>`;
       })
       .join("");
     document.getElementById("contentRows").innerHTML = rows || `<tr><td colspan="7" class="meta">Nothing added yet.</td></tr>`;
-    document.getElementById("status").textContent = `${items.length} item${items.length === 1 ? "" : "s"}`;
+    const unreviewedCount = items.filter((i) => i.narrativeNote && !i.narrativeNoteReviewedAt).length;
+    document.getElementById("status").textContent = `${items.length} item${items.length === 1 ? "" : "s"}`
+      + (unreviewedCount ? ` — ${unreviewedCount} note${unreviewedCount === 1 ? "" : "s"} unreviewed` : "");
 
     document.querySelectorAll("#contentRows button.danger").forEach((btn) => {
       btn.addEventListener("click", () => handleDelete(btn.dataset.id));
@@ -360,12 +374,25 @@
     const filesHtml = (item.type === "transcript" || item.type === "story")
       ? ""
       : (item.files || []).map((f) => renderFileEditFields(item, f)).join("");
+    const unreviewedBadge = item.narrativeNote && !item.narrativeNoteReviewedAt
+      ? ` <span class="status-badge status-pending">unreviewed</span>`
+      : "";
+    // Editing this field only counts as review when it's an admin doing
+    // it (see content_update_item()) — the checkbox is a second way to
+    // confirm an unchanged note, for isAdmin only, since it exists only
+    // for the admin-oversight use case this feature targets.
+    const markReviewedHtml = isAdmin && item.narrativeNote
+      ? `<label style="display:flex; align-items:center; gap:6px; font-weight:normal; margin-top:6px;">
+          <input type="checkbox" class="edit-mark-reviewed"> Mark reviewed
+        </label>`
+      : "";
     return `<tr class="edit-row" data-edit-for="${item.id}">
       <td colspan="7">
         <div class="content-form" style="max-width:none;">
           <div class="form-row">
-            <label>Narrative connection</label>
+            <label>Narrative connection${unreviewedBadge}</label>
             <textarea rows="3" class="edit-narrative">${esc(item.narrativeNote || "")}</textarea>
+            ${markReviewedHtml}
           </div>
           <div class="form-row">
             <label>Keywords</label>
@@ -420,6 +447,8 @@
     });
 
     const tags = editRow._tagPickerState ? editRow._tagPickerState.tags : (item.tags || []);
+    const markReviewedEl = editRow.querySelector(".edit-mark-reviewed");
+    const markReviewed = markReviewedEl ? markReviewedEl.checked : false;
 
     const errEl = editRow.querySelector(".edit-error");
     errEl.style.display = "none";
@@ -429,7 +458,7 @@
       const res = await fetch("/api/admin/content_update.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: item.id, narrativeNote, files, tags }),
+        body: JSON.stringify({ id: item.id, narrativeNote, files, tags, markReviewed }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Update failed");

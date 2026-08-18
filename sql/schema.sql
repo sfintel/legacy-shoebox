@@ -86,6 +86,14 @@ CREATE TABLE IF NOT EXISTS content_items (
   -- Set only for type='url' — the source page the family member submitted.
   source_url    VARCHAR(2048) NULL,
   narrative_note TEXT         NULL,
+  -- NULL means no admin has ever reviewed the current narrative_note —
+  -- set to NOW() only by an explicit admin action on the Content page
+  -- (see content_update_item() in includes/content.php), and cleared
+  -- back to NULL any time narrative_note is (re)written by an unattended
+  -- AI pass (content_approve_story(), content_backfill_narrative_notes()),
+  -- since that text is new and unreviewed again. Visibility only, not a
+  -- gate — an unreviewed note still feeds the Ask tab's knowledge base.
+  narrative_note_reviewed_at DATETIME NULL,
   -- Admin-picked keywords (see the Content page's keyword picker) — a
   -- separate, human-curated concept from content_links (AI-suggested,
   -- points at specific archive entries); tags are just free labels for
