@@ -217,6 +217,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => ['AI_TEMPERATURE (optional, defaults to 0.2; set to "default" to use the provider\'s own default)'],
         ],
+        '1.12.0' => [
+            'description' => 'Deterministic quote verification on Ask-tab replies (Ask tab accuracy safeguard)',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

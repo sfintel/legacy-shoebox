@@ -117,6 +117,10 @@ input[type=search]{min-width:180px;}
 .bubble.pending{color:var(--muted); font-style:italic;}
 .bubble.error{border-color:#7a3b34; color:#e08a7d;}
 .bubble img, .bubble video{max-width:100%; max-height:200px; border-radius:8px; display:inline-block; vertical-align:top; margin:6px 6px 0 0;}
+.quote-caution{
+  white-space:normal; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);
+  font-size:.8rem; color:var(--muted);
+}
 
 .chat-form{display:flex; gap:8px; border-top:1px solid var(--border); padding-top:12px; position:sticky; bottom:0; background:var(--bg);}
 .chat-form textarea{

@@ -50,4 +50,31 @@ if ($result === null) {
 // back through that, so redact the outgoing reply too.
 $text = redact_text($result['text'], redacted_names());
 
-json_response(['reply' => $text, 'usage' => $result['usage']]);
+// Deterministic post-check: does every direct quote the reply claims
+// actually appear in what the model was given? Haystack is $charter +
+// $context, not $context alone — the charter is where the model is told
+// to use stock phrases verbatim (e.g. "the record doesn't say."), and
+// those are real, non-fabricated quotes that only verify against it.
+// $charter is intentionally NOT run through redact_text() here (it
+// carries no archive prose, so there's nothing to redact) — verifying
+// the redacted reply against an unredacted charter is still correct
+// since redaction never touches the charter's own fixed phrases. Both
+// $text and $context are already redacted, so a quote containing a
+// redacted name matches on both sides instead of always failing.
+$unverifiedQuotes = quote_check_unverified($text, $charter . "\n\n" . $context);
+if ($unverifiedQuotes) {
+    // Post-redaction text only, so no redacted name can leak into the log.
+    error_log(
+        'chat.php: unverified quote span(s) (' . count($unverifiedQuotes) . '): '
+        . implode(' | ', array_map(static fn (string $q): string => substr($q, 0, 200), $unverifiedQuotes))
+    );
+}
+
+json_response([
+    'reply' => $text,
+    'usage' => $result['usage'],
+    'unverifiedQuotes' => array_map(
+        static fn (string $q): string => mb_substr($q, 0, 120, 'UTF-8'),
+        array_slice($unverifiedQuotes, 0, 3)
+    ),
+]);

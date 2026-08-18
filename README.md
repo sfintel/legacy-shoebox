@@ -315,6 +315,17 @@ few narrow, mostly-deterministic safeguards:
   the parameter entirely and let the provider decide, which some
   OpenAI-shaped backends and reasoning models require (they reject any
   other temperature with an error).
+- **Quote verification.** The charter tells the model never to invent a
+  direct quote — this adds a deterministic check on top of that
+  instruction rather than trusting it alone. Every reply is scanned for
+  double-quoted spans (25+ characters after normalization) and each is
+  checked against the exact material the model was given (the charter
+  plus the archive knowledge base). A span that can't be matched
+  word-for-word doesn't get rewritten or blocked — the reply is shown
+  exactly as generated, with a small caution appended naming the
+  unmatched wording, so the reader knows to check it against the
+  original testimony. A caution is often a normalization miss (a
+  reworded phrase in quotes), not necessarily a fabrication.
 
 ## Name redaction
 

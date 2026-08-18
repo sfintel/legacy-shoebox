@@ -14,6 +14,30 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.12.0] — 2026-08-18
+
+### Added
+
+- Deterministic quote verification on Ask-tab replies: every reply is
+  scanned for double-quoted spans (25+ characters), and each is checked
+  against the exact material the model was given (the charter plus the
+  archive knowledge base). An unmatched span never rewrites or blocks
+  the reply — it appends a small caution naming the unmatched wording,
+  so the family can check it against the original testimony. Second of
+  three planned Ask-tab accuracy safeguards. New `includes/quote_check.php`
+  (pure functions, no DB access); `api/chat.php` returns a new
+  `unverifiedQuotes` field (capped at 3 spans); `js/app.js` renders the
+  caution inside the reply bubble; bumped the service-worker cache name
+  since `js/app.js`/`css/style.css` changed.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.11.0] — 2026-08-18
 
 ### Added
@@ -576,7 +600,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.12.0
 [1.11.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.11.0
 [1.10.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.10.1
 [1.10.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.10.0
