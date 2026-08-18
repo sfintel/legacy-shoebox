@@ -62,17 +62,15 @@ None.
   caution inside the reply bubble; bumped the service-worker cache name
   since `js/app.js`/`css/style.css` changed.
 
-### Known limitations
+### Verified
 
-- **Testing incomplete.** Verified via `php -l` and a disposable-script
-  fixture suite (deployed to `oss-test`) covering the plan's full test
-  matrix — verbatim, curly-quote/line-wrapped, altered-word, punctuation,
-  nested, no-quotes, sub-floor, and charter-stock-phrase cases all
-  passed. **Not yet verified against a live AI provider** — no
-  `AI_API_KEY` was available in this session. A real Ask-tab round-trip
-  (does a genuine reply produce the expected `unverifiedQuotes`, and does
-  the caution render correctly end-to-end, including alongside a
-  `[[photo:ID]]` token) is still outstanding.
+- `php -l`, a disposable-script fixture suite covering the plan's full
+  test matrix (verbatim, curly-quote/line-wrapped, altered-word,
+  punctuation, nested, no-quotes, sub-floor, charter-stock-phrase — all
+  passed), and, after deploying to `slava.fintelfamily.com`, a real
+  end-to-end round-trip: a genuine reply quoting real testimony verified
+  against the live archive with zero false positives. Not separately
+  exercised alongside a `[[photo:ID]]` token in the same reply.
 
 ### Database changes
 
@@ -98,14 +96,19 @@ None.
   provider's own default, since some OpenAI-shaped backends and
   reasoning models reject any other temperature with an error.
 
-### Known limitations
+### Verified — and a real-world compatibility note
 
-- **Testing incomplete.** Verified via `php -l`, code review, and a
-  migration dry-run on `oss-test` — **not yet verified against a live AI
-  provider** — no `AI_API_KEY` was available in this session. Still
-  outstanding: confirming the configured provider (Anthropic by default)
-  actually accepts a `temperature` of `0.2` without a 400/502, and that a
-  full Ask-tab round-trip returns a sane reply with it set.
+- Deploying this to `slava.fintelfamily.com` immediately surfaced exactly
+  the failure mode this env var exists for: the account's
+  currently-configured Anthropic model rejected `temperature` outright —
+  `ai_http_post: AI provider error (HTTP 400) ... "temperature is
+  deprecated for this model"` — which broke the Ask tab (502 to real
+  users) until `AI_TEMPERATURE=default` was set in `.env`. This wasn't an
+  OpenAI-shaped-backend-only risk as assumed above; **if the Ask tab
+  starts erroring right after upgrading to this version, check the PHP
+  error log for that HTTP 400 and set `AI_TEMPERATURE=default`.** Once
+  set, a real round-trip against the live provider confirmed the
+  parameter is correctly omitted and a normal reply comes back.
 
 ### Database changes
 

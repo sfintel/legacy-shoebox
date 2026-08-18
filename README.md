@@ -320,9 +320,13 @@ few narrow, mostly-deterministic safeguards:
   rather than the provider's own default — these are recall/citation
   tasks, not creative writing, so a low temperature reduces paraphrase
   drift and quote invention. Set it to the literal word `default` to omit
-  the parameter entirely and let the provider decide, which some
-  OpenAI-shaped backends and reasoning models require (they reject any
-  other temperature with an error).
+  the parameter entirely and let the provider decide, which some models
+  require (they reject any other temperature with an HTTP 400 —
+  seen in practice on an Anthropic account, not just OpenAI-shaped
+  backends as originally assumed). **If the Ask tab starts erroring right
+  after upgrading**, check the PHP error log for `ai_http_post: AI
+  provider error (HTTP 400)` mentioning `temperature` and set
+  `AI_TEMPERATURE=default`.
 - **Quote verification.** The charter tells the model never to invent a
   direct quote — this adds a deterministic check on top of that
   instruction rather than trusting it alone. Every reply is scanned for
