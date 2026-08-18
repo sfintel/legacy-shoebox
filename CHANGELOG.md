@@ -62,6 +62,18 @@ None.
   caution inside the reply bubble; bumped the service-worker cache name
   since `js/app.js`/`css/style.css` changed.
 
+### Known limitations
+
+- **Testing incomplete.** Verified via `php -l` and a disposable-script
+  fixture suite (deployed to `oss-test`) covering the plan's full test
+  matrix — verbatim, curly-quote/line-wrapped, altered-word, punctuation,
+  nested, no-quotes, sub-floor, and charter-stock-phrase cases all
+  passed. **Not yet verified against a live AI provider** — no
+  `AI_API_KEY` was available in this session. A real Ask-tab round-trip
+  (does a genuine reply produce the expected `unverifiedQuotes`, and does
+  the caution render correctly end-to-end, including alongside a
+  `[[photo:ID]]` token) is still outstanding.
+
 ### Database changes
 
 None.
@@ -85,6 +97,15 @@ None.
   literal word `default` to omit the parameter and fall back to the
   provider's own default, since some OpenAI-shaped backends and
   reasoning models reject any other temperature with an error.
+
+### Known limitations
+
+- **Testing incomplete.** Verified via `php -l`, code review, and a
+  migration dry-run on `oss-test` — **not yet verified against a live AI
+  provider** — no `AI_API_KEY` was available in this session. Still
+  outstanding: confirming the configured provider (Anthropic by default)
+  actually accepts a `temperature` of `0.2` without a 400/502, and that a
+  full Ask-tab round-trip returns a sane reply with it set.
 
 ### Database changes
 
