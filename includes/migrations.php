@@ -212,6 +212,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.11.0' => [
+            'description' => 'Lower AI sampling temperature by default (Ask tab accuracy safeguard)',
+            'db' => null,
+            'env' => ['AI_TEMPERATURE (optional, defaults to 0.2; set to "default" to use the provider\'s own default)'],
+        ],
     ];
 }
 

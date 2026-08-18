@@ -37,6 +37,22 @@ function ai_base_url(): string
     return $url !== '' ? rtrim($url, '/') : 'https://api.openai.com/v1';
 }
 
+// Sampling temperature for every AI call in this app — recall/citation
+// tasks (Ask tab, narrative analysis, suggestion extraction), not
+// creative composition, so a low default sharply cuts paraphrase drift
+// and quote invention. Returns null (= let the provider use its own
+// default) when AI_TEMPERATURE is explicitly set to the literal string
+// "default" — an escape hatch for OpenAI-shaped backends and reasoning
+// models that 400 on any temperature other than their fixed one.
+function ai_temperature(): ?float
+{
+    $raw = trim((string) env('AI_TEMPERATURE', '0.2'));
+    if (strtolower($raw) === 'default') {
+        return null;
+    }
+    return is_numeric($raw) ? (float) $raw : 0.2;
+}
+
 function ai_configured(): bool
 {
     return ai_api_key() !== null;
@@ -55,21 +71,25 @@ function ai_image_block(string $mediaType, string $base64Data): array
 // ephemeral prompt-cache block, same caching behavior the app has always
 // used. $messages: list of ['role' => 'user'|'assistant', 'content' =>
 // string | array of ['type' => 'text', 'text' => ...] / ai_image_block()
-// blocks]. Returns ['text' => string, 'usage' => array|null], or null on
-// any failure (missing key, network error, timeout, non-2xx, unparsable
-// response) — callers never throw.
-function ai_chat(array $systemParts, array $messages, int $maxTokens): ?array
+// blocks]. $temperature: null means "use ai_temperature()"; every call
+// site in this app wants the same low, recall-and-cite value, so this
+// only exists for a future caller that needs to override it. Returns
+// ['text' => string, 'usage' => array|null], or null on any failure
+// (missing key, network error, timeout, non-2xx, unparsable response) —
+// callers never throw.
+function ai_chat(array $systemParts, array $messages, int $maxTokens, ?float $temperature = null): ?array
 {
     $apiKey = ai_api_key();
     if (!$apiKey) {
         return null;
     }
+    $temperature = $temperature ?? ai_temperature();
     return ai_provider() === 'openai'
-        ? ai_chat_openai($apiKey, $systemParts, $messages, $maxTokens)
-        : ai_chat_anthropic($apiKey, $systemParts, $messages, $maxTokens);
+        ? ai_chat_openai($apiKey, $systemParts, $messages, $maxTokens, $temperature)
+        : ai_chat_anthropic($apiKey, $systemParts, $messages, $maxTokens, $temperature);
 }
 
-function ai_chat_anthropic(string $apiKey, array $systemParts, array $messages, int $maxTokens): ?array
+function ai_chat_anthropic(string $apiKey, array $systemParts, array $messages, int $maxTokens, ?float $temperature): ?array
 {
     $system = [];
     foreach ($systemParts as $part) {
@@ -87,6 +107,9 @@ function ai_chat_anthropic(string $apiKey, array $systemParts, array $messages, 
             'content' => ai_anthropic_content($m['content']),
         ], $messages),
     ];
+    if ($temperature !== null) {
+        $payload['temperature'] = $temperature;
+    }
 
     $response = ai_http_post(
         'https://api.anthropic.com/v1/messages',
@@ -122,7 +145,7 @@ function ai_anthropic_content($content): array
     return $blocks;
 }
 
-function ai_chat_openai(string $apiKey, array $systemParts, array $messages, int $maxTokens): ?array
+function ai_chat_openai(string $apiKey, array $systemParts, array $messages, int $maxTokens, ?float $temperature): ?array
 {
     $systemText = trim(implode("\n\n", array_filter($systemParts, static fn (string $p): bool => $p !== '')));
     $chatMessages = [];
@@ -138,6 +161,9 @@ function ai_chat_openai(string $apiKey, array $systemParts, array $messages, int
         'max_tokens' => $maxTokens,
         'messages' => $chatMessages,
     ];
+    if ($temperature !== null) {
+        $payload['temperature'] = $temperature;
+    }
 
     $response = ai_http_post(
         ai_base_url() . '/chat/completions',

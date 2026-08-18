@@ -84,7 +84,9 @@ is reachable until it's finished. It walks through four resumable stages:
    OpenRouter, Azure OpenAI, a local Ollama/LM Studio server, etc. — via
    its base-URL field). Without a key, Browse still works but Ask errors
    and new content is saved without an AI note/suggestions; you can add
-   one later by hand-editing `.env` (see `.env.example`).
+   one later by hand-editing `.env` (see `.env.example`). Every AI call
+   runs at a low sampling temperature by default (see "Ask tab accuracy
+   safeguards" below) — tune or disable it via `AI_TEMPERATURE`.
 4. **Advanced settings** — public URL, outgoing SMTP, rate limits. Fully
    skippable; sensible defaults are used and everything here can be
    changed later by hand in `.env`.
@@ -297,6 +299,22 @@ pending Story, see below.
   items (and, for URL items, only sees their own item's suggestions,
   read-only — approving/dismissing is admin-only since it mutates the
   shared archive).
+
+## Ask tab accuracy safeguards
+
+The Ask tab is generative — an AI model handed the whole archive plus a
+charter (see "Building out the archive") and asked to answer in prose —
+which is a different risk profile from the deterministic Browse tab. A
+few narrow, mostly-deterministic safeguards:
+
+- **Low sampling temperature.** Every AI call (Ask tab, narrative notes,
+  URL-suggestion extraction) runs at `AI_TEMPERATURE` (default `0.2`)
+  rather than the provider's own default — these are recall/citation
+  tasks, not creative writing, so a low temperature reduces paraphrase
+  drift and quote invention. Set it to the literal word `default` to omit
+  the parameter entirely and let the provider decide, which some
+  OpenAI-shaped backends and reasoning models require (they reject any
+  other temperature with an error).
 
 ## Name redaction
 

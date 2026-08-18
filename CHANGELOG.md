@@ -14,6 +14,31 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.11.0] — 2026-08-18
+
+### Added
+
+- Every AI call (Ask tab, narrative notes, URL-suggestion extraction) now
+  sends an explicit sampling `temperature`, defaulting to a low `0.2`
+  instead of the provider's own default (Anthropic: `1.0`). These are
+  all recall/citation tasks — the Ask tab answers from the archive, and
+  the narrative/suggestion passes must cite or copy verbatim, never
+  invent — so a low temperature reduces paraphrase drift and quote
+  fabrication. First of three planned Ask-tab accuracy safeguards.
+  Configurable via the new `AI_TEMPERATURE` env var; set it to the
+  literal word `default` to omit the parameter and fall back to the
+  provider's own default, since some OpenAI-shaped backends and
+  reasoning models reject any other temperature with an error.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+- New optional `AI_TEMPERATURE` (defaults to `0.2` if unset). See
+  `.env.example`.
+
 ## [1.10.1] — 2026-08-16
 
 ### Fixed
@@ -551,7 +576,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.10.1...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.11.0
 [1.10.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.10.1
 [1.10.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.10.0
 [1.9.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.9.0
