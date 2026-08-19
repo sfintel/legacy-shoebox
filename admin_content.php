@@ -37,7 +37,10 @@ require_content_page();
       photos and videos are included by their title and description. Each item's "Narrative connection"
       note is written automatically by AI; an <span class="status-badge status-pending">unreviewed</span>
       badge means no admin has looked at that note yet — it's already part of the Ask tab's knowledge
-      base either way, so it's worth checking rather than a gate.
+      base either way, so it's worth checking rather than a gate. Transcripts, Stories (once approved),
+      and URLs also get a second AI pass proposing new timeline/people/places/quotes entries — these
+      always sit as pending "Suggestions" for you to approve or dismiss individually; nothing is added
+      to the core archive automatically.
     </p>
     <form id="contentForm" class="content-form">
       <div class="form-row">
@@ -85,7 +88,7 @@ require_content_page();
 
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
       <h2 style="margin:0;" id="listHeading">Added content</h2>
-      <button id="backfillBtn" class="ghost-btn">Backfill narrative notes &amp; links</button>
+      <button id="backfillBtn" class="ghost-btn">Backfill AI analysis</button>
     </div>
     <p class="meta" id="status" role="status" style="color:var(--muted); font-size:.85rem;"></p>
     <div class="table-wrap">

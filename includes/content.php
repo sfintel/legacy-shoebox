@@ -92,7 +92,7 @@ function content_public(array $item): array
         'tags' => json_decode((string) ($item['tags'] ?? '[]'), true) ?: [],
         'createdAt' => $item['created_at'],
         'files' => array_map('content_file_public', content_files_for_item($item['id'])),
-        'suggestions' => $item['type'] === 'url' ? content_suggestions_for_item($item['id']) : [],
+        'suggestions' => in_array($item['type'], ['url', 'transcript', 'story'], true) ? content_suggestions_for_item($item['id']) : [],
         'storyApprovedAt' => $item['type'] === 'story' ? $item['story_approved_at'] : null,
     ];
 }
@@ -349,7 +349,9 @@ function content_fetch_url(string $url): array
 // Pasted transcript text is written to a .md file under
 // ARCHIVE_ROOT/uploads/transcript/ so every item has a real file on
 // disk — knowledge_context() and content_file.php never need a separate
-// "text stored in the DB" code path.
+// "text stored in the DB" code path. Also runs narrative_suggest_additions()
+// (same structured timeline/person/place/quote extraction pass
+// content_create_url() runs) — see that function's docblock.
 function content_create_transcript(string $title, string $text, string $userId, array $tags = []): array
 {
     $title = trim($title);
@@ -378,6 +380,13 @@ function content_create_transcript(string $title, string $text, string $userId, 
         'mimeType' => 'text/markdown', 'size' => strlen($text), 'metadata' => null,
     ], 0);
     archive_content_links_apply($itemId, $analysis['links']);
+
+    $suggestions = narrative_suggest_additions(
+        narrative_prompt_for_transcript_suggestions($title, $text),
+        $title,
+        'AI-suggested from a family-contributed transcript'
+    );
+    content_suggestions_insert($itemId, $suggestions);
 
     return content_find($itemId);
 }
@@ -458,8 +467,13 @@ function content_story_body(array $item): string
 
 // Runs the same narrative-connection analysis every other content type
 // gets at creation time, but deferred until now — see the comment on
-// content_create_story() above for why. Idempotent-safe to re-run
-// (content_links has a UNIQUE KEY, same as content_backfill_narrative_notes()).
+// content_create_story() above for why. Also runs the structured
+// suggestion-extraction pass (narrative_suggest_additions()), same as
+// content_create_url()/content_create_transcript() — but only if this
+// item has no suggestions yet, since (unlike content_links, which is
+// UNIQUE-KEY-deduped) content_suggestions has no such guard and this
+// function has no hard lock against being called twice on an
+// already-approved item.
 function content_approve_story(string $itemId): array
 {
     $item = content_find($itemId);
@@ -476,6 +490,15 @@ function content_approve_story(string $itemId): array
     // comment on narrative_note_reviewed_at.
     $pdo->prepare('UPDATE content_items SET narrative_note = ?, story_approved_at = NOW(), narrative_note_reviewed_at = NULL WHERE id = ?')
         ->execute([$analysis['note'], $itemId]);
+
+    if (!content_suggestions_for_item($itemId)) {
+        $suggestions = narrative_suggest_additions(
+            narrative_prompt_for_story_suggestions($item['title'], $body),
+            $item['title'],
+            'AI-suggested from a family-recounted story'
+        );
+        content_suggestions_insert($itemId, $suggestions);
+    }
     archive_content_links_clear_for_item($itemId);
     archive_content_links_apply($itemId, $analysis['links']);
 
@@ -543,7 +566,11 @@ function content_create_url(string $title, string $url, string $userId, array $t
     ], 0);
     archive_content_links_apply($itemId, $analysis['links']);
 
-    $suggestions = narrative_suggest_additions($title, $url, $fetched['text']);
+    $suggestions = narrative_suggest_additions(
+        narrative_prompt_for_url_suggestions($title, $url, $fetched['text']),
+        "$title — $url",
+        'AI-suggested from a submitted URL'
+    );
     content_suggestions_insert($itemId, $suggestions);
 
     return content_find($itemId);
@@ -852,25 +879,69 @@ function content_analyze_existing_item(array $item): array
     );
 }
 
-// Fills in narrative_note for every existing item that doesn't have one
-// yet, and (re-)applies its content_links. Safe to re-run — only
-// touches rows where narrative_note IS NULL, so it never overwrites a
-// note (or a deliberately-confirmed "no connection found") already
-// stored; links are cleared and reapplied each time it processes an
-// item, so a second run against the same still-note-less item doesn't
-// accumulate duplicate links.
-function content_backfill_narrative_notes(): array
+// Mirrors content_analyze_existing_item(), but for the structured
+// suggestion-extraction pass (narrative_suggest_additions()) — used by
+// content_backfill_ai_analysis() to retroactively cover transcripts and
+// approved stories added before this pass existed for those types. Only
+// transcript and (approved) story are covered here: url already gets
+// this at creation (content_create_url()), and photo/video captions are
+// too short to plausibly ground a new archive entry.
+function content_suggest_additions_for_existing_item(array $item): array
 {
-    // Excludes type='story': a pending (unapproved) story has
-    // narrative_note = NULL by design, same as anything else this query
-    // targets — but a story is only ever analyzed via
-    // content_approve_story(), never backfilled. An approved story
-    // already has its narrative_note set by that function, so it's
-    // naturally excluded too (nothing left to backfill for it).
-    $items = db()->query("SELECT * FROM content_items WHERE narrative_note IS NULL AND type != 'story' ORDER BY created_at ASC")->fetchAll();
+    $file = content_files_for_item($item['id'])[0] ?? null;
+    if (!$file) {
+        return [];
+    }
+    $isStory = $item['type'] === 'story';
+    $dir = content_upload_dir($isStory ? 'story' : 'transcript');
+    $path = "$dir/{$file['file_name']}";
+    $text = is_file($path) ? file_get_contents($path) : null;
+    if ($text === null || $text === false) {
+        return [];
+    }
 
-    $results = [];
-    foreach ($items as $item) {
+    return $isStory
+        ? narrative_suggest_additions(
+            narrative_prompt_for_story_suggestions($item['title'], $text),
+            $item['title'],
+            'AI-suggested from a family-recounted story'
+        )
+        : narrative_suggest_additions(
+            narrative_prompt_for_transcript_suggestions($item['title'], $text),
+            $item['title'],
+            'AI-suggested from a family-contributed transcript'
+        );
+}
+
+// Two independent sweeps over existing content, each safe to re-run:
+// (1) fills in narrative_note for every item that doesn't have one yet
+// (and (re-)applies its content_links) — unchanged from this function's
+// original narrative-notes-only behavior; (2) fills in suggestions
+// (timeline/person/place/quote proposals, same as content_create_url())
+// for every transcript/approved-story item that doesn't have any yet.
+// A pending (unapproved) story is excluded from both sweeps — see
+// content_create_story()'s comment for why nothing runs on it before
+// approval; content_approve_story() covers it once approved.
+function content_backfill_ai_analysis(): array
+{
+    $noteItems = db()->query(
+        "SELECT * FROM content_items WHERE narrative_note IS NULL AND type != 'story' ORDER BY created_at ASC"
+    )->fetchAll();
+    $suggestionItems = db()->query(
+        "SELECT * FROM content_items
+         WHERE (type = 'transcript' OR (type = 'story' AND story_approved_at IS NOT NULL))
+           AND id NOT IN (SELECT DISTINCT content_item_id FROM content_suggestions)
+         ORDER BY created_at ASC"
+    )->fetchAll();
+
+    $resultsById = [];
+    $ensure = static function (array $item) use (&$resultsById): void {
+        $resultsById[$item['id']] ??= [
+            'id' => $item['id'], 'title' => $item['title'], 'updated' => false, 'suggestionsAdded' => 0,
+        ];
+    };
+
+    foreach ($noteItems as $item) {
         $analysis = content_analyze_existing_item($item);
         $note = $analysis['note'];
         if ($note !== null) {
@@ -884,9 +955,20 @@ function content_backfill_narrative_notes(): array
         }
         archive_content_links_clear_for_item($item['id']);
         archive_content_links_apply($item['id'], $analysis['links']);
-        $results[] = ['id' => $item['id'], 'title' => $item['title'], 'updated' => $note !== null];
+        $ensure($item);
+        $resultsById[$item['id']]['updated'] = $note !== null;
     }
-    return $results;
+
+    foreach ($suggestionItems as $item) {
+        $suggestions = content_suggest_additions_for_existing_item($item);
+        if ($suggestions) {
+            content_suggestions_insert($item['id'], $suggestions);
+        }
+        $ensure($item);
+        $resultsById[$item['id']]['suggestionsAdded'] = count($suggestions);
+    }
+
+    return array_values($resultsById);
 }
 
 function content_upload_error_message(int $code): string

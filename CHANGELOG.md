@@ -14,6 +14,45 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.14.0] — 2026-08-19
+
+### Added
+
+- The structured suggestion-extraction pass (proposes new
+  timeline/people/places/quotes entries, held as pending suggestions for
+  admin approval) previously only ran on URL content — now also runs on
+  **Transcript** content at upload, and on **Story** content at approval
+  time (matching when its narrative-connection note is computed). A
+  first-person transcript or a family-recounted story can now grow the
+  archive's structured registries the same way a submitted URL already
+  could, still with the same never-auto-applied, per-suggestion admin
+  review. Each suggestion's `citation` traces back to the specific
+  content item (its title), and a new `sourceNote` field records which
+  of the three content types it came from — previously hardcoded to "AI
+  suggested from a submitted URL" regardless of actual origin, now
+  accurate for all three, so a family-recounted story's proposals stay
+  visibly distinct from a first-person transcript's or a documented
+  URL's once applied to the archive.
+- The "Backfill narrative notes" admin button is now "Backfill AI
+  analysis" (`content_backfill_ai_analysis()`, renamed from
+  `content_backfill_narrative_notes()`) and covers two independent gaps:
+  a missing narrative note (unchanged from before), and — new — missing
+  suggestions for any Transcript or already-approved Story added before
+  this feature covered its type. Safe to re-run: only fills in what's
+  actually missing per item, per pass.
+
+### Database changes
+
+None — `sourceNote` lives in `content_suggestions.payload` (JSON), no
+schema change needed. A suggestion already pending from before this
+upgrade has no `sourceNote` in its stored payload; approving it still
+falls back to the old "AI-suggested from a submitted URL" wording, which
+remains accurate for it (URL was the only source type before now).
+
+### Environment changes
+
+None.
+
 ## [1.13.0] — 2026-08-18
 
 ### Added
@@ -656,7 +695,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.14.0
 [1.13.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.13.0
 [1.12.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.12.0
 [1.11.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.11.0

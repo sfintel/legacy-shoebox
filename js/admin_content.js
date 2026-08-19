@@ -30,9 +30,10 @@
       if (!res.ok) throw new Error(data.error || "Backfill failed");
       const results = data.results || [];
       const updated = results.filter((r) => r.updated).length;
+      const suggested = results.reduce((sum, r) => sum + (r.suggestionsAdded || 0), 0);
       alert(results.length
-        ? `Analyzed ${results.length} item(s), added ${updated} narrative note(s).`
-        : "Nothing to backfill — every item already has a narrative note.");
+        ? `Analyzed ${results.length} item(s): added ${updated} narrative note(s), proposed ${suggested} new suggestion(s).`
+        : "Nothing to backfill — every item already has a narrative note and suggestions (where applicable).");
       load();
     } catch (err) {
       alert(err.message);
@@ -184,7 +185,7 @@
       : (files[0] ? `<a href="${fileUrl(files[0].id)}" target="_blank" rel="noopener">View</a>` : "");
     const suggestions = item.suggestions || [];
     const pending = suggestions.filter((s) => s.status === "pending").length;
-    const suggestionsBtn = item.type === "url" && suggestions.length
+    const suggestionsBtn = suggestions.length
       ? `<button data-id="${item.id}" data-action="suggestions">Suggestions${pending ? ` (${pending})` : ""}</button>`
       : "";
     const approveBtn = item.type === "story" && !item.storyApprovedAt && isAdmin

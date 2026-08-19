@@ -235,6 +235,11 @@ function migrations_steps(): array
             },
             'env' => [],
         ],
+        '1.14.0' => [
+            'description' => 'Structured suggestion-extraction pass (timeline/people/places/quotes) now also runs on Transcript and (approved) Story content, not just URL',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

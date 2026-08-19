@@ -264,37 +264,48 @@ transcripts (pasted text), photos, videos, a URL, or a Story. Everything
 added here becomes part of what the Ask tab knows about — except a
 pending Story, see below.
 
-- **Transcripts/photos/videos**: title + optional caption; photos/videos
-  get EXIF metadata auto-extracted (date taken, camera, GPS, dimensions/
-  duration) via `exiftool`, editable afterward if the host doesn't have
-  `exiftool` or the auto-read value is wrong. A photo "album" (up to 10
-  files sharing one title/caption) is analyzed together as a set.
-- **URL**: fetches the page, extracts its text, and runs two AI passes —
-  a short narrative-connection note (same as the other types) and a
-  separate structured pass that proposes new timeline/people/places/
-  quotes entries grounded in that source. Proposals never duplicate
-  something already in the archive and are never applied automatically:
-  they sit as pending suggestions under that content item until an admin
-  approves or dismisses each one individually from the item's
-  "Suggestions" panel. Approving inserts the entry straight into the core
-  archive (the same tables `/admin_archive.php` manages) — no separate
-  file format involved, and it appears in the Ask tab and Browse tab
-  immediately.
+- **Photos/videos**: title + optional caption; EXIF metadata is
+  auto-extracted (date taken, camera, GPS, dimensions/duration) via
+  `exiftool`, editable afterward if the host doesn't have `exiftool` or
+  the auto-read value is wrong. A photo "album" (up to 10 files sharing
+  one title/caption) is analyzed together as a set.
+- **Transcripts, URLs, and Stories** all run two AI passes: a short
+  narrative-connection note (same as photos/videos get) and a separate
+  structured pass that proposes new timeline/people/places/quotes
+  entries grounded in that material — treating a family-submitted
+  transcript or story the same way a URL source already was. Proposals
+  never duplicate something already in the archive and are never applied
+  automatically: they sit as pending suggestions under that content item
+  until an admin approves or dismisses each one individually from the
+  item's "Suggestions" panel. Approving inserts the entry straight into
+  the core archive (the same tables `/admin_archive.php` manages) — no
+  separate file format involved, and it appears in the Ask tab and
+  Browse tab immediately. Each suggestion's citation traces back to the
+  specific content item it came from (its title, plus the URL for a URL
+  source), and its "source note" says which of the three it came from —
+  a family-recounted story's proposals stay distinguishable from a
+  first-person transcript's, matching the "reliable but secondhand"
+  distinction the Ask tab already draws elsewhere.
 - **Story**: a story family members tell about the subject — distinct
   from their own testimony, so it's held pending until an admin approves
   it (a badge + Approve button appear on the item's row). Only once
-  approved does it appear on the public "Stories" tab and get included
-  in the Ask tab's knowledge base, explicitly weighted below the primary
-  testimony transcript ("recounted by family — reliable, but
-  secondhand"). Nothing about a pending story — including its narrative
-  connections to other archive entries — is computed or visible anywhere
-  until it's approved. When an author (not an admin) submits one, the
-  admin gets an email — same `NOTIFY_EMAIL` setup as the signup-request
-  notification — linking straight to `admin_content.php` to review it.
-- Every item gets a "Backfill narrative notes" pass (admin-only button)
-  to fill in a note for anything added before this feature existed, or
-  where the original AI call failed. Pending Stories are skipped by
-  design — they're only ever analyzed at approval time.
+  approved does it appear on the public "Stories" tab, get included in
+  the Ask tab's knowledge base (explicitly weighted below the primary
+  testimony transcript — "recounted by family — reliable, but
+  secondhand"), and get its narrative-connection note and suggestion
+  proposals computed. Nothing about a pending story is computed or
+  visible anywhere until it's approved. When an author (not an admin)
+  submits one, the admin gets an email — same `NOTIFY_EMAIL` setup as
+  the signup-request notification — linking straight to
+  `admin_content.php` to review it.
+- "Backfill AI analysis" (admin-only button) sweeps existing content for
+  anything the passes above haven't run on yet — a missing narrative
+  note (any type except a still-pending Story), or missing suggestions
+  (Transcript, or an already-approved Story) — covering items added
+  before this feature existed, added before suggestion-extraction
+  covered their type, or where the original AI call failed. Safe to run
+  repeatedly: it only ever fills in what's missing, never re-runs
+  analysis on an item that already has it.
 - Every "Narrative connection" note is unattended AI output with no
   approval gate — it starts feeding the Ask tab's knowledge base the
   moment it's written. An `unreviewed` badge (list and edit views) marks
@@ -304,9 +315,9 @@ pending Story, see below.
   in the edit row clears it without changing the text. The badge
   reappears if a later AI pass (approval, backfill) rewrites the note.
 - A non-admin content contributor only sees and can edit/delete their own
-  items (and, for URL items, only sees their own item's suggestions,
-  read-only — approving/dismissing is admin-only since it mutates the
-  shared archive).
+  items (and, for items with suggestions, only sees their own item's
+  suggestions, read-only — approving/dismissing is admin-only since it
+  mutates the shared archive).
 
 ## Ask tab accuracy safeguards
 

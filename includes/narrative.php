@@ -233,9 +233,10 @@ function narrative_suggestions_system_prompt(): string
     $subject = subject_name();
     return <<<EOT
 You are helping curate a family history archive about $subject. A
-family member submitted an external source (an article, document,
-genealogy record, Yizkor book page, etc.) via URL. Your job is to
-compare it against the EXISTING archive material given to you as
+family member added new material to the archive — an external source
+(an article, document, genealogy record, Yizkor book page, etc.) via
+URL, a first-person transcript, or a family-recounted story. Your job
+is to compare it against the EXISTING archive material given to you as
 context and propose NEW, well-grounded additions to the archive's
 timeline, people registry, places registry, and quote bank.
 
@@ -258,7 +259,8 @@ Rules (non-negotiable):
   ("1942-07-18") when precise, or "~YYYY" / "~YYYY-MM" when approximate.
 - `confidence` (timeline) is "high", "medium", or "low".
 - Do not include a `source` or `citation` field yourself — the
-  application attaches those automatically from the URL you were given.
+  application attaches those automatically from the material you were
+  given.
 - Propose AT MOST 6 additions, even if the source could support more —
   pick the most significant, well-grounded ones. Keep each `event`/
   `notes`/`quote` field concise (2-4 sentences at most). Your response
@@ -277,14 +279,34 @@ If there is nothing to propose, respond with exactly: []
 EOT;
 }
 
+function narrative_prompt_for_url_suggestions(string $title, string $url, string $text): string
+{
+    return "New source added to the archive via URL.\nTitle: $title\nURL: $url\n\nExtracted text:\n$text\n\n"
+        . 'Propose new archive additions per the rules above.';
+}
+
+function narrative_prompt_for_transcript_suggestions(string $title, string $text): string
+{
+    return "New transcript added to the archive.\nTitle: $title\n\nText:\n$text\n\n"
+        . 'Propose new archive additions per the rules above.';
+}
+
+function narrative_prompt_for_story_suggestions(string $title, string $text): string
+{
+    return "New family-recounted story added to the archive (not the subject's own testimony — a story "
+        . "family members tell about them).\nTitle: $title\n\nText:\n$text\n\n"
+        . 'Propose new archive additions per the rules above.';
+}
+
 // Returns a list of ['kind' => ..., 'fields' => [...]] ready for
 // content_suggestions_insert() — never throws; a missing API key, parse
 // failure, or malformed item just yields fewer (or zero) suggestions,
-// same fail-quiet posture as narrative_analyze().
-function narrative_suggest_additions(string $title, string $url, string $text): array
+// same fail-quiet posture as narrative_analyze(). $citation and
+// $sourceNote are always PHP-attached, never trusted from the model —
+// build $prompt with one of the narrative_prompt_for_*_suggestions()
+// functions above so it matches what $citation/$sourceNote describe.
+function narrative_suggest_additions(string $prompt, string $citation, string $sourceNote): array
 {
-    $prompt = "New source added to the archive via URL.\nTitle: $title\nURL: $url\n\nExtracted text:\n$text\n\n"
-        . 'Propose new archive additions per the rules above.';
     $raw = narrative_call_ai(
         narrative_suggestions_system_prompt(),
         [['type' => 'text', 'text' => $prompt]],
@@ -329,7 +351,8 @@ function narrative_suggest_additions(string $title, string $url, string $text): 
             }
             $fields['id'] = $slug;
         }
-        $fields['citation'] = "$title — $url"; // always PHP-attached, never trusted from the model
+        $fields['citation'] = $citation;
+        $fields['sourceNote'] = $sourceNote;
         $out[] = ['kind' => $kind, 'fields' => $fields];
     }
     return $out;

@@ -19,7 +19,13 @@ declare(strict_types=1);
 // ever needing to resolve a slug collision on this path.
 function kw_apply_suggestion(string $kind, array $fields): array
 {
-    $sourceNote = 'AI-suggested from a submitted URL';
+    // sourceNote is PHP-attached at suggestion-creation time (see
+    // narrative_suggest_additions()) so it accurately reflects what kind
+    // of content item this came from (URL/transcript/story) — falls back
+    // to the old URL-only wording for a suggestion created before that
+    // field existed (still accurate for those, since URL was the only
+    // source type back then).
+    $sourceNote = $fields['sourceNote'] ?? 'AI-suggested from a submitted URL';
 
     $row = match ($kind) {
         'timeline' => archive_timeline_create([

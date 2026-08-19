@@ -8,4 +8,4 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_response(['error' => 'Method not allowed'], 405);
 }
 
-json_response(['results' => content_backfill_narrative_notes()]);
+json_response(['results' => content_backfill_ai_analysis()]);
