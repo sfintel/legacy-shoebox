@@ -14,6 +14,38 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.15.0] — 2026-08-19
+
+### Added
+
+- Ask tab: the pending reply bubble now shows an animated three-dot
+  typing indicator instead of static "Thinking…" text, so it's clearer
+  at a glance that a request is in flight. The text is kept for screen
+  readers (visually hidden, still announced via `#chatLog`'s existing
+  `aria-live="polite"`) rather than shown, since the dots alone convey
+  nothing to assistive tech.
+
+### Fixed
+
+- Content page: the "Mark reviewed" checkbox (added in 1.13.0) rendered
+  with its checkbox mid-row and its label text pushed to the far right —
+  `.content-form input{width:100%}` was stretching the checkbox itself,
+  same as every other input in that form. Added `width:auto` on the
+  checkbox specifically, matching the existing convention already used
+  for the Sources tab's "is a dramatisation" checkbox.
+- Content page: the "Captured" column (EXIF summary) was unbounded — a
+  photo album with many files stacked one summary line per file with no
+  limit. Capped at 3 lines, with the third suffixed "..." when there's
+  more.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.14.0] — 2026-08-19
 
 ### Added
@@ -695,7 +727,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.15.0...HEAD
+[1.15.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.15.0
 [1.14.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.14.0
 [1.13.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.13.0
 [1.12.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.12.0

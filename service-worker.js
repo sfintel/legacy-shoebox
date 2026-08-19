@@ -1,4 +1,4 @@
-const CACHE_NAME = "app-lamp-v3";
+const CACHE_NAME = "app-lamp-v4";
 const APP_SHELL = [
   "/",
   "/login.php",

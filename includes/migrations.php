@@ -240,6 +240,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.15.0' => [
+            'description' => 'Animated typing indicator while the Ask tab is waiting on a reply; fix "Mark reviewed" checkbox layout and cap the Captured column to 3 lines on the Content page',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

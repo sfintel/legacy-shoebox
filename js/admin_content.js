@@ -172,7 +172,15 @@
         return lines.length ? prefix + lines.join(", ") : null;
       })
       .filter(Boolean);
-    return summaries.join("<br>") || "—";
+    if (!summaries.length) return "—";
+    // Cap at 3 lines — a multi-photo album can have one summary line
+    // per file, otherwise unbounded.
+    if (summaries.length > 3) {
+      const shown = summaries.slice(0, 3);
+      shown[2] += " ...";
+      return shown.join("<br>");
+    }
+    return summaries.join("<br>");
   }
 
   function renderActions(item) {
@@ -384,7 +392,7 @@
     // for the admin-oversight use case this feature targets.
     const markReviewedHtml = isAdmin && item.narrativeNote
       ? `<label style="display:flex; align-items:center; gap:6px; font-weight:normal; margin-top:6px;">
-          <input type="checkbox" class="edit-mark-reviewed"> Mark reviewed
+          <input type="checkbox" class="edit-mark-reviewed" style="width:auto;"> Mark reviewed
         </label>`
       : "";
     return `<tr class="edit-row" data-edit-for="${item.id}">

@@ -323,7 +323,23 @@
     wrap.className = "msg " + role;
     const bubble = document.createElement("div");
     bubble.className = "bubble" + (opts.pending ? " pending" : "") + (opts.error ? " error" : "");
-    bubble.textContent = text;
+    if (opts.pending) {
+      // Animated dots for sighted users; the actual text is kept for
+      // screen readers (announced via #chatLog's aria-live="polite")
+      // rather than shown, since three bouncing dots convey nothing on
+      // their own.
+      const dots = document.createElement("span");
+      dots.className = "typing-dots";
+      dots.setAttribute("aria-hidden", "true");
+      for (let i = 0; i < 3; i++) dots.appendChild(document.createElement("span"));
+      bubble.appendChild(dots);
+      const srText = document.createElement("span");
+      srText.className = "visually-hidden";
+      srText.textContent = text;
+      bubble.appendChild(srText);
+    } else {
+      bubble.textContent = text;
+    }
     wrap.appendChild(bubble);
     chatLog.appendChild(wrap);
     chatLog.scrollTop = chatLog.scrollHeight;
