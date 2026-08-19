@@ -14,6 +14,39 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.16.0] — 2026-08-19
+
+### Added
+
+- Ask tab: replies were silently cut off mid-word/mid-sentence whenever
+  the model's answer ran past the 1200-token reply budget — the
+  provider's `stop_reason`/`finish_reason` was never checked, so a
+  truncated reply looked identical to a complete one. Raised the budget
+  to 4096 (raising it costs nothing extra unless the model actually
+  generates more — it's a ceiling, not a target) and `ai_chat()` now
+  returns a `truncated` flag when the ceiling is still hit; `api/chat.php`
+  surfaces it and the Ask tab appends a small "cut short" notice
+  (same treatment as the quote-verification caution) rather than
+  presenting a partial answer as complete.
+
+### Fixed
+
+- Content page: the 1.15.0 fix for the unbounded "Captured" column
+  capped the number of `<br>`-joined summary *entries* to 3, but a
+  single file's summary can itself wrap across several lines in a
+  narrow column — 3 entries could still render as far more than 3
+  visual lines in practice. Switched to real CSS line-clamping
+  (`-webkit-line-clamp`), which bounds actual rendered lines regardless
+  of how much any one entry wraps.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.15.0] — 2026-08-19
 
 ### Added
@@ -727,7 +760,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.15.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.16.0...HEAD
+[1.16.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.16.0
 [1.15.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.15.0
 [1.14.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.14.0
 [1.13.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.13.0

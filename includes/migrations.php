@@ -245,6 +245,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.16.0' => [
+            'description' => 'Raise Ask-tab reply token budget and surface truncated replies; fix Captured column truncation to clamp actual rendered lines, not just entry count',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

@@ -355,8 +355,10 @@
   // unverifiedQuotes (optional): api/chat.php's quote_check_unverified()
   // result — spans the reply presented as direct quotes that couldn't be
   // matched word-for-word against the archive. This is a caution, not an
-  // error: the reply itself is never altered, just annotated.
-  function setAssistantReply(bubble, text, unverifiedQuotes) {
+  // error: the reply itself is never altered, just annotated. truncated
+  // (optional): the provider hit its token ceiling mid-reply — the text
+  // is real (never fabricated) but may end mid-word/mid-sentence.
+  function setAssistantReply(bubble, text, unverifiedQuotes, truncated) {
     const escaped = esc(text);
     bubble.innerHTML = escaped.replace(/\[\[(photo|video):([0-9a-f-]{36})\]\]/g, (match, kind, id) => {
       const url = "/api/file.php?fileId=" + encodeURIComponent(id);
@@ -371,6 +373,12 @@
         + "word-for-word in the archive — check it against the original testimony before relying on it. "
         + 'Quoted text in question: ' + unverifiedQuotes.map(q => `"${q}"`).join(", ");
       bubble.appendChild(caution);
+    }
+    if (truncated) {
+      const notice = document.createElement("div");
+      notice.className = "quote-caution";
+      notice.textContent = "Note: this reply was cut short by a length limit — ask to continue for the rest.";
+      bubble.appendChild(notice);
     }
     chatLog.scrollTop = chatLog.scrollHeight;
   }
@@ -403,7 +411,7 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Request failed");
-      setAssistantReply(pending, data.reply, data.unverifiedQuotes);
+      setAssistantReply(pending, data.reply, data.unverifiedQuotes, data.truncated);
       pending.classList.remove("pending");
       history.push({ role: "assistant", content: data.reply });
     } catch (err) {

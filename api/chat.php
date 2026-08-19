@@ -40,7 +40,7 @@ try {
     json_response(['error' => 'The knowledge base could not be loaded on the server.'], 500);
 }
 
-$result = ai_chat([$charter, $context], $history, 1200);
+$result = ai_chat([$charter, $context], $history, 4096);
 if ($result === null) {
     json_response(['error' => 'The AI backend failed to respond. Please try again.'], 502);
 }
@@ -70,9 +70,17 @@ if ($unverifiedQuotes) {
     );
 }
 
+// The provider hit the max_tokens ceiling mid-generation — the reply is
+// real (never fabricated) but cut off, possibly mid-word/mid-sentence.
+// Surfaced to the client rather than silently shown as if complete.
+if (!empty($result['truncated'])) {
+    error_log('chat.php: reply truncated at max_tokens');
+}
+
 json_response([
     'reply' => $text,
     'usage' => $result['usage'],
+    'truncated' => !empty($result['truncated']),
     'unverifiedQuotes' => array_map(
         static fn (string $q): string => mb_substr($q, 0, 120, 'UTF-8'),
         array_slice($unverifiedQuotes, 0, 3)

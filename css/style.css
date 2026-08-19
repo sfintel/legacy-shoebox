@@ -157,6 +157,10 @@ input[type=search]{min-width:180px;}
 .admin-table{width:100%; border-collapse:collapse; font-size:.88rem;}
 .admin-table th, .admin-table td{padding:9px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:middle;}
 .admin-table th{color:var(--muted); font-weight:600; font-size:.78rem; text-transform:uppercase; letter-spacing:.03em;}
+.captured-cell{
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+  overflow:hidden; max-width:220px;
+}
 .status-badge{display:inline-block; padding:2px 9px; border-radius:99px; font-size:.72rem; font-weight:600;}
 .status-pending{background:#3a2f1c; color:#e0b060;}
 .status-approved{background:#1e3a25; color:#7ed093;}

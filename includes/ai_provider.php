@@ -74,9 +74,13 @@ function ai_image_block(string $mediaType, string $base64Data): array
 // blocks]. $temperature: null means "use ai_temperature()"; every call
 // site in this app wants the same low, recall-and-cite value, so this
 // only exists for a future caller that needs to override it. Returns
-// ['text' => string, 'usage' => array|null], or null on any failure
-// (missing key, network error, timeout, non-2xx, unparsable response) —
-// callers never throw.
+// ['text' => string, 'usage' => array|null, 'truncated' => bool] —
+// 'truncated' is true when the reply was cut off by hitting $maxTokens
+// rather than the model finishing on its own; callers that show text
+// directly to a reader (api/chat.php) should surface that rather than
+// let a cut-off-mid-word reply pass as complete. Returns null on any
+// failure (missing key, network error, timeout, non-2xx, unparsable
+// response) — callers never throw.
 function ai_chat(array $systemParts, array $messages, int $maxTokens, ?float $temperature = null): ?array
 {
     $apiKey = ai_api_key();
@@ -126,7 +130,11 @@ function ai_chat_anthropic(string $apiKey, array $systemParts, array $messages, 
             $text .= ($text === '' ? '' : "\n") . $block['text'];
         }
     }
-    return $text !== '' ? ['text' => trim($text), 'usage' => $response['usage'] ?? null] : null;
+    return $text !== '' ? [
+        'text' => trim($text),
+        'usage' => $response['usage'] ?? null,
+        'truncated' => ($response['stop_reason'] ?? null) === 'max_tokens',
+    ] : null;
 }
 
 function ai_anthropic_content($content): array
@@ -175,7 +183,11 @@ function ai_chat_openai(string $apiKey, array $systemParts, array $messages, int
     }
 
     $text = trim((string) ($response['choices'][0]['message']['content'] ?? ''));
-    return $text !== '' ? ['text' => $text, 'usage' => $response['usage'] ?? null] : null;
+    return $text !== '' ? [
+        'text' => $text,
+        'usage' => $response['usage'] ?? null,
+        'truncated' => ($response['choices'][0]['finish_reason'] ?? null) === 'length',
+    ] : null;
 }
 
 function ai_openai_content($content)

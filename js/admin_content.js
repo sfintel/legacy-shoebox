@@ -172,15 +172,11 @@
         return lines.length ? prefix + lines.join(", ") : null;
       })
       .filter(Boolean);
-    if (!summaries.length) return "—";
-    // Cap at 3 lines — a multi-photo album can have one summary line
-    // per file, otherwise unbounded.
-    if (summaries.length > 3) {
-      const shown = summaries.slice(0, 3);
-      shown[2] += " ...";
-      return shown.join("<br>");
-    }
-    return summaries.join("<br>");
+    // Visual clamping to 3 lines is done in CSS (.captured-cell) since a
+    // single file's summary can itself wrap across several lines in a
+    // narrow column — capping the number of <br>-joined entries isn't
+    // enough (3 entries can still render as far more than 3 lines).
+    return summaries.length ? summaries.join("<br>") : "—";
   }
 
   function renderActions(item) {
@@ -238,7 +234,7 @@
           <td>${titleCell}</td>
           <td>${esc(item.type)}</td>
           <td>${esc(sizeLabel)}</td>
-          <td>${renderCaptured(item)}</td>
+          <td class="captured-cell">${renderCaptured(item)}</td>
           <td>${renderNarrativeNoteCell(item)}</td>
           <td>${esc(fmtDate(item.createdAt))}</td>
           <td>${renderActions(item)}</td>
