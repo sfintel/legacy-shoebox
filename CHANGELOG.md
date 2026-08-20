@@ -14,6 +14,52 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.17.0] — 2026-08-20
+
+### Added
+
+- Photo/Video content can now be added by giving a **URL to download
+  from** instead of picking a local file — the server fetches it
+  directly (`content_download_media_from_url()`), which sidesteps
+  browser upload size/timeout limits entirely, since an outgoing fetch
+  isn't subject to `post_max_size`/`upload_max_filesize` the way an
+  incoming upload is. Streams straight to disk rather than buffering in
+  PHP memory (a video can be hundreds of MB), validates the downloaded
+  content is actually a photo/video the same way an upload is validated
+  (real MIME sniffing, never the URL's claimed extension), and is capped
+  at 1.5GB to stop a misconfigured/malicious URL from filling the disk.
+  Give exactly one of a file or a URL; a URL always produces a single
+  file (no multi-photo album from a URL).
+- Redirects are now walked manually with the SSRF host-safety check
+  (`content_is_safe_host()`) re-validated on *every* hop, for both the
+  new media downloader and the existing URL-content-type text fetch
+  (`content_fetch_url()`, previously used `CURLOPT_FOLLOWLOCATION`,
+  which follows a redirect without ever re-checking the new host — an
+  initially-safe URL could 302 to a private/internal target and the
+  guard would never fire).
+
+### Fixed
+
+- Content page: the 1.16.0 Captured-column fix applied
+  `display:-webkit-box` (required for the 3-line CSS clamp) directly to
+  the `<td>` itself, which overrides its `display:table-cell` and could
+  knock the cell out of the table's normal row layout — reported as the
+  cell's content appearing truncated on its own line, above the rest of
+  the row. The clamp now applies to an inner `<div>` instead, leaving
+  the `<td>`'s own display untouched.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+Not a `.env` change: if a large photo/video upload fails, your host's
+PHP `post_max_size`/`upload_max_filesize` (and possibly PHP-FPM's
+`request_terminate_timeout`) may need raising — see README's "Uploading
+large files". The new "download from URL" option sidesteps this
+entirely, since it isn't subject to either upload limit.
+
 ## [1.16.0] — 2026-08-19
 
 ### Added
@@ -760,7 +806,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.17.0...HEAD
+[1.17.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.17.0
 [1.16.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.16.0
 [1.15.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.15.0
 [1.14.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.14.0

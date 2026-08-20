@@ -265,6 +265,128 @@ function content_store_uploaded_file(string $type, array $file): array
     ];
 }
 
+// Reverse of content_allowed_extensions() — used when a downloaded file
+// has no extension to trust (see content_download_media_from_url()), so
+// the real (sniffed) MIME type picks the extension instead of a URL's
+// claimed one.
+function content_extension_for_mime(string $type, string $mime): ?string
+{
+    $ext = array_search($mime, content_allowed_extensions($type), true);
+    return $ext !== false ? $ext : null;
+}
+
+// Server-side download of a photo/video from a URL — for when a family
+// member has a link (cloud storage, a CDN) rather than a local file.
+// Sidesteps browser upload size/timeout limits entirely, since this is
+// an outgoing fetch, not an incoming POST — post_max_size doesn't apply
+// here. Streams straight to disk (CURLOPT_FILE) rather than buffering in
+// PHP memory, since a video can be hundreds of MB; $maxBytes exists only
+// to stop a malicious/misconfigured URL from filling the disk, enforced
+// mid-transfer via CURLOPT_XFERINFOFUNCTION (abort, not truncate — a
+// truncated video file is useless either way). Returns the same shape as
+// content_store_uploaded_file() so both are interchangeable to callers.
+// Redirects are walked manually with content_is_safe_host() re-checked
+// on every hop — see content_fetch_url_body()'s doc comment for why.
+function content_download_media_from_url(string $type, string $url, int $maxRedirects = 5): array
+{
+    $maxBytes = 1_500_000_000; // 1.5GB
+
+    $tmpPath = tempnam(sys_get_temp_dir(), 'media_dl_');
+    $fh = fopen($tmpPath, 'wb');
+    if ($tmpPath === false || $fh === false) {
+        throw new RuntimeException('Could not create a temporary file for the download.');
+    }
+
+    try {
+        for ($hop = 0; $hop <= $maxRedirects; $hop++) {
+            if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) {
+                throw new RuntimeException('Please enter a valid http(s) URL.');
+            }
+            $host = (string) parse_url($url, PHP_URL_HOST);
+            if ($host === '' || !content_is_safe_host($host)) {
+                throw new RuntimeException("That URL's host can't be reached.");
+            }
+
+            rewind($fh);
+            ftruncate($fh, 0);
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_FILE => $fh,
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_TIMEOUT => 300, // comfortably under FPM's request_terminate_timeout
+                CURLOPT_USERAGENT => 'FamilyArchiveBot/1.0 (+family archive content fetch)',
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_NOPROGRESS => false,
+                CURLOPT_XFERINFOFUNCTION => static function ($res, $dlSize, $downloaded) use ($maxBytes): int {
+                    return $downloaded > $maxBytes ? 1 : 0; // non-zero aborts the transfer
+                },
+            ]);
+            $ok = curl_exec($ch);
+            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+
+            if (in_array($httpCode, [301, 302, 303, 307, 308], true)) {
+                $location = (string) curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+                if ($location === '') {
+                    throw new RuntimeException('The server redirected without a destination.');
+                }
+                $url = $location;
+                continue;
+            }
+            if ($ok === false || $httpCode >= 400) {
+                $reason = $curlError ?: "HTTP $httpCode";
+                throw new RuntimeException("Couldn't download that URL ($reason).");
+            }
+
+            fclose($fh);
+            $size = filesize($tmpPath);
+            if ($size === false || $size === 0) {
+                throw new RuntimeException('The download completed but the file is empty.');
+            }
+
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $realMime = (string) $finfo->file($tmpPath);
+            $expectedPrefix = $type === 'photo' ? 'image/' : 'video/';
+            if (!str_starts_with($realMime, $expectedPrefix)) {
+                throw new RuntimeException("That URL doesn't look like a valid $type.");
+            }
+            $ext = content_extension_for_mime($type, $realMime);
+            if ($ext === null) {
+                throw new RuntimeException("Unsupported $type format ($realMime).");
+            }
+
+            $fileId = make_uuid();
+            $fileName = "$fileId.$ext";
+            $destPath = content_upload_dir($type) . "/$fileName";
+            if (!rename($tmpPath, $destPath)) {
+                throw new RuntimeException('Failed to save the downloaded file.');
+            }
+
+            $urlPath = (string) parse_url($url, PHP_URL_PATH);
+            $originalName = $urlPath !== '' && $urlPath !== '/' ? basename($urlPath) : "downloaded.$ext";
+
+            return [
+                'fileId' => $fileId,
+                'fileName' => $fileName,
+                'destPath' => $destPath,
+                'originalName' => $originalName,
+                'mimeType' => $realMime,
+                'size' => (int) $size,
+                'metadata' => content_extract_metadata($destPath),
+            ];
+        }
+        throw new RuntimeException('Too many redirects.');
+    } finally {
+        if (is_resource($fh)) {
+            fclose($fh);
+        }
+        if (is_file($tmpPath)) {
+            @unlink($tmpPath); // no-op once renamed into place; cleans up on any thrown error
+        }
+    }
+}
+
 function content_insert_file(PDO $pdo, string $itemId, array $stored, int $sortOrder): void
 {
     $pdo->prepare(
@@ -276,12 +398,15 @@ function content_insert_file(PDO $pdo, string $itemId, array $stored, int $sortO
     ]);
 }
 
-// Basic SSRF guard for content_fetch_url() below — the URL comes from an
-// authenticated, content-permitted family member, not the public, but the
-// fetch itself is server-initiated, so a compromised/malicious account
-// shouldn't be able to use it to probe the host's own network. Resolves
-// the hostname and rejects anything that lands in a private/loopback/
-// link-local range.
+// Basic SSRF guard shared by every server-initiated fetch in this file
+// (content_fetch_url_body(), content_download_media_from_url()) — the
+// URL comes from an authenticated, content-permitted family member, not
+// the public, but the fetch itself is server-initiated, so a
+// compromised/malicious account shouldn't be able to use it to probe
+// the host's own network. Resolves the hostname and rejects anything
+// that lands in a private/loopback/link-local range. Callers must
+// re-check this on every redirect hop, not just the original URL — see
+// content_fetch_url_body()'s doc comment.
 function content_is_safe_host(string $host): bool
 {
     $ip = filter_var($host, FILTER_VALIDATE_IP) ? $host : gethostbyname($host);
@@ -291,38 +416,61 @@ function content_is_safe_host(string $host): bool
     return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
 }
 
+// Walks up to $maxRedirects redirect hops for a GET request, buffered in
+// memory (fine here — capped at ~5MB via CURLOPT_RANGE, a well-behaved
+// server honoring it). CURLOPT_FOLLOWLOCATION is deliberately NOT used:
+// it would follow a redirect without content_is_safe_host() ever seeing
+// the new host, so an initially-safe URL could 302 to a private/internal
+// target and this SSRF guard would never fire. Each hop is validated
+// exactly like the first one instead.
+function content_fetch_url_body(string $url, int $maxRedirects = 5): string
+{
+    for ($hop = 0; $hop <= $maxRedirects; $hop++) {
+        if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) {
+            throw new RuntimeException('Please enter a valid http(s) URL.');
+        }
+        $host = (string) parse_url($url, PHP_URL_HOST);
+        if ($host === '' || !content_is_safe_host($host)) {
+            throw new RuntimeException("That URL's host can't be reached.");
+        }
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_USERAGENT => 'FamilyArchiveBot/1.0 (+family archive content fetch)',
+            CURLOPT_RANGE => '0-5000000', // cap response size a well-behaved server honors
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+        $body = curl_exec($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        // No curl_close() — a no-op since PHP 8.0, deprecated as of PHP 8.5.
+
+        if (in_array($httpCode, [301, 302, 303, 307, 308], true)) {
+            $location = (string) curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+            if ($location === '') {
+                throw new RuntimeException('The server redirected without a destination.');
+            }
+            $url = $location;
+            continue;
+        }
+        if ($body === false || $httpCode >= 400) {
+            throw new RuntimeException("Couldn't fetch that URL (HTTP $httpCode)." . ($curlError ? " $curlError" : ''));
+        }
+        return $body;
+    }
+    throw new RuntimeException('Too many redirects.');
+}
+
 // Fetches a URL and extracts plain readable text for AI analysis — used
 // by content_create_url() below. Unlike content_extract_metadata()'s
 // exiftool call, a failed fetch is a real error here (there's nothing
 // useful to store without it), so this throws rather than degrading.
 function content_fetch_url(string $url): array
 {
-    if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) {
-        throw new RuntimeException('Please enter a valid http(s) URL.');
-    }
-    $host = (string) parse_url($url, PHP_URL_HOST);
-    if ($host === '' || !content_is_safe_host($host)) {
-        throw new RuntimeException("That URL's host can't be reached.");
-    }
-
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS => 5,
-        CURLOPT_TIMEOUT => 20,
-        CURLOPT_USERAGENT => 'FamilyArchiveBot/1.0 (+family archive content fetch)',
-        CURLOPT_RANGE => '0-5000000', // cap response size a well-behaved server honors
-        CURLOPT_SSL_VERIFYPEER => true,
-    ]);
-    $body = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    // No curl_close() — a no-op since PHP 8.0, deprecated as of PHP 8.5.
-
-    if ($body === false || $httpCode >= 400) {
-        throw new RuntimeException("Couldn't fetch that URL (HTTP $httpCode)." . ($curlError ? " $curlError" : ''));
-    }
+    $body = content_fetch_url_body($url);
     if (strlen($body) > 5_000_000) {
         $body = substr($body, 0, 5_000_000);
     }
@@ -623,14 +771,24 @@ function content_suggestion_set_status(string $id, string $status, string $decid
     $stmt->execute([$status, $deciderId, $id]);
 }
 
-function content_create_video(string $title, ?string $description, array $file, string $userId, array $tags = []): array
+// Exactly one of $file (a normalized upload array) or $sourceUrl must be
+// given — $sourceUrl routes through content_download_media_from_url()
+// instead of content_store_uploaded_file(), for a video too large or
+// slow to upload through the browser (post_max_size/timeouts).
+function content_create_video(string $title, ?string $description, ?array $file, string $userId, array $tags = [], ?string $sourceUrl = null): array
 {
     $title = trim($title);
     if ($title === '') {
         throw new RuntimeException('Title is required.');
     }
+    $sourceUrl = $sourceUrl !== null ? trim($sourceUrl) : null;
+    $hasFile = $file !== null;
+    $hasUrl = $sourceUrl !== null && $sourceUrl !== '';
+    if ($hasFile === $hasUrl) {
+        throw new RuntimeException('Provide exactly one: a video file or a URL to download from.');
+    }
 
-    $stored = content_store_uploaded_file('video', $file);
+    $stored = $hasUrl ? content_download_media_from_url('video', $sourceUrl) : content_store_uploaded_file('video', $file);
     $description = $description !== null ? trim($description) : '';
     $analysis = narrative_analyze(
         narrative_prompt_for_media($title, $description !== '' ? $description : null, $stored['metadata'])
@@ -651,23 +809,36 @@ function content_create_video(string $title, ?string $description, array $file, 
 // $files is a list of normalized upload arrays (content_normalize_multi_files()),
 // one per selected photo. All photos share one title/caption and get a
 // single combined narrative analysis considering them together, rather
-// than N independent ones.
-function content_create_photo_album(string $title, ?string $description, array $files, string $userId, array $tags = []): array
+// than N independent ones. $sourceUrl is an alternative to $files — a
+// single photo downloaded server-side instead of picked locally (see
+// content_download_media_from_url()); the two are mutually exclusive,
+// and $sourceUrl only ever produces a one-photo "album".
+function content_create_photo_album(string $title, ?string $description, array $files, string $userId, array $tags = [], ?string $sourceUrl = null): array
 {
     $title = trim($title);
     if ($title === '') {
         throw new RuntimeException('Title is required.');
     }
-    if (!$files) {
+    $sourceUrl = $sourceUrl !== null ? trim($sourceUrl) : null;
+    $hasFiles = (bool) $files;
+    $hasUrl = $sourceUrl !== null && $sourceUrl !== '';
+    if (!$hasFiles && !$hasUrl) {
         throw new RuntimeException('At least one photo is required.');
+    }
+    if ($hasFiles && $hasUrl) {
+        throw new RuntimeException('Provide either photo file(s) or a URL to download from, not both.');
     }
     if (count($files) > 10) {
         throw new RuntimeException('Please add at most 10 photos at a time.');
     }
 
     $stored = [];
-    foreach ($files as $file) {
-        $stored[] = content_store_uploaded_file('photo', $file);
+    if ($hasUrl) {
+        $stored[] = content_download_media_from_url('photo', $sourceUrl);
+    } else {
+        foreach ($files as $file) {
+            $stored[] = content_store_uploaded_file('photo', $file);
+        }
     }
     $description = $description !== null ? trim($description) : '';
 

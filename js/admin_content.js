@@ -172,11 +172,16 @@
         return lines.length ? prefix + lines.join(", ") : null;
       })
       .filter(Boolean);
+    if (!summaries.length) return "—";
     // Visual clamping to 3 lines is done in CSS (.captured-cell) since a
     // single file's summary can itself wrap across several lines in a
     // narrow column — capping the number of <br>-joined entries isn't
-    // enough (3 entries can still render as far more than 3 lines).
-    return summaries.length ? summaries.join("<br>") : "—";
+    // enough (3 entries can still render as far more than 3 lines). The
+    // clamp needs display:-webkit-box, which must NOT land directly on
+    // the <td> — that overrides its display:table-cell and can knock
+    // the cell out of the row's normal layout. Wrapped in an inner div
+    // instead, so the <td> itself is untouched.
+    return `<div class="captured-cell">${summaries.join("<br>")}</div>`;
   }
 
   function renderActions(item) {
@@ -234,7 +239,7 @@
           <td>${titleCell}</td>
           <td>${esc(item.type)}</td>
           <td>${esc(sizeLabel)}</td>
-          <td class="captured-cell">${renderCaptured(item)}</td>
+          <td>${renderCaptured(item)}</td>
           <td>${renderNarrativeNoteCell(item)}</td>
           <td>${esc(fmtDate(item.createdAt))}</td>
           <td>${renderActions(item)}</td>
@@ -496,6 +501,7 @@
   const textRow = document.getElementById("textRow");
   const fileRow = document.getElementById("fileRow");
   const urlRow = document.getElementById("urlRow");
+  const mediaUrlRow = document.getElementById("mediaUrlRow");
   const descRow = document.getElementById("descRow");
   const form = document.getElementById("contentForm");
   const submitBtn = document.getElementById("submitBtn");
@@ -507,20 +513,26 @@
     const isUrl = typeSelect.value === "url";
     const isStory = typeSelect.value === "story";
     const hasText = isTranscript || isStory;
+    const isMedia = !hasText && !isUrl; // photo or video
     textRow.style.display = hasText ? "" : "none";
-    fileRow.style.display = !hasText && !isUrl ? "" : "none";
+    fileRow.style.display = isMedia ? "" : "none";
+    mediaUrlRow.style.display = isMedia ? "" : "none";
     urlRow.style.display = isUrl ? "" : "none";
-    descRow.style.display = !hasText && !isUrl ? "" : "none";
+    descRow.style.display = isMedia ? "" : "none";
     document.getElementById("textLabel").textContent = isStory ? "Story" : "Transcript text";
     document.getElementById("textInput").placeholder = isStory
       ? "What's the story? Write it as you'd tell it…"
       : "Paste the transcript text here…";
     document.getElementById("storyHint").style.display = isStory ? "" : "none";
     document.getElementById("textInput").required = hasText;
-    document.getElementById("fileInput").required = !hasText && !isUrl;
+    // Neither fileInput nor mediaUrlInput is marked required here — for
+    // media types exactly one of them is required, which plain HTML
+    // can't express; the submit handler below validates that instead.
+    document.getElementById("fileInput").required = false;
     document.getElementById("fileInput").multiple = isPhoto;
     document.getElementById("fileLabel").textContent = isPhoto ? "Photo(s)" : "File";
     document.getElementById("fileHint").style.display = isPhoto ? "" : "none";
+    document.getElementById("mediaUrlInput").required = false;
     document.getElementById("urlInput").required = isUrl;
     document.getElementById("titleInput").required = !isUrl;
   }
@@ -530,7 +542,24 @@
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     formError.style.display = "none";
+
+    const type = typeSelect.value;
+    const isMedia = type === "photo" || type === "video";
+    const hasFile = document.getElementById("fileInput").files.length > 0;
+    const mediaUrl = document.getElementById("mediaUrlInput").value.trim();
+    if (isMedia && hasFile === (mediaUrl !== "")) {
+      formError.textContent = "Provide exactly one: a file, or a URL to download from.";
+      formError.style.display = "";
+      return;
+    }
+
+    const originalBtnText = submitBtn.textContent;
     submitBtn.disabled = true;
+    if (isMedia && mediaUrl !== "") {
+      // A server-side download can take a while for a large file — say
+      // so, rather than leaving the button just looking stuck.
+      submitBtn.textContent = "Downloading…";
+    }
     try {
       const formData = new FormData(form);
       addTagPickerState.tags.forEach((t) => formData.append("tags[]", t));
@@ -549,6 +578,7 @@
       formError.style.display = "";
     } finally {
       submitBtn.disabled = false;
+      submitBtn.textContent = originalBtnText;
     }
   });
 

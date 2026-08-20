@@ -250,6 +250,13 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.17.0' => [
+            'description' => 'Add "download from URL" option for Photo/Video content, alongside the existing browser upload; fix a table-layout bug in the 1.16.0 Captured-column clamp',
+            'db' => null,
+            'env' => [
+                'Not a .env change: if a large photo/video upload fails, your host\'s PHP post_max_size/upload_max_filesize (and possibly PHP-FPM\'s request_terminate_timeout) may need raising — see README\'s "Uploading large files". The new "download from URL" option sidesteps this entirely since it is not subject to either upload limit.',
+            ],
+        ],
     ];
 }
 

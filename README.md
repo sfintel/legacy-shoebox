@@ -268,7 +268,22 @@ pending Story, see below.
   auto-extracted (date taken, camera, GPS, dimensions/duration) via
   `exiftool`, editable afterward if the host doesn't have `exiftool` or
   the auto-read value is wrong. A photo "album" (up to 10 files sharing
-  one title/caption) is analyzed together as a set.
+  one title/caption) is analyzed together as a set. Instead of a local
+  file, you can give a **URL to download from** — the server fetches it
+  directly, which sidesteps browser upload size/timeout limits for a
+  large video (see "Uploading large files" below). Give exactly one of
+  a file or a URL, not both; a URL always produces a single file (no
+  multi-photo album from a URL).
+- **Uploading large files**: PHP's own `post_max_size` and
+  `upload_max_filesize` limits (commonly a shared host's small default,
+  e.g. 20M) apply to a browser upload through the file picker — a large
+  video may need these raised in your host's PHP settings before a
+  direct upload works. The "download from URL" option above isn't
+  subject to either limit at all (it's an outgoing fetch from the
+  server, not an incoming upload), so it's the simplest way around a
+  host that won't raise them. Either way, a large transfer can also hit
+  PHP-FPM's `request_terminate_timeout` if it takes longer than that to
+  complete — raise it alongside the size limits if your host exposes it.
 - **Transcripts, URLs, and Stories** all run two AI passes: a short
   narrative-connection note (same as photos/videos get) and a separate
   structured pass that proposes new timeline/people/places/quotes
