@@ -28,8 +28,4 @@ if (!is_file($path)) {
     json_response(['error' => 'File missing on disk.'], 404);
 }
 
-$safeName = str_replace(['"', "\r", "\n"], '', $file['original_name']);
-header('Content-Type: ' . $file['mime_type']);
-header('Content-Length: ' . (string) filesize($path));
-header('Content-Disposition: inline; filename="' . $safeName . '"');
-readfile($path);
+content_stream_file($path, $file['mime_type'], $file['original_name']);

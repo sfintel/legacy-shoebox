@@ -14,6 +14,35 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.18.3] — 2026-08-20
+
+### Fixed
+
+- Video seeking always landed at 0:00, for real this time — the root
+  cause was one level below 1.18.1/1.18.2's quote-matching fixes.
+  `api/file.php` and `api/admin/content_file.php` (every photo/video the
+  app serves, including the Ask tab's `<video>` embeds) streamed the
+  whole file with a plain `readfile()` and no HTTP Range support at all.
+  A browser can only seek within a `<video>` — via a `#t=N` media
+  fragment (1.18.0's Ask-tab seek feature) *or* via normal manual
+  scrubbing — if the server supports partial `206` byte-range responses;
+  without `Accept-Ranges`, every seek attempt is silently ignored and
+  playback always starts over from 0:00, no matter what the URL says.
+  This affected every video in the app, not just Ask-tab citations. New
+  shared `content_stream_file()` helper (`includes/content.php`) adds
+  proper Range-request handling (`206`, `Content-Range`,
+  `Accept-Ranges: bytes`, and `416` for an out-of-bounds range),
+  verified against real HTTP responses (not just in isolation) before
+  shipping.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.18.2] — 2026-08-20
 
 ### Fixed
@@ -933,7 +962,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.2...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.3...HEAD
+[1.18.3]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.3
 [1.18.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.2
 [1.18.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.1
 [1.18.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.0

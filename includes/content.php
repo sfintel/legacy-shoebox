@@ -38,6 +38,71 @@ function content_upload_dir(string $type): string
     return $dir;
 }
 
+// Streams a file to the browser with HTTP Range support (api/file.php
+// and api/admin/content_file.php both call this for every photo/video
+// they serve). Without it, a <video> element cannot seek at all — not
+// via user scrubbing, and not via a #t=N media-fragment URL (see
+// includes/video_seek.php) — because seeking a served video requires the
+// server to support partial (206) byte-range responses; a browser that
+// gets a plain 200 with no Accept-Ranges header always starts playback
+// at 0:00 and can't jump anywhere else, regardless of what the URL asks
+// for. Ends the request itself (same convention as json_response()).
+function content_stream_file(string $path, string $mimeType, string $originalName): void
+{
+    $safeName = str_replace(['"', "\r", "\n"], '', $originalName);
+    $size = filesize($path);
+
+    header('Content-Type: ' . $mimeType);
+    header('Content-Disposition: inline; filename="' . $safeName . '"');
+    header('Accept-Ranges: bytes');
+
+    $start = 0;
+    $end = $size - 1;
+    $rangeHeader = $_SERVER['HTTP_RANGE'] ?? null;
+
+    if ($rangeHeader !== null && preg_match('/bytes=(\d*)-(\d*)/', $rangeHeader, $m)) {
+        $reqStart = $m[1] === '' ? null : (int) $m[1];
+        $reqEnd = $m[2] === '' ? null : (int) $m[2];
+
+        if ($reqStart === null && $reqEnd !== null) {
+            // Suffix range ("last N bytes") — rare in practice for video
+            // scrubbing, but part of the spec.
+            $start = max(0, $size - $reqEnd);
+        } else {
+            $start = $reqStart ?? 0;
+            $end = $reqEnd !== null ? min($reqEnd, $size - 1) : $end;
+        }
+
+        if ($start > $end || $start >= $size) {
+            header('Content-Range: bytes */' . $size);
+            http_response_code(416);
+            exit;
+        }
+
+        http_response_code(206);
+        header('Content-Range: bytes ' . $start . '-' . $end . '/' . $size);
+    }
+
+    $length = $end - $start + 1;
+    header('Content-Length: ' . (string) $length);
+
+    $handle = fopen($path, 'rb');
+    if ($handle === false) {
+        http_response_code(500);
+        exit;
+    }
+    fseek($handle, $start);
+    $remaining = $length;
+    while ($remaining > 0 && !feof($handle)) {
+        $chunk = (int) min(8192, $remaining);
+        echo fread($handle, $chunk);
+        $remaining -= $chunk;
+        flush();
+    }
+    fclose($handle);
+    exit;
+}
+
 // $ownerId scopes the list to items a specific user created — used for
 // non-admin contributors, who can only see their own items (admins call
 // this with no argument to see everything).

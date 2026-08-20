@@ -262,6 +262,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.18.3' => [
+            'description' => 'Fix video seeking (both Ask-tab #t=N and normal user scrubbing) always landing at 0:00: api/file.php and api/admin/content_file.php streamed every photo/video with readfile() and no HTTP Range support, so a browser could never seek within a served video at all, regardless of what a #t=N URL fragment asked for — new shared content_stream_file() helper (includes/content.php) adds proper 206 Partial Content / Accept-Ranges support',
+            'db' => null,
+            'env' => [],
+        ],
         '1.18.2' => [
             'description' => 'Fix Ask-tab video seek still landing at 0:00 in a second case: the "nearest quote to the [[video:ID]] token" search was picking up the source-citation string (e.g. ("Some Title")) instead of the real testimony quote, since the citation is itself quoted and often sits textually closer to the token — now excludes any quote span structurally wrapped in parentheses',
             'db' => null,
