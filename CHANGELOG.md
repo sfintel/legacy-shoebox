@@ -14,6 +14,31 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.18.1] — 2026-08-20
+
+### Fixed
+
+- Ask-tab video seeking (1.18.0) always landed at 0:00 in real use.
+  `video_seek_match_segment()` required the entire quoted passage to be
+  one exact substring of the linked transcript, but a quote the model
+  assembles from spoken testimony often stitches together a few
+  non-contiguous words — skipping filler, cross-talk, or a brief
+  interjection from the other speaker — using `"..."`, sometimes spanning
+  two speakers' turns. That's normal for interrupted interview dialogue,
+  not a fabrication, so requiring the whole thing verbatim was too
+  strict. Now splits the quote on its own `"..."` markers and matches on
+  the most distinctive fragment (longest first) instead — the seek time
+  still always traces back to a real, verbatim substring of the actual
+  transcript, never a guess.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.18.0] — 2026-08-20
 
 ### Added
@@ -883,7 +908,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.1...HEAD
+[1.18.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.1
 [1.18.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.0
 [1.17.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.17.1
 [1.17.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.17.0

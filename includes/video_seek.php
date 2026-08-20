@@ -22,6 +22,11 @@ declare(strict_types=1);
 
 const VIDEO_SEEK_MAX_QUOTE_DISTANCE = 600; // bytes; tune from real replies
 const VIDEO_SEEK_BACKOFF_SECONDS = 5;
+// Below this many characters (after normalization), a "..."-delimited
+// fragment of a quote is too short to reliably anchor a seek time —
+// shorter than quote_check.php's QUOTE_CHECK_MIN_LENGTH (25) since a
+// fragment is naturally shorter than the full quote it came from.
+const VIDEO_SEEK_MIN_FRAGMENT_LENGTH = 8;
 
 // Returns ['<content_files.id>' => <int seekSeconds>, ...] — additive,
 // never mutates $reply.
@@ -108,25 +113,45 @@ function video_seek_nearest_quote(array $quotes, int $tokenOffset): ?array
     return $best;
 }
 
-// Same normalize+edge-punctuation-trim+contains check as
-// quote_check_unverified(), but against transcript segment text, and
-// returning a seek time on match instead of pass/fail. Tries a single
-// segment, then a sliding 2- and 3-segment window (a quote that spans a
-// segment boundary), each anchored at that window's earliest start.
+// Same normalize+edge-punctuation-trim approach as
+// quote_check_unverified(), but tolerant of "..." elisions — a quote the
+// model assembles from spoken testimony often stitches together a few
+// non-contiguous words (skipping filler, cross-talk, or a brief
+// interjection from the other speaker) using "...", sometimes spanning
+// two speakers' turns. Requiring the WHOLE quote to be one exact
+// substring is too strict for real interrupted dialogue like this, so
+// this splits the quote on its own "..." markers and tries each
+// resulting fragment (longest first, since the model tends to keep the
+// most distinctive wording verbatim and paraphrase the connective
+// tissue) — the first fragment that's an exact substring of some window
+// of segments anchors the seek time. Still fully deterministic: the seek
+// time always traces back to a real, verbatim substring of the actual
+// transcript, never a guess or something the model stated itself.
 function video_seek_match_segment(array $segments, array $quote): ?int
 {
     $trimmed = trim($quote['text'], ".,;:!?\u{2014}\u{2013}- \t\n\r");
-    $normalizedSpan = quote_check_normalize($trimmed);
-    if ($normalizedSpan === '' || mb_strlen($normalizedSpan, 'UTF-8') < QUOTE_CHECK_MIN_LENGTH) {
+    $normalized = quote_check_normalize($trimmed);
+    if ($normalized === '') {
         return null;
     }
 
-    for ($windowSize = 1; $windowSize <= 3; $windowSize++) {
-        for ($i = 0; $i + $windowSize <= count($segments); $i++) {
-            $window = array_slice($segments, $i, $windowSize);
-            $haystack = quote_check_normalize(implode(' ', array_column($window, 'text')));
-            if (str_contains($haystack, $normalizedSpan)) {
-                return max(0, $window[0]['start'] - VIDEO_SEEK_BACKOFF_SECONDS);
+    $fragments = array_values(array_filter(
+        array_map('trim', explode('...', $normalized)),
+        static fn (string $f): bool => mb_strlen($f, 'UTF-8') >= VIDEO_SEEK_MIN_FRAGMENT_LENGTH
+    ));
+    if (!$fragments) {
+        return null;
+    }
+    usort($fragments, static fn (string $a, string $b): int => mb_strlen($b, 'UTF-8') <=> mb_strlen($a, 'UTF-8'));
+
+    foreach ($fragments as $fragment) {
+        for ($windowSize = 1; $windowSize <= 3; $windowSize++) {
+            for ($i = 0; $i + $windowSize <= count($segments); $i++) {
+                $window = array_slice($segments, $i, $windowSize);
+                $haystack = quote_check_normalize(implode(' ', array_column($window, 'text')));
+                if (str_contains($haystack, $fragment)) {
+                    return max(0, $window[0]['start'] - VIDEO_SEEK_BACKOFF_SECONDS);
+                }
             }
         }
     }

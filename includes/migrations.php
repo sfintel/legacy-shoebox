@@ -262,6 +262,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.18.1' => [
+            'description' => 'Fix Ask-tab video seek always landing at 0:00: video_seek_match_segment() required the entire quoted passage to be one exact substring of the transcript, but the model often assembles a quote from spoken testimony using "..." to skip filler/cross-talk, sometimes spanning two speakers\' turns — now matches on the quote\'s most distinctive "..."-delimited fragment instead',
+            'db' => null,
+            'env' => [],
+        ],
         '1.18.0' => [
             'description' => 'Link a video content item to its companion transcript so quoted Ask-tab passages can seek the video to ~5s before that moment; new per-segment-timecode transcript format; manual link/relink control on the Content page',
             'db' => static function (PDO $pdo): void {
