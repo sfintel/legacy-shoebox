@@ -14,6 +14,32 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.19.1] — 2026-08-20
+
+### Fixed
+
+- Ask-tab video seek regressed to 0:00 for a video that had previously
+  worked, on a citation phrasing variant `video_seek_is_citation_span()`
+  still missed after 1.18.2 and 1.18.6 — its third distinct miss. Found
+  via a real production reply: `(Family-contributed transcript, "Slava
+  and Celia Interview," Oct. 7 1991)` puts plain text between the `(`
+  and the opening quote mark, unlike the phrasings the two earlier fixes
+  were built against — so the "immediately preceded by `(`" check missed
+  it, and the citation's title (textually closer to the `[[video:ID]]`
+  token than the real testimony quote) won the nearest-quote search,
+  which never appears in the transcript and always fails to match.
+  Replaced the check with a bounded backward scan for the nearest
+  unclosed `(` before the quote, which catches both this phrasing and
+  the two earlier ones in a single, more general rule.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.19.0] — 2026-08-20
 
 ### Changed
@@ -1142,6 +1168,7 @@ None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
 [Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.8...HEAD
+[1.19.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.19.1
 [1.19.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.19.0
 [1.18.9]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.9
 [1.18.8]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.8

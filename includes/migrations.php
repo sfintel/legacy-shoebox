@@ -267,6 +267,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.19.1' => [
+            'description' => 'Fix Ask-tab video seek regressing to 0:00 on a citation phrasing variant video_seek_is_citation_span() still missed after 1.18.2 and 1.18.6: (Family-contributed transcript, "Title," date) puts text between the ( and the quote, so the citation title won the nearest-quote search over the real testimony quote and never matched the transcript — replaced the check with a bounded backward scan for the nearest unclosed ( before the quote, covering this and the earlier phrasings in one rule',
+            'db' => null,
+            'env' => [],
+        ],
         '1.18.9' => [
             'description' => 'Fix Ask-tab video seek missing short-but-genuine spoken quotes: quote_check_extract_spans_with_offsets() hardcoded the 25-character unverified-quote-caution threshold, so quotes like "eating us alive" (16 chars) were discarded before video_seek.php\'s own fragment-matching logic ever saw them — the function now takes an optional $minLength, and video_seek.php passes its own shorter VIDEO_SEEK_MIN_FRAGMENT_LENGTH (8) since an exact-substring match against the real transcript makes even short quotes a safe seek anchor; the unverified-quote caution itself is unaffected and still uses the 25-char default',
             'db' => null,

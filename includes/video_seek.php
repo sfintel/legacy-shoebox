@@ -114,20 +114,26 @@ function video_seek_transcript_segments_for_file(string $fileId): ?array
 // citation's title instead of the actual words, which never appears in
 // the transcript and always fails to match (silently falling back to
 // 0:00). Detected structurally, not by content: a citation span is one
-// that starts immediately after an opening parenthesis. Deliberately
-// checks ONLY that (not also "immediately followed by a closing
-// parenthesis") — the model's exact citation phrasing varies (sometimes
-// the whole citation is one quoted string like `("Title (part 1)")`,
-// sometimes the quote covers only part of it, e.g.
-// `("Title," recorded October 7, 1991)`, with plain text between the
-// closing quote mark and the ")" — but a testimony quote is never
-// introduced immediately after an open paren in this app's prompt
-// conventions, so the single "starts right after (" signal alone is
-// both necessary and sufficient, and is robust to that phrasing drift.
+// that sits inside an OPEN, not-yet-closed parenthetical — found by
+// scanning backward (bounded, so an unrelated "(" much earlier in the
+// reply can't false-match) for the nearest "(" and checking no ")" comes
+// between it and the quote. A real testimony quote is never introduced
+// inside an open paren in this app's prompt conventions, so this is both
+// necessary and sufficient — and unlike an "immediately preceded by ("
+// check, it also catches phrasing like `(Family-contributed transcript,
+// "Title," date)`, where there's plain text between the "(" and the
+// quote itself (found in a real production reply — 1.18.2 and 1.18.6
+// each fixed a different citation-phrasing variant this same check
+// missed; this is the third).
 function video_seek_is_citation_span(string $reply, array $quote): bool
 {
-    $before = rtrim(substr($reply, 0, $quote['fullStart']));
-    return $before !== '' && $before[-1] === '(';
+    $searchStart = max(0, $quote['fullStart'] - 100);
+    $before = substr($reply, $searchStart, $quote['fullStart'] - $searchStart);
+    $openParen = strrpos($before, '(');
+    if ($openParen === false) {
+        return false;
+    }
+    return strpos($before, ')', $openParen) === false;
 }
 
 function video_seek_nearest_quote(array $quotes, int $tokenOffset): ?array
