@@ -14,6 +14,29 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.19.0] — 2026-08-20
+
+### Changed
+
+- Raised the Ask tab's reply length ceiling from 4096 to 8192 tokens, to
+  substantially reduce how often a reply hits the "Note: this reply was
+  cut short by a length limit — ask to continue for the rest" notice —
+  most noticeable on broad, multi-incident questions ("tell me about all
+  the times..."). Raised the AI provider HTTP timeout from 60s to 120s
+  to match: without that, a genuinely long reply generating past 60s
+  would have hard-failed with "The AI backend failed to respond" instead
+  of just taking longer to arrive. This doesn't remove the length limit
+  or the "cut short" notice entirely — a reply can still hit 8192 tokens
+  — just moves the ceiling much higher.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.18.9] — 2026-08-20
 
 ### Fixed
@@ -1119,6 +1142,7 @@ None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
 [Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.8...HEAD
+[1.19.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.19.0
 [1.18.9]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.9
 [1.18.8]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.8
 [1.18.7]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.7

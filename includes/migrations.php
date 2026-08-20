@@ -262,6 +262,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.19.0' => [
+            'description' => 'Raise Ask-tab reply length ceiling from 4096 to 8192 tokens to reduce how often replies get cut short and need "ask to continue"; raise the AI provider HTTP timeout from 60s to 120s to match, so a genuinely long reply has time to finish generating instead of hard-failing',
+            'db' => null,
+            'env' => [],
+        ],
         '1.18.9' => [
             'description' => 'Fix Ask-tab video seek missing short-but-genuine spoken quotes: quote_check_extract_spans_with_offsets() hardcoded the 25-character unverified-quote-caution threshold, so quotes like "eating us alive" (16 chars) were discarded before video_seek.php\'s own fragment-matching logic ever saw them — the function now takes an optional $minLength, and video_seek.php passes its own shorter VIDEO_SEEK_MIN_FRAGMENT_LENGTH (8) since an exact-substring match against the real transcript makes even short quotes a safe seek anchor; the unverified-quote caution itself is unaffected and still uses the 25-char default',
             'db' => null,

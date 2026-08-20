@@ -228,7 +228,11 @@ function ai_http_post(string $url, array $headers, array $payload): ?array
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => json_encode($payload),
         CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_TIMEOUT => 60,
+        // 120s, not 60s: chat.php's max_tokens is high enough (8192) that
+        // a genuinely long reply can take longer than 60s to generate —
+        // this needs enough room for that or a long-but-legitimate reply
+        // hard-fails instead of just taking a while.
+        CURLOPT_TIMEOUT => 120,
     ]);
     $body = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);

@@ -40,7 +40,7 @@ try {
     json_response(['error' => 'The knowledge base could not be loaded on the server.'], 500);
 }
 
-$result = ai_chat([$charter, $context], $history, 4096);
+$result = ai_chat([$charter, $context], $history, 8192);
 if ($result === null) {
     json_response(['error' => 'The AI backend failed to respond. Please try again.'], 502);
 }
