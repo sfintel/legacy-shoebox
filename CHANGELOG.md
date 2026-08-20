@@ -14,6 +14,32 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.18.6] — 2026-08-20
+
+### Fixed
+
+- Ask-tab video seek still occasionally picked the source citation
+  instead of the real testimony quote, in a citation phrasing variant
+  the 1.18.2 fix missed. Found via a real production reply:
+  `("Slava and Celia Interview," recorded October 7, 1991)` puts plain
+  text between the closing quote mark and the `)`, unlike the fully
+  quote-wrapped citations 1.18.2 was built against — so
+  `video_seek_is_citation_span()`'s "must be immediately followed by
+  `)`" check missed it, and the citation (textually closer to the
+  `[[video:ID]]` token) won the nearest-quote search over the real
+  quote, which never appears in the transcript. Simplified the check to
+  just "starts immediately after an opening parenthesis" — that signal
+  alone is reliable regardless of how the rest of the citation is
+  phrased, since this app never introduces a testimony quote that way.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.18.5] — 2026-08-20
 
 ### Fixed
@@ -1018,7 +1044,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.5...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.6...HEAD
+[1.18.6]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.6
 [1.18.5]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.5
 [1.18.4]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.4
 [1.18.3]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.3

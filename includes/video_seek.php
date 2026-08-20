@@ -114,12 +114,20 @@ function video_seek_transcript_segments_for_file(string $fileId): ?array
 // citation's title instead of the actual words, which never appears in
 // the transcript and always fails to match (silently falling back to
 // 0:00). Detected structurally, not by content: a citation span is one
-// immediately wrapped in parentheses in the reply text itself.
+// that starts immediately after an opening parenthesis. Deliberately
+// checks ONLY that (not also "immediately followed by a closing
+// parenthesis") — the model's exact citation phrasing varies (sometimes
+// the whole citation is one quoted string like `("Title (part 1)")`,
+// sometimes the quote covers only part of it, e.g.
+// `("Title," recorded October 7, 1991)`, with plain text between the
+// closing quote mark and the ")" — but a testimony quote is never
+// introduced immediately after an open paren in this app's prompt
+// conventions, so the single "starts right after (" signal alone is
+// both necessary and sufficient, and is robust to that phrasing drift.
 function video_seek_is_citation_span(string $reply, array $quote): bool
 {
     $before = rtrim(substr($reply, 0, $quote['fullStart']));
-    $after = ltrim(substr($reply, $quote['fullEnd']));
-    return $before !== '' && $before[-1] === '(' && $after !== '' && $after[0] === ')';
+    return $before !== '' && $before[-1] === '(';
 }
 
 function video_seek_nearest_quote(array $quotes, int $tokenOffset): ?array

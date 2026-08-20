@@ -262,6 +262,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.18.6' => [
+            'description' => 'Fix Ask-tab video seek still picking a citation instead of the real quote in a phrasing variant 1.18.2 missed: video_seek_is_citation_span() required the citation quote to be immediately followed by ")", but the model sometimes puts plain text between the closing quote and the ")" — now detected by "immediately preceded by (" alone, which is reliable regardless of how the rest of the citation is phrased',
+            'db' => null,
+            'env' => [],
+        ],
         '1.18.5' => [
             'description' => 'Fix Ask-tab video seek collapsing all occurrences of a repeated [[video:ID]] token to one shared time: video_seek_resolve_for_reply() was keyed by file id, so citing the same video twice at two different moments applied whichever one matched first to BOTH — now returns one seek result per token occurrence, in order, and js/app.js consumes it the same way',
             'db' => null,
