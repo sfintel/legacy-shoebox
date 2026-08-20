@@ -130,6 +130,16 @@ function ai_chat_anthropic(string $apiKey, array $systemParts, array $messages, 
             $text .= ($text === '' ? '' : "\n") . $block['text'];
         }
     }
+    // A successful HTTP call with no extractable text block (e.g. a
+    // content-refusal stop_reason, or a response made only of block
+    // types this loop doesn't handle) used to fall through to `null`
+    // completely silently, contradicting this function's own contract
+    // above ("always error_log()'d"). Log enough to diagnose why without
+    // dumping the full response (which can carry real archive/testimony
+    // text via echoed input).
+    if ($text === '') {
+        error_log('ai_chat_anthropic: response had no text content, stop_reason=' . json_encode($response['stop_reason'] ?? null));
+    }
     return $text !== '' ? [
         'text' => trim($text),
         'usage' => $response['usage'] ?? null,
@@ -231,5 +241,10 @@ function ai_http_post(string $url, array $headers, array $payload): ?array
         return null;
     }
     $data = json_decode((string) $body, true);
+    // A 2xx response that isn't valid JSON also used to fall through
+    // silently — same "always error_log()'d" gap as above.
+    if (!is_array($data)) {
+        error_log("ai_http_post: HTTP $httpCode response body isn't valid JSON for $url: " . substr((string) $body, 0, 300));
+    }
     return is_array($data) ? $data : null;
 }

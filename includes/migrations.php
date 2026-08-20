@@ -262,6 +262,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.18.8' => [
+            'description' => 'Fix two silent-failure gaps in ai_provider.php found while diagnosing a one-off "AI backend failed to respond" report: ai_chat_anthropic() with no extractable text block, and ai_http_post() with a 2xx response that is not valid JSON, both used to return null with nothing logged, contradicting ai_http_post()\'s own "always error_log()\'d" contract — now both log a short diagnosable line',
+            'db' => null,
+            'env' => [],
+        ],
         '1.18.7' => [
             'description' => 'Further strengthen the Ask-tab video-citation prompt rule: when narrating several distinct incidents from the same transcript (e.g. "tell me about all the times..."), ask for a short direct quote for EACH incident, not just the first/most vivid one, so more incidents get a correctly-seeking video link — a probabilistic prompt improvement, not a guarantee, like 1.18.4',
             'db' => null,

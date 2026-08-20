@@ -14,6 +14,30 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.18.8] — 2026-08-20
+
+### Fixed
+
+- Two silent-failure gaps in `includes/ai_provider.php`, found while
+  diagnosing a one-off "AI backend failed to respond" report that didn't
+  recur on retry (most likely a transient network issue, not a code
+  bug — but the investigation surfaced a real logging gap worth fixing
+  regardless): `ai_chat_anthropic()` returning `null` for a successful
+  HTTP response with no extractable text block (e.g. a content-refusal
+  `stop_reason`), and `ai_http_post()` returning `null` for a 2xx
+  response whose body isn't valid JSON, both logged nothing at all —
+  contradicting `ai_http_post()`'s own docblock, which already promised
+  every failure is "always `error_log()`'d". Both paths now log a short,
+  diagnosable line.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.18.7] — 2026-08-20
 
 ### Changed
@@ -1068,7 +1092,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.7...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.8...HEAD
+[1.18.8]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.8
 [1.18.7]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.7
 [1.18.6]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.6
 [1.18.5]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.5
