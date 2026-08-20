@@ -14,6 +14,31 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.18.2] — 2026-08-20
+
+### Fixed
+
+- Ask-tab video seeking still landed at 0:00 in a second, distinct case
+  even after 1.18.1: `knowledge_system_role()`'s own citation convention
+  quotes the source title right next to the passage it's citing (e.g.
+  `— "actual words" ("Source Title") [[video:ID]]`), so the citation is
+  itself picked up as a "quoted span" by the same extraction the video
+  seek's quote-matching uses — and since the app places `[[video:ID]]`
+  right after the citation, the citation is often textually *closer* to
+  the token than the real testimony quote it's citing. The nearest-quote
+  search was picking the citation's title, which obviously never appears
+  in the transcript, so matching always failed. Now excludes any quoted
+  span structurally wrapped in parentheses in the reply before searching
+  for the nearest one to a video token.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.18.1] — 2026-08-20
 
 ### Fixed
@@ -908,7 +933,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.1...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.2...HEAD
+[1.18.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.2
 [1.18.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.1
 [1.18.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.0
 [1.17.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.17.1

@@ -45,8 +45,14 @@ function quote_check_extract_spans(string $reply): array
 }
 
 // Same span extraction as above, but also returns each span's byte
-// offset in $reply — used by includes/video_seek.php to find the quote
-// nearest a given [[video:ID]] token.
+// offset in $reply, plus the byte range of the FULL match including its
+// surrounding quote characters (fullStart/fullEnd) — used by
+// includes/video_seek.php both to find the quote nearest a given
+// [[video:ID]] token, and (via fullStart/fullEnd) to tell a real
+// testimony quote apart from a source-citation string that's also
+// wrapped in quote marks (see knowledge_system_role()'s citation
+// convention) by checking what character immediately surrounds it in
+// the reply.
 function quote_check_extract_spans_with_offsets(string $reply): array
 {
     $pattern = '/["\x{201C}]([^"\x{201C}\x{201D}]+)["\x{201D}]/u';
@@ -55,9 +61,15 @@ function quote_check_extract_spans_with_offsets(string $reply): array
     }
 
     $spans = [];
-    foreach ($matches[1] as [$span, $offset]) {
+    foreach ($matches[0] as $i => [$fullMatch, $fullOffset]) {
+        $span = $matches[1][$i][0];
         if (mb_strlen(quote_check_normalize($span), 'UTF-8') >= QUOTE_CHECK_MIN_LENGTH) {
-            $spans[] = ['text' => $span, 'offset' => (int) $offset];
+            $spans[] = [
+                'text' => $span,
+                'offset' => (int) $matches[1][$i][1],
+                'fullStart' => (int) $fullOffset,
+                'fullEnd' => (int) $fullOffset + strlen($fullMatch),
+            ];
         }
     }
     return $spans;

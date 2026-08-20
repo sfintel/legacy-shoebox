@@ -35,7 +35,10 @@ function video_seek_resolve_for_reply(string $reply): array
     if (!preg_match_all('/\[\[video:([0-9a-f-]{36})\]\]/', $reply, $tokenMatches, PREG_OFFSET_CAPTURE)) {
         return [];
     }
-    $quotes = quote_check_extract_spans_with_offsets($reply);
+    $quotes = array_values(array_filter(
+        quote_check_extract_spans_with_offsets($reply),
+        static fn (array $q): bool => !video_seek_is_citation_span($reply, $q)
+    ));
     if (!$quotes) {
         return [];
     }
@@ -94,6 +97,25 @@ function video_seek_transcript_segments_for_file(string $fileId): ?array
     }
     $text = redact_text($text, redacted_names());
     return transcript_parse_timecoded($text);
+}
+
+// knowledge_system_role() instructs the model to cite its source in
+// quotes right next to the material it's citing, e.g.
+// `— "actual spoken words" ("Source Title") [[video:ID]]`. That source
+// title is itself inside quote marks, so quote_check_extract_spans_with_
+// offsets() picks it up as a second "quote" — and because the app places
+// the [[video:ID]] token right after the citation, the citation is often
+// textually CLOSER to the token than the real testimony quote it's
+// citing. Left unfiltered, video_seek_nearest_quote() would pick the
+// citation's title instead of the actual words, which never appears in
+// the transcript and always fails to match (silently falling back to
+// 0:00). Detected structurally, not by content: a citation span is one
+// immediately wrapped in parentheses in the reply text itself.
+function video_seek_is_citation_span(string $reply, array $quote): bool
+{
+    $before = rtrim(substr($reply, 0, $quote['fullStart']));
+    $after = ltrim(substr($reply, $quote['fullEnd']));
+    return $before !== '' && $before[-1] === '(' && $after !== '' && $after[0] === ')';
 }
 
 function video_seek_nearest_quote(array $quotes, int $tokenOffset): ?array

@@ -262,6 +262,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.18.2' => [
+            'description' => 'Fix Ask-tab video seek still landing at 0:00 in a second case: the "nearest quote to the [[video:ID]] token" search was picking up the source-citation string (e.g. ("Some Title")) instead of the real testimony quote, since the citation is itself quoted and often sits textually closer to the token — now excludes any quote span structurally wrapped in parentheses',
+            'db' => null,
+            'env' => [],
+        ],
         '1.18.1' => [
             'description' => 'Fix Ask-tab video seek always landing at 0:00: video_seek_match_segment() required the entire quoted passage to be one exact substring of the transcript, but the model often assembles a quote from spoken testimony using "..." to skip filler/cross-talk, sometimes spanning two speakers\' turns — now matches on the quote\'s most distinctive "..."-delimited fragment instead',
             'db' => null,
