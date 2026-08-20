@@ -262,6 +262,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.18.5' => [
+            'description' => 'Fix Ask-tab video seek collapsing all occurrences of a repeated [[video:ID]] token to one shared time: video_seek_resolve_for_reply() was keyed by file id, so citing the same video twice at two different moments applied whichever one matched first to BOTH — now returns one seek result per token occurrence, in order, and js/app.js consumes it the same way',
+            'db' => null,
+            'env' => [],
+        ],
         '1.18.4' => [
             'description' => 'Strengthen the Ask-tab prompt rule for video citations: require a verbatim quote (not a paraphrase) next to a [[video:ID]] token, since the video seek can only anchor to a real quoted passage — a probabilistic prompt improvement, not a deterministic guarantee, unlike the 1.18.1-1.18.3 fixes',
             'db' => null,

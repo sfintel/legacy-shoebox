@@ -14,6 +14,32 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.18.5] — 2026-08-20
+
+### Fixed
+
+- Ask-tab video seek collapsed every occurrence of a repeated
+  `[[video:ID]]` token down to one shared time. Found via a real
+  production reproduction: a reply citing the same video twice — once
+  for "hidden under a cow" and again, much later, for "the blockade
+  finally ended" — computed the correct seek time for the second
+  citation, but because `video_seek_resolve_for_reply()`'s result was
+  keyed by file id (not by which occurrence it was), that one time got
+  applied to *both* embeds, including the one next to the wrong quote.
+  Now returns one seek result per token occurrence, in the order they
+  appear in the reply, and `js/app.js` consumes it the same way (a
+  running index over video-token matches) instead of an id lookup.
+  Verified against a real multi-occurrence citation with a functional
+  DB-backed test before shipping.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.18.4] — 2026-08-20
 
 ### Changed
@@ -992,7 +1018,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.4...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.5...HEAD
+[1.18.5]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.5
 [1.18.4]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.4
 [1.18.3]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.3
 [1.18.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.2

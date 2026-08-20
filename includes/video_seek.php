@@ -28,8 +28,16 @@ const VIDEO_SEEK_BACKOFF_SECONDS = 5;
 // fragment is naturally shorter than the full quote it came from.
 const VIDEO_SEEK_MIN_FRAGMENT_LENGTH = 8;
 
-// Returns ['<content_files.id>' => <int seekSeconds>, ...] — additive,
-// never mutates $reply.
+// Returns a list of one entry per [[video:ID]] occurrence in $reply, IN
+// ORDER — e.g. [3086, null, 4758] for three video tokens where the 2nd
+// had no matchable quote nearby. Deliberately keyed by occurrence
+// position, not by file id: the SAME video is sometimes cited more than
+// once in one reply, each time illustrating a different moment (e.g.
+// "hidden under a cow" earlier, "the blockade finally ended" later) — an
+// id-keyed map would collapse every repeat of that id down to whichever
+// ONE occurrence happened to match first, silently applying that same
+// (wrong, for every other occurrence) seek time to all of them. Additive
+// only, never mutates $reply.
 function video_seek_resolve_for_reply(string $reply): array
 {
     if (!preg_match_all('/\[\[video:([0-9a-f-]{36})\]\]/', $reply, $tokenMatches, PREG_OFFSET_CAPTURE)) {
@@ -39,29 +47,25 @@ function video_seek_resolve_for_reply(string $reply): array
         quote_check_extract_spans_with_offsets($reply),
         static fn (array $q): bool => !video_seek_is_citation_span($reply, $q)
     ));
-    if (!$quotes) {
-        return [];
-    }
 
-    $result = [];
+    $segmentsByFileId = [];
+    $results = [];
     foreach ($tokenMatches[1] as [$fileId, $tokenOffset]) {
-        if (isset($result[$fileId])) {
-            continue;
+        if (!array_key_exists($fileId, $segmentsByFileId)) {
+            $segmentsByFileId[$fileId] = video_seek_transcript_segments_for_file($fileId);
         }
-        $segments = video_seek_transcript_segments_for_file($fileId);
-        if (!$segments) {
-            continue;
+        $segments = $segmentsByFileId[$fileId];
+
+        $seconds = null;
+        if ($segments && $quotes) {
+            $quote = video_seek_nearest_quote($quotes, (int) $tokenOffset);
+            if ($quote !== null) {
+                $seconds = video_seek_match_segment($segments, $quote);
+            }
         }
-        $quote = video_seek_nearest_quote($quotes, (int) $tokenOffset);
-        if ($quote === null) {
-            continue;
-        }
-        $seconds = video_seek_match_segment($segments, $quote);
-        if ($seconds !== null) {
-            $result[$fileId] = $seconds;
-        }
+        $results[] = $seconds;
     }
-    return $result;
+    return $results;
 }
 
 // Segments for the transcript linked to the video that owns $fileId, or

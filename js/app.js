@@ -359,18 +359,22 @@
   // (optional): the provider hit its token ceiling mid-reply — the text
   // is real (never fabricated) but may end mid-word/mid-sentence.
   // videoSeeks (optional): api/chat.php's video_seek_resolve_for_reply()
-  // result, a {fileId: seekSeconds} map — when a [[video:ID]] token's id
-  // has an entry, the rendered <video>'s src gets a #t= fragment so
-  // playback starts ~5s before the quoted passage instead of at 0:00.
+  // result, a list of one entry per [[video:ID]] OCCURRENCE in the reply,
+  // in order (not keyed by file id) — the same video can be cited more
+  // than once, each time illustrating a different moment, so each
+  // occurrence gets its own independently-computed seek time (or null).
+  // Consumed here by a running index over video-token matches only.
   function setAssistantReply(bubble, text, unverifiedQuotes, truncated, videoSeeks) {
     const escaped = esc(text);
+    let videoIndex = 0;
     bubble.innerHTML = escaped.replace(/\[\[(photo|video):([0-9a-f-]{36})\]\]/g, (match, kind, id) => {
       const url = "/api/file.php?fileId=" + encodeURIComponent(id);
       if (kind === "photo") {
         return `<img src="${url}" alt="Referenced photo" loading="lazy">`;
       }
-      const seek = videoSeeks && videoSeeks[id];
-      const src = seek ? `${url}#t=${encodeURIComponent(seek)}` : url;
+      const seek = videoSeeks && videoSeeks[videoIndex] != null ? videoSeeks[videoIndex] : null;
+      videoIndex++;
+      const src = seek != null ? `${url}#t=${encodeURIComponent(seek)}` : url;
       return `<video controls src="${src}"></video>`;
     });
     if (unverifiedQuotes && unverifiedQuotes.length) {
