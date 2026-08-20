@@ -267,6 +267,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.19.2' => [
+            'description' => 'Ask tab: Enter in the question box now sends the question instead of inserting a newline; Shift+Enter still inserts a newline',
+            'db' => null,
+            'env' => [],
+        ],
         '1.19.1' => [
             'description' => 'Fix Ask-tab video seek regressing to 0:00 on a citation phrasing variant video_seek_is_citation_span() still missed after 1.18.2 and 1.18.6: (Family-contributed transcript, "Title," date) puts text between the ( and the quote, so the citation title won the nearest-quote search over the real testimony quote and never matched the transcript — replaced the check with a bounded backward scan for the nearest unclosed ( before the quote, covering this and the earlier phrasings in one rule',
             'db' => null,

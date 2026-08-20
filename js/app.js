@@ -399,6 +399,14 @@
     chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + "px";
   });
 
+  // Enter sends the question; Shift+Enter still inserts a newline.
+  chatInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      chatForm.requestSubmit();
+    }
+  });
+
   chatForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const message = chatInput.value.trim();
