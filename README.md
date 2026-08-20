@@ -320,7 +320,35 @@ pending Story, see below.
   before this feature existed, added before suggestion-extraction
   covered their type, or where the original AI call failed. Safe to run
   repeatedly: it only ever fills in what's missing, never re-runs
-  analysis on an item that already has it.
+  analysis on an item that already has it. It also links any unlinked
+  video/transcript pair whose titles match exactly (see below).
+- **Linking a video to its transcript**: a video item can be paired with
+  the transcript of that same interview, so an Ask-tab reply that quotes
+  the transcript can offer to jump the video to that moment (see below).
+  Pairing happens automatically when a video and a transcript share the
+  exact same title (case-insensitive) and neither is already linked — no
+  AI involved, just an exact match. Edit either item's row and use the
+  "Linked transcript"/"Linked video" dropdown to link, relink, or unlink
+  them by hand when titles don't match or the automatic pairing missed
+  it. A transcript can additionally use a per-segment-timecode format
+  instead of the `## Tape N` convention above — one block per speaker
+  turn, a `HH:MM:SS:FF - HH:MM:SS:FF` timecode line, then the speaker's
+  name, then their spoken text:
+  ```
+  00:00:53:21 - 00:01:09:15
+  Jane Doe
+  The spoken text for this segment goes here...
+
+  00:01:09:16 - 00:01:24:02
+  Interviewer
+  And the next turn's text...
+  ```
+  Both transcript formats are auto-detected and supported side by side.
+  When an Ask-tab reply directly quotes a passage from a timecoded
+  transcript linked to a video, the `[[video:ID]]` reference it shows
+  opens seeked to ~5 seconds before that passage instead of at 0:00 —
+  the app never trusts the model to state or compute the timecode itself,
+  it's always resolved server-side from the transcript's own parsed data.
 - Every "Narrative connection" note is unattended AI output with no
   approval gate — it starts feeding the Ask tab's knowledge base the
   moment it's written. An `unreviewed` badge (list and edit views) marks

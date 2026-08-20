@@ -358,13 +358,20 @@
   // error: the reply itself is never altered, just annotated. truncated
   // (optional): the provider hit its token ceiling mid-reply — the text
   // is real (never fabricated) but may end mid-word/mid-sentence.
-  function setAssistantReply(bubble, text, unverifiedQuotes, truncated) {
+  // videoSeeks (optional): api/chat.php's video_seek_resolve_for_reply()
+  // result, a {fileId: seekSeconds} map — when a [[video:ID]] token's id
+  // has an entry, the rendered <video>'s src gets a #t= fragment so
+  // playback starts ~5s before the quoted passage instead of at 0:00.
+  function setAssistantReply(bubble, text, unverifiedQuotes, truncated, videoSeeks) {
     const escaped = esc(text);
     bubble.innerHTML = escaped.replace(/\[\[(photo|video):([0-9a-f-]{36})\]\]/g, (match, kind, id) => {
       const url = "/api/file.php?fileId=" + encodeURIComponent(id);
-      return kind === "photo"
-        ? `<img src="${url}" alt="Referenced photo" loading="lazy">`
-        : `<video controls src="${url}"></video>`;
+      if (kind === "photo") {
+        return `<img src="${url}" alt="Referenced photo" loading="lazy">`;
+      }
+      const seek = videoSeeks && videoSeeks[id];
+      const src = seek ? `${url}#t=${encodeURIComponent(seek)}` : url;
+      return `<video controls src="${src}"></video>`;
     });
     if (unverifiedQuotes && unverifiedQuotes.length) {
       const caution = document.createElement("div");
@@ -411,7 +418,7 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Request failed");
-      setAssistantReply(pending, data.reply, data.unverifiedQuotes, data.truncated);
+      setAssistantReply(pending, data.reply, data.unverifiedQuotes, data.truncated, data.videoSeeks);
       pending.classList.remove("pending");
       history.push({ role: "assistant", content: data.reply });
     } catch (err) {

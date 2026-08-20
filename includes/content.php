@@ -94,6 +94,8 @@ function content_public(array $item): array
         'files' => array_map('content_file_public', content_files_for_item($item['id'])),
         'suggestions' => in_array($item['type'], ['url', 'transcript', 'story'], true) ? content_suggestions_for_item($item['id']) : [],
         'storyApprovedAt' => $item['type'] === 'story' ? $item['story_approved_at'] : null,
+        // `?? null`: same deploy-before-upgrade window as narrativeNoteReviewedAt above.
+        'linkedItemId' => $item['linked_item_id'] ?? null,
     ];
 }
 
@@ -528,6 +530,7 @@ function content_create_transcript(string $title, string $text, string $userId, 
         'mimeType' => 'text/markdown', 'size' => strlen($text), 'metadata' => null,
     ], 0);
     archive_content_links_apply($itemId, $analysis['links']);
+    content_auto_link_attempt($itemId);
 
     $suggestions = narrative_suggest_additions(
         narrative_prompt_for_transcript_suggestions($title, $text),
@@ -802,6 +805,7 @@ function content_create_video(string $title, ?string $description, ?array $file,
     )->execute([$itemId, $title, $description !== '' ? $description : null, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
     content_insert_file($pdo, $itemId, $stored, 0);
     archive_content_links_apply($itemId, $analysis['links']);
+    content_auto_link_attempt($itemId);
 
     return content_find($itemId);
 }
@@ -940,8 +944,10 @@ function content_merge_metadata_update(?array $current, array $incoming): ?array
 // admin confirming a note as-is, via a "Mark reviewed" control) — an
 // unrelated save of the same unmodified text does NOT set it, since
 // that would turn "unknown" into a false "checked".
-function content_update_item(string $id, ?string $ownerId, ?string $narrativeNote, array $fileUpdates, ?array $tags = null, bool $isAdmin = false, bool $markReviewed = false): array
-{
+function content_update_item(
+    string $id, ?string $ownerId, ?string $narrativeNote, array $fileUpdates, ?array $tags = null,
+    bool $isAdmin = false, bool $markReviewed = false, bool $linkedItemIdProvided = false, ?string $linkedItemId = null
+): array {
     $item = content_find($id);
     if (!$item || ($ownerId !== null && $item['created_by'] !== $ownerId)) {
         throw new RuntimeException('Content item not found.');
@@ -986,7 +992,141 @@ function content_update_item(string $id, ?string $ownerId, ?string $narrativeNot
         }
     }
 
+    if ($linkedItemIdProvided) {
+        if ($linkedItemId === null || $linkedItemId === '') {
+            content_unlink_item($id);
+        } else {
+            content_link_items($id, $linkedItemId, $ownerId);
+        }
+    }
+
     return content_find($id);
+}
+
+// Links two content items symmetrically — a video<->transcript companion
+// pairing (see includes/video_seek.php) that Ask-tab video citations use
+// to resolve a seek time. Always deterministic/PHP-decided, never
+// model-decided. Both directions are written so "what's this item's
+// companion" is a single content_find() away from either side. $ownerId,
+// when given (a non-admin editor), requires BOTH items to be owned by
+// that user — a contributor can't link their own item to someone else's
+// without permission, mirroring content_update_item()'s own ownership
+// gate above.
+function content_link_items(string $idA, string $idB, ?string $ownerId = null): array
+{
+    if ($idA === $idB) {
+        throw new RuntimeException('An item cannot be linked to itself.');
+    }
+    $a = content_find($idA);
+    $b = content_find($idB);
+    if (!$a || !$b) {
+        throw new RuntimeException('Content item not found.');
+    }
+    if ($ownerId !== null && ($a['created_by'] !== $ownerId || $b['created_by'] !== $ownerId)) {
+        throw new RuntimeException('Content item not found.');
+    }
+    $types = [$a['type'], $b['type']];
+    sort($types);
+    if ($types !== ['transcript', 'video']) {
+        throw new RuntimeException('Only a video and a transcript can be linked to each other.');
+    }
+
+    // Clear any existing reciprocal link on either side first, so neither
+    // item is ever left pointing at a partner that doesn't point back.
+    content_unlink_item($idA);
+    content_unlink_item($idB);
+    $pdo = db();
+    $pdo->prepare('UPDATE content_items SET linked_item_id = ? WHERE id = ?')->execute([$idB, $idA]);
+    $pdo->prepare('UPDATE content_items SET linked_item_id = ? WHERE id = ?')->execute([$idA, $idB]);
+
+    return content_find($idA);
+}
+
+// Clears $id's link and, symmetrically, whatever it was linked to's link
+// back — so unlinking never leaves a dangling one-directional pointer.
+function content_unlink_item(string $id): void
+{
+    $item = content_find($id);
+    if (!$item || $item['linked_item_id'] === null) {
+        return;
+    }
+    $pdo = db();
+    $pdo->prepare('UPDATE content_items SET linked_item_id = NULL WHERE id = ?')->execute([$item['linked_item_id']]);
+    $pdo->prepare('UPDATE content_items SET linked_item_id = NULL WHERE id = ?')->execute([$id]);
+}
+
+// Deterministic (non-AI, no model call) exact-title auto-match: an
+// unlinked video/transcript's companion is the oldest unlinked item of
+// the complementary type whose title matches exactly, case-insensitively
+// and trimmed. Presented to users as automatic matching, not "AI" — this
+// never calls narrative_analyze() or any model. Ties (multiple same-
+// titled unlinked candidates) resolve to the oldest by created_at,
+// deterministically; the Content page's manual link picker always
+// remains available as an override regardless of what this finds.
+function content_auto_link_match(array $item): ?array
+{
+    $complementaryType = match ($item['type']) {
+        'video' => 'transcript',
+        'transcript' => 'video',
+        default => null,
+    };
+    if ($complementaryType === null || $item['linked_item_id'] !== null) {
+        return null;
+    }
+    $stmt = db()->prepare(
+        'SELECT * FROM content_items
+         WHERE type = ? AND linked_item_id IS NULL AND id != ? AND LOWER(TRIM(title)) = LOWER(TRIM(?))
+         ORDER BY created_at ASC LIMIT 1'
+    );
+    $stmt->execute([$complementaryType, $item['id'], $item['title']]);
+    $match = $stmt->fetch();
+    return $match ?: null;
+}
+
+// Attempts the automatic match above for a freshly-created item and, if
+// found, links it — called from content_create_video()/
+// content_create_transcript() right after insert. Silent no-op if no
+// match is found; the admin's manual override always remains available.
+function content_auto_link_attempt(string $itemId): void
+{
+    $item = content_find($itemId);
+    if (!$item) {
+        return;
+    }
+    $match = content_auto_link_match($item);
+    if ($match) {
+        content_link_items($item['id'], $match['id']);
+    }
+}
+
+// Retroactive sweep for pre-existing unlinked video/transcript pairs
+// (e.g. everything added before this feature shipped) — same matching
+// rule as content_auto_link_attempt(), safe to re-run. Wired into the
+// existing "Backfill AI analysis" button alongside
+// content_backfill_ai_analysis(), even though this part isn't AI —
+// reusing the one button avoids a second one for a related, infrequent
+// admin action.
+function content_backfill_auto_links(): array
+{
+    $unlinked = db()->query(
+        "SELECT * FROM content_items WHERE type IN ('video','transcript') AND linked_item_id IS NULL ORDER BY created_at ASC"
+    )->fetchAll();
+
+    $linked = [];
+    foreach ($unlinked as $item) {
+        // Re-fetch: an earlier iteration in this same sweep may have
+        // already linked this row as someone else's match.
+        $current = content_find($item['id']);
+        if (!$current || $current['linked_item_id'] !== null) {
+            continue;
+        }
+        $match = content_auto_link_match($current);
+        if ($match) {
+            content_link_items($current['id'], $match['id']);
+            $linked[] = ['id' => $current['id'], 'title' => $current['title'], 'linkedTo' => $match['title']];
+        }
+    }
+    return $linked;
 }
 
 // Runs the same narrative_analyze() pass content_create_*() runs on

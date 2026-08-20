@@ -14,6 +14,41 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.18.0] — 2026-08-20
+
+### Added
+
+- A video content item can now be linked to its companion transcript
+  item (the same interview, transcribed) — either automatically at
+  creation time (an exact, case-insensitive title match between an
+  unlinked video and an unlinked transcript, no AI involved) or manually
+  from the Content page's edit row via a new "Linked transcript"/"Linked
+  video" picker, which always stays available as an override for when
+  the automatic match misses a pair. The existing "Backfill AI analysis"
+  button now also sweeps existing unlinked pairs for this same
+  exact-title match and reports how many it linked.
+- New transcript format: a transcript can now use per-segment timecodes
+  (`00:00:53:21 - 00:01:09:15`, followed by a speaker line, then the
+  spoken text) instead of the existing `## Tape N` / `**SUBJECT:**`
+  convention — both formats are supported side by side, auto-detected
+  per transcript.
+- When an Ask-tab reply directly quotes a passage from a timecoded
+  transcript that's linked to a video, the video reference now opens
+  seeked to ~5 seconds before that passage instead of at 0:00 — resolved
+  entirely server-side from the parsed timecode data (never computed or
+  stated by the model itself, consistent with how citations and quotes
+  are already always PHP-verified in this app).
+
+### Database changes
+
+Run `php upgrade.php` (or `upgrade.sh`) after deploying. Adds a nullable
+`content_items.linked_item_id` self-referential column (with an
+`ON DELETE SET NULL` foreign key) — see `sql/schema.sql`.
+
+### Environment changes
+
+None.
+
 ## [1.17.1] — 2026-08-20
 
 ### Added
@@ -848,7 +883,9 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.17.0...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.0...HEAD
+[1.18.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.0
+[1.17.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.17.1
 [1.17.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.17.0
 [1.16.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.16.0
 [1.15.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.15.0

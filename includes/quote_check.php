@@ -41,15 +41,23 @@ function quote_check_normalize(string $s): string
 // the shorter inner match rather than swallowing the whole sentence.
 function quote_check_extract_spans(string $reply): array
 {
+    return array_map(static fn (array $s): string => $s['text'], quote_check_extract_spans_with_offsets($reply));
+}
+
+// Same span extraction as above, but also returns each span's byte
+// offset in $reply — used by includes/video_seek.php to find the quote
+// nearest a given [[video:ID]] token.
+function quote_check_extract_spans_with_offsets(string $reply): array
+{
     $pattern = '/["\x{201C}]([^"\x{201C}\x{201D}]+)["\x{201D}]/u';
-    if (!preg_match_all($pattern, $reply, $matches)) {
+    if (!preg_match_all($pattern, $reply, $matches, PREG_OFFSET_CAPTURE)) {
         return [];
     }
 
     $spans = [];
-    foreach ($matches[1] as $span) {
+    foreach ($matches[1] as [$span, $offset]) {
         if (mb_strlen(quote_check_normalize($span), 'UTF-8') >= QUOTE_CHECK_MIN_LENGTH) {
-            $spans[] = $span;
+            $spans[] = ['text' => $span, 'offset' => (int) $offset];
         }
     }
     return $spans;

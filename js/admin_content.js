@@ -29,10 +29,12 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Backfill failed");
       const results = data.results || [];
+      const links = data.links || [];
       const updated = results.filter((r) => r.updated).length;
       const suggested = results.reduce((sum, r) => sum + (r.suggestionsAdded || 0), 0);
-      alert(results.length
-        ? `Analyzed ${results.length} item(s): added ${updated} narrative note(s), proposed ${suggested} new suggestion(s).`
+      const linkNote = links.length ? `, linked ${links.length} video/transcript pair(s)` : "";
+      alert(results.length || links.length
+        ? `Analyzed ${results.length} item(s): added ${updated} narrative note(s), proposed ${suggested} new suggestion(s)${linkNote}.`
         : "Nothing to backfill — every item already has a narrative note and suggestions (where applicable).");
       load();
     } catch (err) {
@@ -396,6 +398,25 @@
           <input type="checkbox" class="edit-mark-reviewed" style="width:auto;"> Mark reviewed
         </label>`
       : "";
+    // Linking only makes sense once both a video and a transcript exist,
+    // so this control lives here (edit) rather than on the add-content
+    // form. Always shown for these two types, even with zero candidate
+    // options, so the control is discoverable — automatic exact-title
+    // matching (see content_auto_link_match() in includes/content.php)
+    // can miss a pair, and this is the manual override for that.
+    const linkHtml = (item.type === "video" || item.type === "transcript")
+      ? (() => {
+          const complementaryType = item.type === "video" ? "transcript" : "video";
+          const options = currentItems.filter((i) => i.type === complementaryType);
+          return `<div class="form-row">
+            <label>Linked ${complementaryType}</label>
+            <select class="edit-linked-item">
+              <option value="">— none —</option>
+              ${options.map((o) => `<option value="${o.id}" ${o.id === item.linkedItemId ? "selected" : ""}>${esc(o.title)}</option>`).join("")}
+            </select>
+          </div>`;
+        })()
+      : "";
     return `<tr class="edit-row" data-edit-for="${item.id}">
       <td colspan="7">
         <div class="content-form" style="max-width:none;">
@@ -408,6 +429,7 @@
             <label>Keywords</label>
             <div id="tagsPicker-edit-${item.id}"></div>
           </div>
+          ${linkHtml}
           ${filesHtml}
           <div style="display:flex; gap:8px;">
             <button type="button" class="btn-primary save-edit">Save</button>
@@ -460,6 +482,12 @@
     const markReviewedEl = editRow.querySelector(".edit-mark-reviewed");
     const markReviewed = markReviewedEl ? markReviewedEl.checked : false;
 
+    const body = { id: item.id, narrativeNote, files, tags, markReviewed };
+    const linkedSelect = editRow.querySelector(".edit-linked-item");
+    if (linkedSelect) {
+      body.linkedItemId = linkedSelect.value; // "" clears the link
+    }
+
     const errEl = editRow.querySelector(".edit-error");
     errEl.style.display = "none";
     const saveBtn = editRow.querySelector(".save-edit");
@@ -468,7 +496,7 @@
       const res = await fetch("/api/admin/content_update.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: item.id, narrativeNote, files, tags, markReviewed }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Update failed");

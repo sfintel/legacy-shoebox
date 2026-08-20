@@ -262,6 +262,28 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.18.0' => [
+            'description' => 'Link a video content item to its companion transcript so quoted Ask-tab passages can seek the video to ~5s before that moment; new per-segment-timecode transcript format; manual link/relink control on the Content page',
+            'db' => static function (PDO $pdo): void {
+                $hasCol = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'content_items' AND column_name = 'linked_item_id'"
+                )->fetchColumn();
+                if ($hasCol === 0) {
+                    $pdo->exec('ALTER TABLE content_items ADD COLUMN linked_item_id CHAR(36) NULL AFTER story_approved_at');
+                }
+                $hasFk = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.table_constraints
+                     WHERE table_schema = DATABASE() AND table_name = 'content_items'
+                       AND constraint_name = 'fk_content_items_linked'"
+                )->fetchColumn();
+                if ($hasFk === 0) {
+                    $pdo->exec('ALTER TABLE content_items ADD CONSTRAINT fk_content_items_linked
+                        FOREIGN KEY (linked_item_id) REFERENCES content_items(id) ON DELETE SET NULL');
+                }
+            },
+            'env' => [],
+        ],
     ];
 }
 

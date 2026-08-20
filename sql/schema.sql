@@ -105,10 +105,21 @@ CREATE TABLE IF NOT EXISTS content_items (
   -- knowledge base yet. NULL for every other type (always immediately
   -- visible, same as before this column existed).
   story_approved_at DATETIME  NULL,
+  -- Companion video<->transcript pairing (see includes/video_seek.php) —
+  -- only ever set between a video item and a transcript item. Kept
+  -- symmetric (both rows point at each other) entirely by
+  -- content_link_items()/content_unlink_item() in includes/content.php,
+  -- never by SQL alone — a plain FK can only guarantee the pointed-to row
+  -- exists, not that it points back. ON DELETE SET NULL so deleting
+  -- either half of a pair never leaves the other half pointing at a
+  -- missing row.
+  linked_item_id CHAR(36)     NULL,
   created_by    CHAR(36)      NOT NULL,
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_content_items_user FOREIGN KEY (created_by)
-    REFERENCES users(id) ON DELETE CASCADE
+    REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_content_items_linked FOREIGN KEY (linked_item_id)
+    REFERENCES content_items(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- One row per physical file belonging to a content_items row — always

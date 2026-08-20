@@ -86,6 +86,11 @@ function knowledge_system_role(): string
         . "the real id shown next to that file) so the app can display it. Only ever use an id that's "
         . "actually listed there — never invent one. If nothing matching exists, say plainly that you "
         . "don't have that photo/video, exactly like you would for testimony that isn't recorded.";
+    $rules[] = 'When you directly quote a passage from a family-contributed transcript whose block above '
+        . 'notes a companion video (an "id=" shown there), include that video\'s exact [[video:ID]] token '
+        . "right near the quote, using that same id, so the reader can watch that exact moment. Only ever "
+        . "use an id actually shown there — never invent one, and don't add the token unless you're "
+        . 'quoting from that transcript.';
 
     $modeLines = [];
     foreach (archive_audience_modes_rows() as $mode) {
@@ -203,7 +208,15 @@ function content_context(): string
             $file = $files[0] ?? null;
             $path = $file ? content_upload_dir('transcript') . '/' . $file['file_name'] : null;
             $body = $path && is_file($path) ? file_get_contents($path) : '(file missing)';
-            $out .= "\n## Family-contributed transcript: {$item['title']}\n" . $body . $narrative . "\n";
+            $companionNote = '';
+            if (!empty($item['linked_item_id'])) {
+                $video = content_find($item['linked_item_id']);
+                $videoFile = $video ? (content_files_for_item($video['id'])[0] ?? null) : null;
+                if ($video && $videoFile) {
+                    $companionNote = "\nA companion video of this testimony exists: id={$videoFile['id']}.";
+                }
+            }
+            $out .= "\n## Family-contributed transcript: {$item['title']}\n" . $body . $companionNote . $narrative . "\n";
         } elseif ($item['type'] === 'url') {
             $file = $files[0] ?? null;
             $path = $file ? content_upload_dir('url') . '/' . $file['file_name'] : null;

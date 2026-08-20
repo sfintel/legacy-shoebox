@@ -62,6 +62,12 @@ $text = redact_text($result['text'], redacted_names());
 // $text and $context are already redacted, so a quote containing a
 // redacted name matches on both sides instead of always failing.
 $unverifiedQuotes = quote_check_unverified($text, $charter . "\n\n" . $context);
+
+// Deterministic (never model-computed) resolution of any [[video:ID]]
+// tokens in the reply to a "seek 5s before the quoted passage" time —
+// see includes/video_seek.php. Additive only; never alters $text.
+$videoSeeks = video_seek_resolve_for_reply($text);
+
 if ($unverifiedQuotes) {
     // Post-redaction text only, so no redacted name can leak into the log.
     error_log(
@@ -85,4 +91,5 @@ json_response([
         static fn (string $q): string => mb_substr($q, 0, 120, 'UTF-8'),
         array_slice($unverifiedQuotes, 0, 3)
     ),
+    'videoSeeks' => $videoSeeks,
 ]);
