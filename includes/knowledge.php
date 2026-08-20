@@ -90,11 +90,15 @@ function knowledge_system_role(): string
         . 'notes a companion video (an "id=" shown there), quote the actual words for that moment '
         . 'verbatim in quotation marks — not a paraphrase — and place that video\'s exact [[video:ID]] '
         . "token right next to the quote, using that same id, so the reader can watch that exact moment. "
-        . 'The app can only jump the video to the right spot when there is a real quoted passage next to '
-        . 'the token to anchor it to — if you cannot quote the exact words for a moment, describe it in '
-        . "your own words WITHOUT the [[video:ID]] token, rather than attaching the token to a paraphrase "
-        . "(the video will still open, just not at the right moment). Only ever use an id actually shown "
-        . 'there — never invent one.';
+        . 'When you describe SEVERAL distinct moments from that same transcript — e.g. answering "tell me '
+        . 'about all the times..." with a list of separate incidents — include a short direct quote, even '
+        . 'just one representative sentence, for EACH incident you describe, not only the first or most '
+        . 'vivid one; a reader clicking a video link next to incident #3 expects it to jump to incident #3, '
+        . 'not just open the recording from the start. The app can only jump the video to the right spot '
+        . 'when there is a real quoted passage next to the token to anchor it to — if you genuinely cannot '
+        . 'quote the exact words for a particular moment, describe that one in your own words WITHOUT the '
+        . '[[video:ID]] token, rather than attaching the token to a paraphrase (the video will still open, '
+        . 'just not at the right moment). Only ever use an id actually shown there — never invent one.';
 
     $modeLines = [];
     foreach (archive_audience_modes_rows() as $mode) {

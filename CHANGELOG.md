@@ -14,6 +14,30 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.18.7] — 2026-08-20
+
+### Changed
+
+- Further strengthened `knowledge_system_role()`'s video-citation prompt
+  rule. Found via a real production reply to a broad "tell me about all
+  the times Piotr hid Slava" question: the model correctly followed
+  1.18.4's rule (never attach `[[video:ID]]` without a real quote), but
+  for a multi-incident list it tended to quote only the first or most
+  vivid incident and narrate the rest in plain prose — so those other
+  incidents correctly got no video link at all, which is safe but means
+  fewer links than useful. The rule now explicitly asks for a short
+  direct quote for EACH distinct incident described, not only the first.
+  **Still a prompt nudge, not a guarantee** — like 1.18.4, this can't
+  promise every incident in every reply gets a matchable quote.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.18.6] — 2026-08-20
 
 ### Fixed
@@ -1044,7 +1068,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.6...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.7...HEAD
+[1.18.7]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.7
 [1.18.6]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.6
 [1.18.5]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.5
 [1.18.4]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.4

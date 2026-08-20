@@ -262,6 +262,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.18.7' => [
+            'description' => 'Further strengthen the Ask-tab video-citation prompt rule: when narrating several distinct incidents from the same transcript (e.g. "tell me about all the times..."), ask for a short direct quote for EACH incident, not just the first/most vivid one, so more incidents get a correctly-seeking video link — a probabilistic prompt improvement, not a guarantee, like 1.18.4',
+            'db' => null,
+            'env' => [],
+        ],
         '1.18.6' => [
             'description' => 'Fix Ask-tab video seek still picking a citation instead of the real quote in a phrasing variant 1.18.2 missed: video_seek_is_citation_span() required the citation quote to be immediately followed by ")", but the model sometimes puts plain text between the closing quote and the ")" — now detected by "immediately preceded by (" alone, which is reliable regardless of how the rest of the citation is phrased',
             'db' => null,
