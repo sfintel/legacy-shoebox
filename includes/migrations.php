@@ -262,6 +262,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.18.4' => [
+            'description' => 'Strengthen the Ask-tab prompt rule for video citations: require a verbatim quote (not a paraphrase) next to a [[video:ID]] token, since the video seek can only anchor to a real quoted passage — a probabilistic prompt improvement, not a deterministic guarantee, unlike the 1.18.1-1.18.3 fixes',
+            'db' => null,
+            'env' => [],
+        ],
         '1.18.3' => [
             'description' => 'Fix video seeking (both Ask-tab #t=N and normal user scrubbing) always landing at 0:00: api/file.php and api/admin/content_file.php streamed every photo/video with readfile() and no HTTP Range support, so a browser could never seek within a served video at all, regardless of what a #t=N URL fragment asked for — new shared content_stream_file() helper (includes/content.php) adds proper 206 Partial Content / Accept-Ranges support',
             'db' => null,

@@ -86,11 +86,15 @@ function knowledge_system_role(): string
         . "the real id shown next to that file) so the app can display it. Only ever use an id that's "
         . "actually listed there — never invent one. If nothing matching exists, say plainly that you "
         . "don't have that photo/video, exactly like you would for testimony that isn't recorded.";
-    $rules[] = 'When you directly quote a passage from a family-contributed transcript whose block above '
-        . 'notes a companion video (an "id=" shown there), include that video\'s exact [[video:ID]] token '
-        . "right near the quote, using that same id, so the reader can watch that exact moment. Only ever "
-        . "use an id actually shown there — never invent one, and don't add the token unless you're "
-        . 'quoting from that transcript.';
+    $rules[] = 'When you cite a specific moment from a family-contributed transcript whose block above '
+        . 'notes a companion video (an "id=" shown there), quote the actual words for that moment '
+        . 'verbatim in quotation marks — not a paraphrase — and place that video\'s exact [[video:ID]] '
+        . "token right next to the quote, using that same id, so the reader can watch that exact moment. "
+        . 'The app can only jump the video to the right spot when there is a real quoted passage next to '
+        . 'the token to anchor it to — if you cannot quote the exact words for a moment, describe it in '
+        . "your own words WITHOUT the [[video:ID]] token, rather than attaching the token to a paraphrase "
+        . "(the video will still open, just not at the right moment). Only ever use an id actually shown "
+        . 'there — never invent one.';
 
     $modeLines = [];
     foreach (archive_audience_modes_rows() as $mode) {

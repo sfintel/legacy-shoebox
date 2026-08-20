@@ -14,6 +14,36 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.18.4] — 2026-08-20
+
+### Changed
+
+- Strengthened `knowledge_system_role()`'s prompt rule for video
+  citations: the model must now quote the actual words for a moment
+  verbatim (in quotation marks) next to a `[[video:ID]]` token, rather
+  than being allowed to attach the token to a paraphrase. Found via a
+  real production capture: 1.18.1-1.18.3 fixed every deterministic
+  matching/streaming bug, but the video still opened at 0:00 for one
+  specific reply because the model described the moment in its own
+  words with no quote marks at all near the token — with no verbatim
+  passage to anchor to, the app correctly (and safely) declined to guess
+  a timestamp, per its existing "never trust the model with precision"
+  rule.
+  **This is a prompt nudge, not a deterministic fix** — unlike 1.18.1
+  through 1.18.3, it cannot guarantee every future reply includes a
+  matchable quote, since the underlying model's instruction-following
+  isn't 100% reliable. When it doesn't, the video will still embed and
+  play, just starting at 0:00 rather than the cited moment, exactly as
+  it did before this whole feature existed.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.18.3] — 2026-08-20
 
 ### Fixed
@@ -962,7 +992,8 @@ against a fresh database as described in `README.md`.
 None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
-[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.3...HEAD
+[Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.4...HEAD
+[1.18.4]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.4
 [1.18.3]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.3
 [1.18.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.2
 [1.18.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.1
