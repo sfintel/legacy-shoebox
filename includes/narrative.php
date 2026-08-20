@@ -65,6 +65,24 @@ function narrative_parse_analysis(?string $raw): array
     }
     $decoded = json_decode($raw, true);
     if (!is_array($decoded)) {
+        // The prompt says "ONLY a JSON object, no prose" but the model
+        // doesn't always comply — seen in practice prefacing the object
+        // with a sentence or two of prose first. Try to recover the
+        // embedded object before giving up and treating the ENTIRE raw
+        // reply (prose and JSON both) as plain note text, which reads as
+        // garbled duplication once it's the third+ time the same
+        // information appears.
+        $extracted = narrative_extract_json_object($raw);
+        $maybeDecoded = $extracted !== null ? json_decode($extracted, true) : null;
+        // Sanity-check the shape before trusting it — an ordinary prose
+        // note is extremely unlikely to contain a balanced {...} at all,
+        // but if it somehow does, only treat it as the intended object
+        // when it actually looks like one.
+        if (is_array($maybeDecoded) && (isset($maybeDecoded['note']) || isset($maybeDecoded['links']))) {
+            $decoded = $maybeDecoded;
+        }
+    }
+    if (!is_array($decoded)) {
         return ['note' => $raw !== '' ? $raw : null, 'links' => []];
     }
 
@@ -81,6 +99,49 @@ function narrative_parse_analysis(?string $raw): array
         }
     }
     return ['note' => $note, 'links' => $links];
+}
+
+// Finds the first top-level {...} object in $text via brace-depth
+// counting from the first "{" — not just "from the first { to the last
+// }", which would over-match if the note's own prose happens to contain
+// an unrelated brace after the real object. Braces inside quoted string
+// values are correctly ignored (tracks whether we're inside a JSON
+// string, honoring backslash-escapes). Returns null if no balanced
+// object is found.
+function narrative_extract_json_object(string $text): ?string
+{
+    $start = strpos($text, '{');
+    if ($start === false) {
+        return null;
+    }
+    $depth = 0;
+    $inString = false;
+    $escape = false;
+    $len = strlen($text);
+    for ($i = $start; $i < $len; $i++) {
+        $ch = $text[$i];
+        if ($inString) {
+            if ($escape) {
+                $escape = false;
+            } elseif ($ch === '\\') {
+                $escape = true;
+            } elseif ($ch === '"') {
+                $inString = false;
+            }
+            continue;
+        }
+        if ($ch === '"') {
+            $inString = true;
+        } elseif ($ch === '{') {
+            $depth++;
+        } elseif ($ch === '}') {
+            $depth--;
+            if ($depth === 0) {
+                return substr($text, $start, $i - $start + 1);
+            }
+        }
+    }
+    return null;
 }
 
 function narrative_prompt_for_transcript(string $title, string $text): string

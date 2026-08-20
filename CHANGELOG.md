@@ -14,6 +14,48 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.17.1] — 2026-08-20
+
+### Added
+
+- Content page: the "Add content" submit button now shows the same
+  animated three-dot typing indicator as the Ask tab's pending reply
+  while a "download from URL" (1.17.0) is in progress, instead of just
+  static "Downloading…" text — a server-side download can take a while
+  for a large file, so it's worth being clearer that something's still
+  happening rather than the button just looking stuck.
+
+### Fixed
+
+- Content page: four `<p class="meta">` hint paragraphs (the Story/File/
+  "download from URL"/Source URL hints) rendered in the page's default
+  bright text color instead of muted grey. `.meta` is only styled by CSS
+  when nested inside a `.card` (`.card .meta{...}`); every other `.meta`
+  usage in the app (34 of them, across every admin page) works around
+  this by setting `color:var(--muted); font-size:.85rem` inline on each
+  one — these four were the only ones that didn't. Brought them in line
+  with the rest.
+- `narrative_parse_analysis()` (the connections-note pass every content
+  type gets) only handled two shapes of model reply: pure JSON, or a
+  ```json fenced block. When the model instead prefaced the required
+  JSON object with a sentence or two of prose — a real instance seen in
+  practice, despite the prompt saying "ONLY a JSON object, no prose" —
+  `json_decode()` on the whole reply failed, and the fallback treated
+  the *entire* raw reply (prose and the JSON block both) as the note,
+  which read as garbled duplicated text. Added a brace-depth JSON-object
+  extractor (correctly ignores braces inside quoted strings) that
+  recovers the embedded object first, with a shape sanity-check before
+  trusting it, so this degrades gracefully instead of leaking raw JSON
+  into a stored note.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.17.0] — 2026-08-20
 
 ### Added

@@ -257,6 +257,11 @@ function migrations_steps(): array
                 'Not a .env change: if a large photo/video upload fails, your host\'s PHP post_max_size/upload_max_filesize (and possibly PHP-FPM\'s request_terminate_timeout) may need raising — see README\'s "Uploading large files". The new "download from URL" option sidesteps this entirely since it is not subject to either upload limit.',
             ],
         ],
+        '1.17.1' => [
+            'description' => 'Animated typing-dots indicator on the Add-content submit button while a URL download is in progress, matching the Ask tab; fix four Content-page hint paragraphs rendering in the wrong (bright, not muted) text color; fix narrative_parse_analysis() leaking raw prose+JSON into a stored note when the model prefaces its required JSON with prose',
+            'db' => null,
+            'env' => [],
+        ],
     ];
 }
 

@@ -556,9 +556,17 @@
     const originalBtnText = submitBtn.textContent;
     submitBtn.disabled = true;
     if (isMedia && mediaUrl !== "") {
-      // A server-side download can take a while for a large file — say
-      // so, rather than leaving the button just looking stuck.
-      submitBtn.textContent = "Downloading…";
+      // A server-side download can take a while for a large file — same
+      // animated-dots treatment as the Ask tab's pending reply, rather
+      // than leaving the button just looking stuck.
+      submitBtn.textContent = "";
+      submitBtn.appendChild(document.createTextNode("Downloading"));
+      const dots = document.createElement("span");
+      dots.className = "typing-dots";
+      dots.setAttribute("aria-hidden", "true");
+      dots.style.marginLeft = "6px";
+      for (let i = 0; i < 3; i++) dots.appendChild(document.createElement("span"));
+      submitBtn.appendChild(dots);
     }
     try {
       const formData = new FormData(form);
