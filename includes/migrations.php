@@ -262,6 +262,11 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.18.9' => [
+            'description' => 'Fix Ask-tab video seek missing short-but-genuine spoken quotes: quote_check_extract_spans_with_offsets() hardcoded the 25-character unverified-quote-caution threshold, so quotes like "eating us alive" (16 chars) were discarded before video_seek.php\'s own fragment-matching logic ever saw them — the function now takes an optional $minLength, and video_seek.php passes its own shorter VIDEO_SEEK_MIN_FRAGMENT_LENGTH (8) since an exact-substring match against the real transcript makes even short quotes a safe seek anchor; the unverified-quote caution itself is unaffected and still uses the 25-char default',
+            'db' => null,
+            'env' => [],
+        ],
         '1.18.8' => [
             'description' => 'Fix two silent-failure gaps in ai_provider.php found while diagnosing a one-off "AI backend failed to respond" report: ai_chat_anthropic() with no extractable text block, and ai_http_post() with a 2xx response that is not valid JSON, both used to return null with nothing logged, contradicting ai_http_post()\'s own "always error_log()\'d" contract — now both log a short diagnosable line',
             'db' => null,

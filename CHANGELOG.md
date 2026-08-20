@@ -14,6 +14,32 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.18.9] — 2026-08-20
+
+### Fixed
+
+- Ask-tab video seek still missed some spoken quotes that were genuinely
+  short. Found via a real production reply describing a tunnel dugout
+  during the 1943 blockade: `"eating us alive"` (16 chars) and `"a
+  couple of days"` (17 chars) were both discarded by
+  `quote_check_extract_spans_with_offsets()`'s hardcoded 25-character
+  threshold before `video_seek.php`'s own fragment-matching logic ever
+  got a chance to try them — a distinct root cause from the earlier
+  matching-logic bugs in 1.18.1/1.18.2/1.18.6. The function now takes an
+  optional `$minLength` parameter; `video_seek.php` passes its own
+  shorter `VIDEO_SEEK_MIN_FRAGMENT_LENGTH` (8) since an exact-substring
+  match against the real transcript makes even a short quote a safe seek
+  anchor. The unverified-quote caution (`quote_check_unverified()`) is
+  unaffected and still uses the 25-character default.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [1.18.8] — 2026-08-20
 
 ### Fixed
@@ -1093,6 +1119,7 @@ None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
 [Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.8...HEAD
+[1.18.9]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.9
 [1.18.8]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.8
 [1.18.7]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.7
 [1.18.6]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.18.6

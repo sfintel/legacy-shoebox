@@ -44,7 +44,7 @@ function video_seek_resolve_for_reply(string $reply): array
         return [];
     }
     $quotes = array_values(array_filter(
-        quote_check_extract_spans_with_offsets($reply),
+        quote_check_extract_spans_with_offsets($reply, VIDEO_SEEK_MIN_FRAGMENT_LENGTH),
         static fn (array $q): bool => !video_seek_is_citation_span($reply, $q)
     ));
 

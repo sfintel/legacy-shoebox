@@ -53,7 +53,17 @@ function quote_check_extract_spans(string $reply): array
 // wrapped in quote marks (see knowledge_system_role()'s citation
 // convention) by checking what character immediately surrounds it in
 // the reply.
-function quote_check_extract_spans_with_offsets(string $reply): array
+//
+// $minLength defaults to QUOTE_CHECK_MIN_LENGTH (the unverified-quote-
+// caution threshold — tuned to avoid noisy false positives on
+// contractions/scare-quotes) but video_seek.php calls this with its own,
+// shorter VIDEO_SEEK_MIN_FRAGMENT_LENGTH instead: a short-but-genuine
+// spoken excerpt like "eating us alive" is a perfectly safe seek anchor
+// (video_seek_match_segment() only accepts it on an exact substring
+// match against the real transcript, so a coincidental false match is
+// vanishingly unlikely), even though 25 characters is the right bar for
+// "worth flagging as an unverified claim."
+function quote_check_extract_spans_with_offsets(string $reply, int $minLength = QUOTE_CHECK_MIN_LENGTH): array
 {
     $pattern = '/["\x{201C}]([^"\x{201C}\x{201D}]+)["\x{201D}]/u';
     if (!preg_match_all($pattern, $reply, $matches, PREG_OFFSET_CAPTURE)) {
@@ -63,7 +73,7 @@ function quote_check_extract_spans_with_offsets(string $reply): array
     $spans = [];
     foreach ($matches[0] as $i => [$fullMatch, $fullOffset]) {
         $span = $matches[1][$i][0];
-        if (mb_strlen(quote_check_normalize($span), 'UTF-8') >= QUOTE_CHECK_MIN_LENGTH) {
+        if (mb_strlen(quote_check_normalize($span), 'UTF-8') >= $minLength) {
             $spans[] = [
                 'text' => $span,
                 'offset' => (int) $matches[1][$i][1],
