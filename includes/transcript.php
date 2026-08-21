@@ -13,21 +13,31 @@ declare(strict_types=1);
 //   ## Tape 1
 //   **SUBJECT:** text...
 //   **INTERVIEWER:** text...
-// Lines starting with #, >, or **Survivor/Interviewer/Videographer/Length
-// (leftover metadata headers some pasted transcripts have at the top)
-// are skipped rather than treated as dialogue.
+//   **Some Other Person:** text...
+// The third form — any **Name:** marker other than SUBJECT/INTERVIEWER —
+// is for a third party present during the interview (e.g. a spouse);
+// their literal name becomes the turn's speaker label. Lines starting
+// with #, >, or **Survivor/Interviewer/Videographer/Length (leftover
+// metadata headers some pasted transcripts have at the top) are skipped
+// rather than treated as dialogue.
 function transcript_parse_tapes(string $markdown, string $subjectLabel): array
 {
     $lines = preg_split('/\r\n|\n|\r/', $markdown);
     $tapes = [];
     $hasTape = false;
     $currentSpeaker = null;
+    $currentSpeakerLabel = null;
     $buffer = [];
 
-    $flush = function () use (&$tapes, &$hasTape, &$currentSpeaker, &$buffer, $subjectLabel): void {
+    $flush = function () use (&$tapes, &$hasTape, &$currentSpeaker, &$currentSpeakerLabel, &$buffer, $subjectLabel): void {
         if ($hasTape && $buffer && $currentSpeaker !== null) {
+            $speaker = match ($currentSpeaker) {
+                'SUBJECT' => $subjectLabel,
+                'INTERVIEWER' => 'Interviewer',
+                default => $currentSpeakerLabel,
+            };
             $tapes[count($tapes) - 1]['turns'][] = [
-                'speaker' => $currentSpeaker === 'SUBJECT' ? $subjectLabel : 'Interviewer',
+                'speaker' => $speaker,
                 'text' => trim(implode(' ', $buffer)),
             ];
         }
@@ -40,6 +50,7 @@ function transcript_parse_tapes(string $markdown, string $subjectLabel): array
         if (preg_match('/^##\s+Tape\s+(\d+)/i', $line, $m)) {
             $flush();
             $currentSpeaker = null;
+            $currentSpeakerLabel = null;
             $tapes[] = ['tape' => (int) $m[1], 'turns' => []];
             $hasTape = true;
             continue;
@@ -48,6 +59,28 @@ function transcript_parse_tapes(string $markdown, string $subjectLabel): array
         if (preg_match('/^\*\*(SUBJECT|INTERVIEWER)[:*]*\*\*\s*(.*)$/i', $line, $m)) {
             $flush();
             $currentSpeaker = strtoupper($m[1]);
+            $currentSpeakerLabel = null;
+            $rest = trim($m[2]);
+            $buffer = $rest !== '' ? [$rest] : [];
+            continue;
+        }
+
+        // A third-party speaker beyond the SUBJECT/INTERVIEWER convention
+        // above — e.g. a spouse or other person present during the
+        // interview — written as any other **Name:** marker, so the
+        // Transcript tab can show their real name as the turn's speaker
+        // label instead of silently merging their words into whichever of
+        // the two main speakers came right before them. Excludes the
+        // leftover-metadata-header words the skip rule below already
+        // handles (Survivor/Interviewer/Videographer/Length), so those
+        // keep being dropped rather than becoming a bogus new speaker.
+        if (
+            preg_match('/^\*\*([^*:]+):?\*\*\s*(.*)$/', $line, $m)
+            && !preg_match('/^(Survivor|Interviewer|Videographer|Length)$/i', trim($m[1]))
+        ) {
+            $flush();
+            $currentSpeaker = 'OTHER';
+            $currentSpeakerLabel = trim($m[1]);
             $rest = trim($m[2]);
             $buffer = $rest !== '' ? [$rest] : [];
             continue;

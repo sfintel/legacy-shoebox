@@ -14,6 +14,17 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.21.0] — 2026-08-21
+
+### Added
+
+- Primary Testimony's transcript now supports a third speaker beyond
+  `**SUBJECT:**` / `**INTERVIEWER:**` — any other `**Name:**` marker (e.g.
+  `**Mark Fintel:**`) is shown on the Transcript tab under that literal
+  name, for someone else present during the interview. Previously their
+  words were silently absorbed into whichever of the two main speakers'
+  turns came right before them.
+
 ## [1.20.0] — 2026-08-21
 
 ### Added

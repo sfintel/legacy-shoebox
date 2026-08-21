@@ -157,7 +157,8 @@ require_admin_page();
       <h2>Primary testimony</h2>
       <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
         The main recorded interview, if there is one. Use "## Tape 1" for each new tape/session and
-        "**SUBJECT:**" / "**INTERVIEWER:**" to mark who's speaking.
+        "**SUBJECT:**" / "**INTERVIEWER:**" to mark who's speaking. Anyone else present (e.g. a spouse)
+        can be marked with their own name, e.g. "**Mark Fintel:**" — their name is shown as-is.
       </p>
       <form id="testimonyForm" class="content-form" style="max-width:none;">
         <div class="form-row"><label for="testInterviewLabel">Interview label</label><input type="text" id="testInterviewLabel" name="interview_label" placeholder="e.g. USC Shoah Foundation interview 14091"></div>
