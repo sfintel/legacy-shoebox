@@ -366,6 +366,14 @@
   }
 
   function renderFileEditFields(item, file) {
+    if (item.type === "document") {
+      // Neither the pasted-text file nor the optional attachment has
+      // camera/GPS metadata worth editing — just show what it is and a
+      // way to open it.
+      return `<div class="card" style="margin-bottom:10px;">
+        <div class="meta">${esc(file.originalName)} — <a href="${fileUrl(file.id)}" target="_blank" rel="noopener">View</a></div>
+      </div>`;
+    }
     const m = file.metadata || {};
     const durationRow = item.type === "video"
       ? `<div class="form-row"><label>Duration (seconds)</label>
@@ -460,7 +468,12 @@
 
   async function saveEdit(item, editRow) {
     const narrativeNote = editRow.querySelector(".edit-narrative").value.trim();
-    const files = (item.files || []).map((f) => {
+    // Document's file cards (see renderFileEditFields()) have no
+    // metadata inputs at all — mapping over item.files here would send
+    // every field as "", which content_merge_metadata_update() treats as
+    // "clear this", silently wiping any real EXIF data an attached scan
+    // happened to have.
+    const files = item.type === "document" ? [] : (item.files || []).map((f) => {
       const get = (field) => {
         const input = editRow.querySelector(`input[data-file-id="${f.id}"][data-field="${field}"]`);
         return input ? input.value.trim() : "";
@@ -540,26 +553,31 @@
     const isPhoto = typeSelect.value === "photo";
     const isUrl = typeSelect.value === "url";
     const isStory = typeSelect.value === "story";
-    const hasText = isTranscript || isStory;
-    const isMedia = !hasText && !isUrl; // photo or video
+    const isDocument = typeSelect.value === "document";
+    const hasText = isTranscript || isStory || isDocument;
+    const isMedia = (typeSelect.value === "photo" || typeSelect.value === "video"); // file+URL+caption fields
     textRow.style.display = hasText ? "" : "none";
-    fileRow.style.display = isMedia ? "" : "none";
+    fileRow.style.display = (isMedia || isDocument) ? "" : "none";
     mediaUrlRow.style.display = isMedia ? "" : "none";
     urlRow.style.display = isUrl ? "" : "none";
     descRow.style.display = isMedia ? "" : "none";
-    document.getElementById("textLabel").textContent = isStory ? "Story" : "Transcript text";
+    document.getElementById("textLabel").textContent = isStory ? "Story" : (isDocument ? "Document text" : "Transcript text");
     document.getElementById("textInput").placeholder = isStory
       ? "What's the story? Write it as you'd tell it…"
-      : "Paste the transcript text here…";
+      : (isDocument ? "Paste the document's text here (e.g. a letter or email)…" : "Paste the transcript text here…");
     document.getElementById("storyHint").style.display = isStory ? "" : "none";
     document.getElementById("textInput").required = hasText;
     // Neither fileInput nor mediaUrlInput is marked required here — for
     // media types exactly one of them is required, which plain HTML
-    // can't express; the submit handler below validates that instead.
+    // can't express; the submit handler below validates that instead. A
+    // document's file is fully optional either way.
     document.getElementById("fileInput").required = false;
     document.getElementById("fileInput").multiple = isPhoto;
-    document.getElementById("fileLabel").textContent = isPhoto ? "Photo(s)" : "File";
-    document.getElementById("fileHint").style.display = isPhoto ? "" : "none";
+    document.getElementById("fileLabel").textContent = isPhoto ? "Photo(s)" : (isDocument ? "Attach original (optional)" : "File");
+    document.getElementById("fileHint").style.display = (isPhoto || isDocument) ? "" : "none";
+    document.getElementById("fileHint").textContent = isPhoto
+      ? "Select up to 10 related photos to add them as one album."
+      : "Optional — a scan or PDF of the original, kept for reference. The Ask tab only reads the pasted text above, never this file.";
     document.getElementById("mediaUrlInput").required = false;
     document.getElementById("urlInput").required = isUrl;
     document.getElementById("titleInput").required = !isUrl;

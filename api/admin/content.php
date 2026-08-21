@@ -39,6 +39,11 @@ if ($method === 'POST') {
             } else {
                 json_response(['error' => 'Provide either photo file(s) or a URL to download from, not both.'], 400);
             }
+        } elseif ($type === 'document') {
+            if (count($files) > 1) {
+                json_response(['error' => 'Attach at most one file.'], 400);
+            }
+            $item = content_create_document($title, (string) ($_POST['text'] ?? ''), $files[0] ?? null, $user['id'], $tags);
         } elseif ($type === 'url') {
             $item = content_create_url($title, (string) ($_POST['url'] ?? ''), $user['id'], $tags);
         } elseif ($type === 'story') {

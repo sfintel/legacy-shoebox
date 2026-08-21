@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 -- a single analysis pass, not per-photo.
 CREATE TABLE IF NOT EXISTS content_items (
   id            CHAR(36)      NOT NULL PRIMARY KEY,
-  type          ENUM('transcript','photo','video','url','story') NOT NULL,
+  type          ENUM('transcript','photo','video','url','story','document') NOT NULL,
   title         VARCHAR(255)  NOT NULL,
   description   TEXT          NULL,
   -- Set only for type='url' — the source page the family member submitted.

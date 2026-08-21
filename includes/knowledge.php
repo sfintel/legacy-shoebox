@@ -225,6 +225,17 @@ function content_context(): string
                 }
             }
             $out .= "\n## Family-contributed transcript: {$item['title']}\n" . $body . $companionNote . $narrative . "\n";
+        } elseif ($item['type'] === 'document') {
+            // files[0] is always the pasted text (content_create_document()
+            // inserts it at sort_order 0); files[1], if present, is the
+            // optional original scan/PDF attached purely for provenance —
+            // never read here, since the model only ever sees the pasted
+            // text (no OCR, same limitation as a Photo's description).
+            $file = $files[0] ?? null;
+            $path = $file ? content_upload_dir('document') . '/' . $file['file_name'] : null;
+            $body = $path && is_file($path) ? file_get_contents($path) : '(file missing)';
+            $attachmentNote = isset($files[1]) ? "\nAn original scan/file of this document is attached in the app (not readable by you directly)." : '';
+            $out .= "\n## Family-contributed document: {$item['title']}\n" . $body . $attachmentNote . $narrative . "\n";
         } elseif ($item['type'] === 'url') {
             $file = $files[0] ?? null;
             $path = $file ? content_upload_dir('url') . '/' . $file['file_name'] : null;

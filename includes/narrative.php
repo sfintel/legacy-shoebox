@@ -163,6 +163,13 @@ function narrative_prompt_for_story(string $title, string $text): string
         . 'How does this connect to the existing archive material provided as context? Follow the rules above.';
 }
 
+function narrative_prompt_for_document(string $title, string $text): string
+{
+    return "New document added to the archive — a letter, permission correspondence, or similar written "
+        . "material (not the subject's own testimony).\nTitle: $title\n\nText:\n$text\n\n"
+        . 'How does this connect to the existing archive material provided as context? Follow the rules above.';
+}
+
 function narrative_prompt_for_media(string $title, ?string $description, ?array $metadata): string
 {
     $lines = ['New video added to the archive.', "Title: $title"];
@@ -356,6 +363,13 @@ function narrative_prompt_for_story_suggestions(string $title, string $text): st
 {
     return "New family-recounted story added to the archive (not the subject's own testimony — a story "
         . "family members tell about them).\nTitle: $title\n\nText:\n$text\n\n"
+        . 'Propose new archive additions per the rules above.';
+}
+
+function narrative_prompt_for_document_suggestions(string $title, string $text): string
+{
+    return "New document added to the archive — a letter, permission correspondence, or similar written "
+        . "material (not the subject's own testimony).\nTitle: $title\n\nText:\n$text\n\n"
         . 'Propose new archive additions per the rules above.';
 }
 

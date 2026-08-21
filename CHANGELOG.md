@@ -14,6 +14,32 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.20.0] — 2026-08-21
+
+### Added
+
+- New "Document" content type on the Content page, for permission
+  letters, correspondence, and similar non-testimony written material —
+  previously there was nowhere for these to go except misusing
+  Transcript. Paste the document's text (read in full by the Ask tab,
+  same as a Transcript) plus an optional attached file (a scan or PDF of
+  the original, kept for provenance only — never read directly by the
+  model, same "described, not OCR'd" limitation as Photo). Gets the same
+  AI suggestion-extraction pass as Transcript/URL/Story.
+
+### Database changes
+
+Adds `'document'` to `content_items.type` (`upgrade.sh` handles this
+automatically). Manual equivalent:
+
+```sql
+ALTER TABLE content_items MODIFY COLUMN type ENUM('transcript','photo','video','url','story','document') NOT NULL;
+```
+
+### Environment changes
+
+None.
+
 ## [1.19.2] — 2026-08-20
 
 ### Fixed
@@ -1184,6 +1210,7 @@ None to track for upgraders — this is the baseline `.env` shape; see
 `.env.example`.
 
 [Unreleased]: https://github.com/sfintel/family-legacy-archive/compare/v1.18.8...HEAD
+[1.20.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.20.0
 [1.19.2]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.19.2
 [1.19.1]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.19.1
 [1.19.0]: https://github.com/sfintel/family-legacy-archive/releases/tag/v1.19.0

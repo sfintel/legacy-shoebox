@@ -267,6 +267,19 @@ function migrations_steps(): array
             'db' => null,
             'env' => [],
         ],
+        '1.20.0' => [
+            'description' => 'New "Document" content type for permission letters, correspondence, and similar non-testimony written material (paste text + optional attached scan/PDF for provenance) — gets the same AI suggestion-extraction pass as Transcript/URL/Story',
+            'db' => static function (PDO $pdo): void {
+                $typeCol = (string) $pdo->query(
+                    "SELECT COLUMN_TYPE FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'content_items' AND column_name = 'type'"
+                )->fetchColumn();
+                if (!str_contains($typeCol, "'document'")) {
+                    $pdo->exec("ALTER TABLE content_items MODIFY COLUMN type ENUM('transcript','photo','video','url','story','document') NOT NULL");
+                }
+            },
+            'env' => [],
+        ],
         '1.19.2' => [
             'description' => 'Ask tab: Enter in the question box now sends the question instead of inserting a newline; Shift+Enter still inserts a newline',
             'db' => null,

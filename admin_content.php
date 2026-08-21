@@ -33,14 +33,15 @@ require_content_page();
   <main id="app" tabindex="-1" style="max-width:90vw;">
     <h2>Add content</h2>
     <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
-      Anything added here becomes part of what the Ask tab knows — transcript text is read in full;
-      photos and videos are included by their title and description. Each item's "Narrative connection"
+      Anything added here becomes part of what the Ask tab knows — transcript and document text is read
+      in full; photos and videos are included by their title and description (a Document's optional
+      attached file is never read directly — only the pasted text is). Each item's "Narrative connection"
       note is written automatically by AI; an <span class="status-badge status-pending">unreviewed</span>
       badge means no admin has looked at that note yet — it's already part of the Ask tab's knowledge
-      base either way, so it's worth checking rather than a gate. Transcripts, Stories (once approved),
-      and URLs also get a second AI pass proposing new timeline/people/places/quotes entries — these
-      always sit as pending "Suggestions" for you to approve or dismiss individually; nothing is added
-      to the core archive automatically.
+      base either way, so it's worth checking rather than a gate. Transcripts, Documents, Stories (once
+      approved), and URLs also get a second AI pass proposing new timeline/people/places/quotes entries —
+      these always sit as pending "Suggestions" for you to approve or dismiss individually; nothing is
+      added to the core archive automatically.
     </p>
     <form id="contentForm" class="content-form">
       <div class="form-row">
@@ -49,6 +50,7 @@ require_content_page();
           <option value="transcript">Transcript</option>
           <option value="photo">Photo</option>
           <option value="video">Video</option>
+          <option value="document">Document</option>
           <option value="url">URL</option>
           <option value="story">Story</option>
         </select>

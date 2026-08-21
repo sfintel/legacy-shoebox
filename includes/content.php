@@ -25,6 +25,13 @@ function content_allowed_extensions(string $type): array
     return match ($type) {
         'photo' => ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'],
         'video' => ['mp4' => 'video/mp4', 'mov' => 'video/quicktime', 'webm' => 'video/webm', 'm4v' => 'video/x-m4v'],
+        // doc/docx deliberately excluded — finfo often can't reliably tell
+        // a .docx (a zip container) apart from a plain .zip, which would
+        // make the MIME check below either falsely reject real .docx
+        // files or falsely accept unrelated zips. pdf/image/txt cover the
+        // real use case (permission letters, scanned clippings, plain-text
+        // emails) without that risk.
+        'document' => ['pdf' => 'application/pdf', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'txt' => 'text/plain'],
         default => [],
     };
 }
@@ -157,7 +164,7 @@ function content_public(array $item): array
         'tags' => json_decode((string) ($item['tags'] ?? '[]'), true) ?: [],
         'createdAt' => $item['created_at'],
         'files' => array_map('content_file_public', content_files_for_item($item['id'])),
-        'suggestions' => in_array($item['type'], ['url', 'transcript', 'story'], true) ? content_suggestions_for_item($item['id']) : [],
+        'suggestions' => in_array($item['type'], ['url', 'transcript', 'story', 'document'], true) ? content_suggestions_for_item($item['id']) : [],
         'storyApprovedAt' => $item['type'] === 'story' ? $item['story_approved_at'] : null,
         // `?? null`: same deploy-before-upgrade window as narrativeNoteReviewedAt above.
         'linkedItemId' => $item['linked_item_id'] ?? null,
@@ -305,12 +312,22 @@ function content_store_uploaded_file(string $type, array $file): array
     }
 
     // Trust the file's actual content over its extension/browser-supplied
-    // MIME type — a renamed file shouldn't be able to claim to be a photo.
+    // MIME type — a renamed file shouldn't be able to claim to be a
+    // photo/video. Photo and video each share one MIME prefix, so a
+    // prefix check is enough; document's allowed set is heterogeneous
+    // (pdf/image/text), so it's checked against the full allowed-MIME
+    // list instead.
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $realMime = (string) $finfo->file($file['tmp_name']);
-    $expectedPrefix = $type === 'photo' ? 'image/' : 'video/';
-    if (!str_starts_with($realMime, $expectedPrefix)) {
-        throw new RuntimeException("The uploaded file doesn't look like a valid $type.");
+    if ($type === 'document') {
+        if (!in_array($realMime, $allowed, true)) {
+            throw new RuntimeException("The uploaded file doesn't look like a valid document.");
+        }
+    } else {
+        $expectedPrefix = $type === 'photo' ? 'image/' : 'video/';
+        if (!str_starts_with($realMime, $expectedPrefix)) {
+            throw new RuntimeException("The uploaded file doesn't look like a valid $type.");
+        }
     }
 
     $fileId = make_uuid();
@@ -601,6 +618,62 @@ function content_create_transcript(string $title, string $text, string $userId, 
         narrative_prompt_for_transcript_suggestions($title, $text),
         $title,
         'AI-suggested from a family-contributed transcript'
+    );
+    content_suggestions_insert($itemId, $suggestions);
+
+    return content_find($itemId);
+}
+
+// Correspondence, permission letters, and similar non-testimony written
+// material — distinct from Transcript (the subject's own spoken words)
+// even though both start as pasted text written to a .md file the same
+// way (see content_create_transcript()'s docblock for why). $file is an
+// OPTIONAL second attachment — e.g. a scan or PDF of the actual letter —
+// kept purely for provenance: the model only ever reads the pasted
+// $text, never the attachment itself (no OCR, same limitation as Photo's
+// description-only visibility). Gets the same suggestion-extraction pass
+// as Transcript/URL/Story — a document is usually factual written
+// material worth mining for archive facts, not an inert attachment like
+// Photo/Video. No content_auto_link_attempt() call — video<->transcript
+// linking doesn't apply to documents.
+function content_create_document(string $title, string $text, ?array $file, string $userId, array $tags = []): array
+{
+    $title = trim($title);
+    $text = trim($text);
+    if ($title === '') {
+        throw new RuntimeException('Title is required.');
+    }
+    if ($text === '') {
+        throw new RuntimeException('Document text is required.');
+    }
+
+    $textFileId = make_uuid();
+    $textFileName = "$textFileId.md";
+    $dir = content_upload_dir('document');
+    file_put_contents("$dir/$textFileName", $text);
+    $analysis = narrative_analyze(narrative_prompt_for_document($title, $text));
+
+    $stored = $file !== null ? content_store_uploaded_file('document', $file) : null;
+
+    $itemId = make_uuid();
+    $pdo = db();
+    $pdo->prepare(
+        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, created_by)
+         VALUES (?, \'document\', ?, NULL, ?, ?, ?)'
+    )->execute([$itemId, $title, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
+    content_insert_file($pdo, $itemId, [
+        'fileId' => $textFileId, 'fileName' => $textFileName, 'originalName' => "$title.md",
+        'mimeType' => 'text/markdown', 'size' => strlen($text), 'metadata' => null,
+    ], 0);
+    if ($stored) {
+        content_insert_file($pdo, $itemId, $stored, 1);
+    }
+    archive_content_links_apply($itemId, $analysis['links']);
+
+    $suggestions = narrative_suggest_additions(
+        narrative_prompt_for_document_suggestions($title, $text),
+        $title,
+        'AI-suggested from a family-contributed document'
     );
     content_suggestions_insert($itemId, $suggestions);
 
@@ -1218,6 +1291,18 @@ function content_analyze_existing_item(array $item): array
             : $empty;
     }
 
+    if ($item['type'] === 'document') {
+        $file = $files[0] ?? null; // the pasted text, not the optional attachment — see content_create_document()
+        if (!$file) {
+            return $empty;
+        }
+        $path = content_upload_dir('document') . '/' . $file['file_name'];
+        $text = is_file($path) ? file_get_contents($path) : null;
+        return $text !== null && $text !== false
+            ? narrative_analyze(narrative_prompt_for_document($item['title'], $text))
+            : $empty;
+    }
+
     if ($item['type'] === 'video') {
         $file = $files[0] ?? null;
         $metadata = $file && $file['metadata'] !== null ? json_decode($file['metadata'], true) : null;
@@ -1268,25 +1353,32 @@ function content_suggest_additions_for_existing_item(array $item): array
     if (!$file) {
         return [];
     }
-    $isStory = $item['type'] === 'story';
-    $dir = content_upload_dir($isStory ? 'story' : 'transcript');
+    $dir = content_upload_dir($item['type'] === 'story' ? 'story' : ($item['type'] === 'document' ? 'document' : 'transcript'));
     $path = "$dir/{$file['file_name']}";
     $text = is_file($path) ? file_get_contents($path) : null;
     if ($text === null || $text === false) {
         return [];
     }
 
-    return $isStory
-        ? narrative_suggest_additions(
+    if ($item['type'] === 'story') {
+        return narrative_suggest_additions(
             narrative_prompt_for_story_suggestions($item['title'], $text),
             $item['title'],
             'AI-suggested from a family-recounted story'
-        )
-        : narrative_suggest_additions(
-            narrative_prompt_for_transcript_suggestions($item['title'], $text),
-            $item['title'],
-            'AI-suggested from a family-contributed transcript'
         );
+    }
+    if ($item['type'] === 'document') {
+        return narrative_suggest_additions(
+            narrative_prompt_for_document_suggestions($item['title'], $text),
+            $item['title'],
+            'AI-suggested from a family-contributed document'
+        );
+    }
+    return narrative_suggest_additions(
+        narrative_prompt_for_transcript_suggestions($item['title'], $text),
+        $item['title'],
+        'AI-suggested from a family-contributed transcript'
+    );
 }
 
 // Two independent sweeps over existing content, each safe to re-run:
@@ -1305,7 +1397,7 @@ function content_backfill_ai_analysis(): array
     )->fetchAll();
     $suggestionItems = db()->query(
         "SELECT * FROM content_items
-         WHERE (type = 'transcript' OR (type = 'story' AND story_approved_at IS NOT NULL))
+         WHERE (type IN ('transcript', 'document') OR (type = 'story' AND story_approved_at IS NOT NULL))
            AND id NOT IN (SELECT DISTINCT content_item_id FROM content_suggestions)
          ORDER BY created_at ASC"
     )->fetchAll();
