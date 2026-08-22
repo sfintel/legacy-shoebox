@@ -14,6 +14,18 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.22.0] — 2026-08-21
+
+### Added
+
+- "Watch video" button on the Quotes tab, next to "View in transcript" —
+  for a quote whose source note names a tape (e.g. "Tape 2"), it opens
+  the matching Content Library video and seeks to that quote's actual
+  moment, using the same verbatim-substring matching the Ask tab's
+  video citations already use. Falls back to opening at 0:00 if the
+  quote's stored text isn't found verbatim in that tape's transcript, or
+  doesn't show at all if no video exists for that tape.
+
 ## [1.21.0] — 2026-08-21
 
 ### Added

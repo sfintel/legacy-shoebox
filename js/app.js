@@ -139,6 +139,14 @@
       const viewLink = tapeMatch
         ? `<button type="button" class="ghost-btn view-in-transcript" data-tape="${tapeMatch[1]}" data-quote-id="${esc(q.id)}" style="margin-top:8px;">View in transcript</button>`
         : "";
+      // q.video (see archive_quote_video_link() in includes/archive.php)
+      // is null when no Content Library video exists for this quote's
+      // tape; seekSeconds within it may itself be null if the quote text
+      // couldn't be matched verbatim in that tape's transcript — the
+      // video still opens in that case, just at 0:00.
+      const watchLink = q.video
+        ? `<a href="/api/file.php?fileId=${encodeURIComponent(q.video.fileId)}${q.video.seekSeconds != null ? "#t=" + encodeURIComponent(q.video.seekSeconds) : ""}" target="_blank" rel="noopener" class="ghost-btn" style="margin-top:8px; text-decoration:none; display:inline-block;">&#9654; Watch video</a>`
+        : "";
       return `
       <div class="card">
         <h3>${esc(q.speaker)}${q.source_note ? " — " + esc(q.source_note) : ""}</h3>
@@ -146,6 +154,7 @@
         <div class="body">"${esc((q.quote || "").trim())}"</div>
         ${q.citation ? `<div class="meta">source: ${esc(q.citation)}</div>` : ""}
         ${viewLink}
+        ${watchLink}
         ${renderRelatedContent(q.relatedContent)}
       </div>
     `;

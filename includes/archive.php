@@ -523,8 +523,55 @@ function archive_quote_public(array $row): array
         'tags' => json_decode((string) ($row['tags'] ?? '[]'), true) ?: [],
         'quote' => $row['quote_text'],
         'citation' => $row['citation'],
+        'video' => archive_quote_video_link($row),
         'relatedContent' => archive_content_links_public('quote', $row['id']),
     ];
+}
+
+// Best-effort "watch the moment this quote comes from" link for the
+// Quotes tab's Watch video button — same "Tape N" parse js/app.js
+// already does client-side for the View in transcript button, matched
+// against a Content Library video item whose title names that tape
+// (see the "VHA Interview 14091 — Tape N" naming convention), then the
+// same verbatim-substring matching includes/video_seek.php uses for
+// Ask-tab citations, just triggered from a stored quote instead of a
+// fresh reply. Returns null if source_note doesn't name a tape, or no
+// video exists for that tape. seekSeconds inside a non-null result may
+// itself be null if the quote's stored text isn't a verbatim substring
+// of that tape's transcript (paraphrased, or transcribed differently
+// than the VHA transcript) — the video still opens in that case, just
+// at 0:00, same fallback the Ask tab already uses.
+function archive_quote_video_link(array $row): ?array
+{
+    if (!preg_match('/Tape\s+(\d+)/i', (string) ($row['source_note'] ?? ''), $m)) {
+        return null;
+    }
+    $tapeNum = $m[1];
+
+    static $videos = null;
+    if ($videos === null) {
+        $videos = db()->query("SELECT * FROM content_items WHERE type = 'video' ORDER BY created_at ASC")->fetchAll();
+    }
+
+    $video = null;
+    foreach ($videos as $candidate) {
+        if (preg_match('/\bTape\s*' . preg_quote($tapeNum, '/') . '\b/i', (string) $candidate['title'])) {
+            $video = $candidate;
+            break;
+        }
+    }
+    if (!$video) {
+        return null;
+    }
+    $videoFile = content_files_for_item($video['id'])[0] ?? null;
+    if (!$videoFile) {
+        return null;
+    }
+
+    $segments = video_seek_transcript_segments_for_file($videoFile['id']);
+    $seconds = $segments ? video_seek_match_segment($segments, ['text' => (string) $row['quote_text']]) : null;
+
+    return ['fileId' => $videoFile['id'], 'seekSeconds' => $seconds];
 }
 
 // api/data.php?name=transcript's JSON shape — subject speaker turns are
