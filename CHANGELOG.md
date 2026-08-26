@@ -14,6 +14,25 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.29.3] — 2026-08-27
+
+### Fixed
+
+- The animated "working" indicator on the add-content submit button
+  (typing-dots, same treatment as the Ask tab's pending reply) only ever
+  appeared for one specific case — a Photo/Video added via "download
+  from URL." Every other submission (a local file upload, or a
+  Transcript/Document/Story/URL item — the latter four all run a
+  synchronous AI narrative-note pass server-side that can take several
+  seconds) showed no feedback at all beyond the button going inert,
+  which looked stuck rather than working. Now every submission shows
+  the same animated indicator ("Adding…", or "Downloading…" for the
+  URL-download case specifically) while the request is in flight.
+
+### Environment changes
+
+None.
+
 ## [1.29.2] — 2026-08-27
 
 ### Fixed

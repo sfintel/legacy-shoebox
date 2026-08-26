@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.29.3' => [
+            'description' => 'Add-content submit button now shows the animated typing-dots "working" indicator for every submission (local file upload, transcript/document/story/URL with their synchronous AI narrative-note pass), not just the Photo/Video download-from-URL case that previously was the only one to show any feedback at all',
+            'db' => null,
+            'env' => [],
+        ],
         '1.29.2' => [
             'description' => 'Content page "Mark reviewed" checkbox now reflects actual review status (pre-checked when already reviewed, instead of always unchecked) and unchecking it is a real un-review action',
             'db' => null,

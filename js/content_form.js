@@ -212,19 +212,23 @@ window.ContentForm = (function () {
 
       const originalBtnText = submitBtn.textContent;
       submitBtn.disabled = true;
-      if (isMedia && mediaUrl !== "") {
-        // A server-side download can take a while for a large file — same
-        // animated-dots treatment as the Ask tab's pending reply, rather
-        // than leaving the button just looking stuck.
-        submitBtn.textContent = "";
-        submitBtn.appendChild(document.createTextNode("Downloading"));
-        const dots = document.createElement("span");
-        dots.className = "typing-dots";
-        dots.setAttribute("aria-hidden", "true");
-        dots.style.marginLeft = "6px";
-        for (let i = 0; i < 3; i++) dots.appendChild(document.createElement("span"));
-        submitBtn.appendChild(dots);
-      }
+      // Every submission does real server-side work before responding —
+      // a URL download can take a while for a large file, and
+      // transcript/document/story/URL content additionally run a
+      // synchronous AI narrative-note pass that can take several seconds
+      // — so every path gets the same animated-dots treatment the Ask
+      // tab's pending reply uses, not just the URL-download case (which
+      // used to be the only one that showed anything at all, leaving
+      // every other submission looking stuck with no feedback).
+      const label = isMedia && mediaUrl !== "" ? "Downloading" : "Adding";
+      submitBtn.textContent = "";
+      submitBtn.appendChild(document.createTextNode(label));
+      const dots = document.createElement("span");
+      dots.className = "typing-dots";
+      dots.setAttribute("aria-hidden", "true");
+      dots.style.marginLeft = "6px";
+      for (let i = 0; i < 3; i++) dots.appendChild(document.createElement("span"));
+      submitBtn.appendChild(dots);
       try {
         const formData = new FormData(form);
         tagPickerState.tags.forEach((t) => formData.append("tags[]", t));
