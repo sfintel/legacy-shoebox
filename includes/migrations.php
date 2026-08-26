@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.29.2' => [
+            'description' => 'Content page "Mark reviewed" checkbox now reflects actual review status (pre-checked when already reviewed, instead of always unchecked) and unchecking it is a real un-review action',
+            'db' => null,
+            'env' => [],
+        ],
         '1.29.1' => [
             'description' => 'Fix admin dropdown hover dead-zone, clear stale file selection on type change + add a Remove-file button, enlarge sort-direction arrows, replace the Keywords info-icon\'s native title tooltip with a real hover/tap tooltip, make the login page\'s existing Forgot-password link more visible',
             'db' => null,

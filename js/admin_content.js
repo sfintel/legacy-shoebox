@@ -398,12 +398,19 @@
       ? ` <span class="status-badge status-unreviewed">unreviewed</span>`
       : "";
     // Editing this field only counts as review when it's an admin doing
-    // it (see content_update_item()) — the checkbox is a second way to
-    // confirm an unchanged note, for isAdmin only, since it exists only
-    // for the admin-oversight use case this feature targets.
+    // it (see content_update_item()) — for isAdmin only, since this
+    // exists only for the admin-oversight use case this feature targets.
+    // Pre-checked when the note is already reviewed, rather than always
+    // starting unchecked regardless of actual status (the old behavior —
+    // confusing next to a badge that already says whether it's
+    // reviewed, and easy to misread as "this note is NOT reviewed").
+    // Leaving it as rendered and saving is always a no-op for review
+    // status; unchecking a pre-checked box is now a real, explicit way
+    // to un-review a note (e.g. after realizing an AI note shouldn't
+    // have been trusted as-is).
     const markReviewedHtml = isAdmin && item.narrativeNote
       ? `<label style="display:flex; align-items:center; gap:6px; font-weight:normal; margin-top:6px;">
-          <input type="checkbox" class="edit-mark-reviewed" style="width:auto;"> Mark reviewed
+          <input type="checkbox" class="edit-mark-reviewed" style="width:auto;" ${item.narrativeNoteReviewedAt ? "checked" : ""}> Mark reviewed
         </label>`
       : "";
     // Linking only makes sense once both a video and a transcript exist,

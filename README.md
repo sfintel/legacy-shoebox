@@ -336,8 +336,12 @@ pending Story, see below.
   any note no admin has looked at yet; it's visibility only, not a gate.
   An admin edit that changes the note text clears the badge automatically
   (a human edit is definitionally a review); a "Mark reviewed" checkbox
-  in the edit row clears it without changing the text. The badge
-  reappears if a later AI pass (approval, backfill) rewrites the note.
+  in the edit row — pre-checked whenever the note is already reviewed,
+  so it always reflects current status rather than starting blank —
+  clears the badge without changing the text when checked, or restores
+  it if unchecked on a note that was previously marked reviewed. The
+  badge reappears if a later AI pass (approval, backfill) rewrites the
+  note.
 - A non-admin content contributor only sees and can edit/delete their own
   items (and, for items with suggestions, only sees their own item's
   suggestions, read-only — approving/dismissing is admin-only since it

@@ -1080,14 +1080,22 @@ function content_merge_metadata_update(?array $current, array $incoming): ?array
 // (or another user's) file. $isAdmin is passed explicitly rather than
 // inferred from $ownerId === null, so that inference doesn't silently
 // become load-bearing for narrative_note_reviewed_at too. Only an
-// admin's action ever sets narrative_note_reviewed_at — this feature is
-// about admin oversight of AI text, and a non-admin author saving their
-// own item says nothing about that. It's set when either the submitted
-// note text actually differs from what's stored (a human edit is
-// definitionally a review) or $markReviewed is explicitly true (an
-// admin confirming a note as-is, via a "Mark reviewed" control) — an
-// unrelated save of the same unmodified text does NOT set it, since
-// that would turn "unknown" into a false "checked".
+// admin's action ever touches narrative_note_reviewed_at — this feature
+// is about admin oversight of AI text, and a non-admin author saving
+// their own item says nothing about that.
+//
+// $markReviewed is a real two-way toggle, not a one-way "confirm" flag —
+// the "Mark reviewed" checkbox (js/admin_content.js) is pre-checked
+// whenever the note is already reviewed, so leaving it exactly as
+// rendered and saving is always a no-op here (checked+already-reviewed
+// re-sets NOW(), a harmless idempotent update; unchecked+already-
+// unreviewed does nothing). A submitted note text change always counts
+// as review regardless of the checkbox (a human edit is definitionally
+// a review); otherwise $markReviewed=true sets narrative_note_reviewed_at
+// to NOW() and $markReviewed=false on an already-reviewed item clears it
+// back to NULL — an explicit, deliberate un-review, since the checkbox
+// only ever starts unchecked when there was nothing reviewed to begin
+// with.
 function content_update_item(
     string $id, ?string $ownerId, ?string $narrativeNote, array $fileUpdates, ?array $tags = null,
     bool $isAdmin = false, bool $markReviewed = false, bool $linkedItemIdProvided = false, ?string $linkedItemId = null
@@ -1097,6 +1105,8 @@ function content_update_item(
         throw new RuntimeException('Content item not found.');
     }
 
+    $wasReviewed = $item['narrative_note_reviewed_at'] !== null;
+
     if ($narrativeNote !== null) {
         $note = trim($narrativeNote);
         $note = $note !== '' ? $note : null;
@@ -1104,12 +1114,18 @@ function content_update_item(
         if ($isAdmin && ($noteChanged || $markReviewed)) {
             db()->prepare('UPDATE content_items SET narrative_note = ?, narrative_note_reviewed_at = NOW() WHERE id = ?')
                 ->execute([$note, $id]);
+        } elseif ($isAdmin && !$markReviewed && $wasReviewed) {
+            db()->prepare('UPDATE content_items SET narrative_note = ?, narrative_note_reviewed_at = NULL WHERE id = ?')
+                ->execute([$note, $id]);
         } else {
             db()->prepare('UPDATE content_items SET narrative_note = ? WHERE id = ?')
                 ->execute([$note, $id]);
         }
     } elseif ($isAdmin && $markReviewed) {
         db()->prepare('UPDATE content_items SET narrative_note_reviewed_at = NOW() WHERE id = ?')
+            ->execute([$id]);
+    } elseif ($isAdmin && !$markReviewed && $wasReviewed) {
+        db()->prepare('UPDATE content_items SET narrative_note_reviewed_at = NULL WHERE id = ?')
             ->execute([$id]);
     }
 

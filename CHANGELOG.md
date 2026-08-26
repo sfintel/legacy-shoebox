@@ -14,6 +14,26 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.29.2] — 2026-08-27
+
+### Fixed
+
+- The Content page's "Mark reviewed" checkbox always rendered unchecked
+  regardless of whether the note was actually already reviewed — easy
+  to misread as "this note is not reviewed" even when the row's own
+  `unreviewed` badge correctly said otherwise (the checkbox was a
+  write-only action, "check this to mark reviewed now," not a status
+  readout). It now starts checked whenever the note is already
+  reviewed, and — since leaving it exactly as rendered and saving is
+  always a no-op for review status either way — unchecking a
+  pre-checked box is now a real, deliberate way to un-review a note
+  (e.g. after realizing an AI note shouldn't have been trusted as-is),
+  which wasn't previously possible from the UI at all.
+
+### Environment changes
+
+None.
+
 ## [1.29.1] — 2026-08-27
 
 ### Fixed
