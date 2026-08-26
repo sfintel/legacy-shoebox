@@ -14,6 +14,29 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.24.0] — 2026-08-26
+
+### Removed
+
+- The legacy YAML importer (admin_archive.php's "Import" tab, for
+  migrating from the original file-based app-lamp deployment) —
+  deprecated and no longer needed by any active deployment. Removed
+  `includes/legacy_import.php`, `api/admin/legacy_import.php`, the
+  Import tab/panel and its JS wiring, and the
+  `archive_person_upsert_by_slug()`/`archive_place_upsert_by_slug()`
+  helpers that existed only to support it. The `people.slug`/
+  `places.slug` columns stay in the schema (nullable, unused going
+  forward) rather than a column-dropping migration for no functional
+  gain.
+
+### Database changes
+
+None — no schema change, just unused code removed.
+
+### Environment changes
+
+None.
+
 ## [1.23.1] — 2026-08-25
 
 ### Fixed

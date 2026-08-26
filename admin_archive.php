@@ -37,7 +37,6 @@ require_admin_page();
     <button class="tab-btn" data-tab="quotes" id="tab-quotes" role="tab" aria-selected="false" aria-controls="panel-quotes">Quotes</button>
     <button class="tab-btn" data-tab="testimony" id="tab-testimony" role="tab" aria-selected="false" aria-controls="panel-testimony">Testimony</button>
     <button class="tab-btn" data-tab="discrepancies" id="tab-discrepancies" role="tab" aria-selected="false" aria-controls="panel-discrepancies">Discrepancy Notes</button>
-    <button class="tab-btn" data-tab="import" id="tab-import" role="tab" aria-selected="false" aria-controls="panel-import">Import</button>
   </nav>
 
   <main id="app" tabindex="-1" style="max-width:90vw;">
@@ -184,42 +183,6 @@ require_admin_page();
         <div class="form-row"><textarea id="discrepanciesMarkdown" name="content_markdown" rows="16"></textarea></div>
         <p class="form-error" id="discrepanciesFormError" role="alert" style="display:none;"></p>
         <button type="submit" class="btn-primary" id="discrepanciesSubmitBtn">Save notes</button>
-      </form>
-    </section>
-
-    <!-- IMPORT -->
-    <section class="panel" id="panel-import" role="tabpanel" aria-labelledby="tab-import" tabindex="0">
-      <h2>Import from legacy YAML</h2>
-      <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
-        For deployers migrating from the original app-lamp/app <code>knowledge/*.yaml</code> layer. Paste
-        any of the files below — each is optional, and only the ones you fill in get imported. People and
-        places are matched by their YAML <code>id</code> field, so re-running this is safe (it updates
-        existing entries instead of duplicating them); timeline entries and quotes have no such matching
-        and <strong>will be duplicated</strong> if you run this more than once with the same content —
-        best run once on an empty archive, or clear existing entries first.
-      </p>
-      <form id="importForm" class="content-form" style="max-width:none;">
-        <div class="form-row"><label for="importPeople">people.yaml</label><textarea id="importPeople" rows="6" placeholder="Paste people.yaml here"></textarea></div>
-        <div class="form-row"><label for="importPlaces">places.yaml</label><textarea id="importPlaces" rows="6" placeholder="Paste places.yaml here"></textarea></div>
-        <div class="form-row"><label for="importTimeline">timeline.yaml</label><textarea id="importTimeline" rows="6" placeholder="Paste timeline.yaml here"></textarea></div>
-        <div class="form-row"><label for="importQuotes">quotes.yaml</label><textarea id="importQuotes" rows="6" placeholder="Paste quotes.yaml here"></textarea></div>
-        <div class="form-row"><label for="importDiscrepancies">discrepancies.md (best-effort — this app's discrepancy notes only render a markdown subset, see the Discrepancy Notes tab)</label><textarea id="importDiscrepancies" rows="6" placeholder="Paste discrepancies.md here"></textarea></div>
-
-        <div class="form-row"><label for="importTranscript">Testimony transcript (markdown)</label><textarea id="importTranscript" rows="8" placeholder="Paste the transcript markdown here"></textarea></div>
-        <div style="display:flex; gap:10px;">
-          <div class="form-row" style="flex:1;"><label for="importSubjectMarker">Subject's marker in the transcript (e.g. SF) — leave blank if it already uses SUBJECT</label><input type="text" id="importSubjectMarker"></div>
-          <div class="form-row" style="flex:1;"><label for="importInterviewerMarker">Interviewer's marker (e.g. INT) — leave blank if it already uses INTERVIEWER</label><input type="text" id="importInterviewerMarker"></div>
-        </div>
-        <div class="form-row"><label for="importInterviewLabel">Interview label</label><input type="text" id="importInterviewLabel"></div>
-        <div class="form-row"><label for="importInterviewDate">Interview date</label><input type="text" id="importInterviewDate"></div>
-        <div class="form-row"><label for="importLocation">Location</label><input type="text" id="importLocation"></div>
-        <div class="form-row"><label for="importInterviewer">Interviewer</label><input type="text" id="importInterviewer"></div>
-        <div class="form-row"><label for="importVideographer">Videographer (optional)</label><input type="text" id="importVideographer"></div>
-        <div class="form-row"><label for="importLength">Length</label><input type="text" id="importLength"></div>
-
-        <p class="form-error" id="importFormError" role="alert" style="display:none;"></p>
-        <p class="meta" id="importStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
-        <button type="submit" class="btn-primary" id="importSubmitBtn">Run import</button>
       </form>
     </section>
 

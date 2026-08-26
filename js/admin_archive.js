@@ -480,59 +480,6 @@
     }
   });
 
-  // --- Legacy YAML import ---
-  const importForm = document.getElementById("importForm");
-  const importSubmitBtn = document.getElementById("importSubmitBtn");
-  const importFormError = document.getElementById("importFormError");
-  const importStatus = document.getElementById("importStatus");
-
-  importForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    importFormError.style.display = "none";
-    importStatus.textContent = "";
-    importSubmitBtn.disabled = true;
-    try {
-      const res = await fetch("/api/admin/legacy_import.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          people_yaml: document.getElementById("importPeople").value,
-          places_yaml: document.getElementById("importPlaces").value,
-          timeline_yaml: document.getElementById("importTimeline").value,
-          quotes_yaml: document.getElementById("importQuotes").value,
-          discrepancies_md: document.getElementById("importDiscrepancies").value,
-          transcript_md: document.getElementById("importTranscript").value,
-          subject_marker: document.getElementById("importSubjectMarker").value,
-          interviewer_marker: document.getElementById("importInterviewerMarker").value,
-          interview_label: document.getElementById("importInterviewLabel").value,
-          interview_date: document.getElementById("importInterviewDate").value,
-          location: document.getElementById("importLocation").value,
-          interviewer: document.getElementById("importInterviewer").value,
-          videographer: document.getElementById("importVideographer").value,
-          length_label: document.getElementById("importLength").value,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Import failed");
-      const c = data.counts;
-      importStatus.textContent =
-        `Imported ${c.people} people, ${c.places} places, ${c.timeline} timeline entries, ${c.quotes} quotes` +
-        (c.testimony ? ", a testimony transcript" : "") +
-        (c.discrepancies ? ", discrepancy notes" : "") + ".";
-      people.load();
-      places.load();
-      timeline.load();
-      quotes.load();
-      loadTestimony();
-      loadDiscrepancies();
-    } catch (err) {
-      importFormError.textContent = err.message;
-      importFormError.style.display = "";
-    } finally {
-      importSubmitBtn.disabled = false;
-    }
-  });
-
   people.load();
   places.load();
   timeline.load();

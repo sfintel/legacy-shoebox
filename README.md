@@ -139,26 +139,6 @@ The **Discrepancy notes** tab is freeform curator's notes — e.g. where two
 sources disagree on a name or date — supporting basic `#`/`##` headings,
 `**bold**`, `` `code` ``, and paragraphs (not full Markdown).
 
-### Migrating from an older, file-based app-lamp deployment
-
-If you're moving from the original YAML-file-based version of this app
-(`knowledge/people.yaml`, `places.yaml`, `timeline.yaml`, `quotes.yaml`,
-`testimony/transcript.md`, `discrepancies.md`), the **Import** tab on
-`/admin_archive.php` parses and loads them straight into the database —
-paste in whichever files you have (all optional) and click **Run
-import**. People and places are matched by their YAML `id` field, so
-running it again is safe (it updates existing entries rather than
-duplicating them); timeline entries and quotes have no such matching key
-and will be duplicated if you import the same content twice — best run
-once, on an empty archive. For the transcript, tell it what speaker
-markers your file used (e.g. `SF`/`INT`) and it rewrites them to this
-app's `**SUBJECT:**`/`**INTERVIEWER:**` convention automatically; leave
-those fields blank if your transcript already uses that convention. Any
-`source_X: true` flags in `people.yaml`/`places.yaml` become a citation
-automatically when the file documents them in its own header comments
-(e.g. `# source_vha: confirmed in VHA testimony...`) — otherwise they're
-just recorded as a plain source label you can edit afterward.
-
 ## Accounts and permissions
 
 1. New family members visit `/signup.php` ("Request access" link on the

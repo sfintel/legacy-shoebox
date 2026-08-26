@@ -67,7 +67,6 @@ require_once __DIR__ . '/includes/mailer.php';
 require_once __DIR__ . '/includes/transcript.php';
 require_once __DIR__ . '/includes/markdown_lite.php';
 require_once __DIR__ . '/includes/archive.php';
-require_once __DIR__ . '/includes/legacy_import.php';
 require_once __DIR__ . '/includes/knowledge.php';
 require_once __DIR__ . '/includes/quote_check.php';
 require_once __DIR__ . '/includes/video_seek.php';

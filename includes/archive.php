@@ -645,11 +645,11 @@ function archive_normalize_tags($raw): array
 }
 
 // $slug is intentionally NOT exposed in the admin Archive Editor's
-// forms — the UUID primary key is enough for admin operations. It only
-// exists for the Phase 5 legacy-YAML importer's benefit (so an imported
-// row can keep its old human-readable `id:` for reference), which is
-// why every write path here defaults it to null rather than deriving
-// one automatically.
+// forms — the UUID primary key is enough for admin operations. This
+// existed for the retired legacy-YAML importer's benefit (so an
+// imported row could keep its old human-readable `id:` for reference,
+// see sql/schema.sql's comment on the people table); every write path
+// here still defaults it to null rather than deriving one automatically.
 function archive_slug_or_null($value): ?string
 {
     $trimmed = archive_trim_or_null($value);
@@ -728,26 +728,6 @@ function archive_person_delete(string $id): bool
     return $stmt->rowCount() > 0;
 }
 
-// Insert-or-update by slug — used by the legacy YAML importer (see
-// includes/legacy_import.php, api/admin/legacy_import.php) so re-running
-// an import is safe rather than failing on people.slug's UNIQUE
-// constraint or creating duplicates. Plain archive_person_create()
-// (used by the ordinary "add a person" form) doesn't need this, since a
-// human adding one person at a time doesn't hit this case.
-function archive_person_upsert_by_slug(array $fields): array
-{
-    $slug = archive_slug_or_null($fields['slug'] ?? null);
-    if ($slug !== null) {
-        $stmt = db()->prepare('SELECT id FROM people WHERE slug = ?');
-        $stmt->execute([$slug]);
-        $existingId = $stmt->fetchColumn();
-        if ($existingId) {
-            return archive_person_update((string) $existingId, $fields);
-        }
-    }
-    return archive_person_create($fields);
-}
-
 // --- Places ---
 
 function archive_place_find(string $id): ?array
@@ -815,21 +795,6 @@ function archive_place_delete(string $id): bool
     $stmt = db()->prepare('DELETE FROM places WHERE id = ?');
     $stmt->execute([$id]);
     return $stmt->rowCount() > 0;
-}
-
-// See archive_person_upsert_by_slug() above — same rationale.
-function archive_place_upsert_by_slug(array $fields): array
-{
-    $slug = archive_slug_or_null($fields['slug'] ?? null);
-    if ($slug !== null) {
-        $stmt = db()->prepare('SELECT id FROM places WHERE slug = ?');
-        $stmt->execute([$slug]);
-        $existingId = $stmt->fetchColumn();
-        if ($existingId) {
-            return archive_place_update((string) $existingId, $fields);
-        }
-    }
-    return archive_place_create($fields);
 }
 
 // --- Timeline ---

@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.24.0' => [
+            'description' => 'Remove the legacy YAML importer (admin_archive.php Import tab, includes/legacy_import.php, api/admin/legacy_import.php) — deprecated, no longer used by any active deployment',
+            'db' => null,
+            'env' => [],
+        ],
         '1.23.1' => [
             'description' => 'cron_backup.php: add #!/usr/local/bin/php.cli shebang line for hosting panels (e.g. Plesk) whose Scheduled Tasks UI requires a directly-executable script',
             'db' => null,

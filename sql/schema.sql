@@ -286,12 +286,13 @@ CREATE TABLE IF NOT EXISTS audience_modes (
   UNIQUE KEY uniq_slug (slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Core archive: named people. `slug` mirrors the old YAML files' short
--- `id:` field (e.g. "jane_doe") — kept for readability and for the Phase 5
--- legacy-YAML importer, but the real primary key is the UUID like every
--- other table in this app. `source_note`/`citation` are free text,
--- replacing the old source_vha/source_book boolean flags — generic
--- enough for any archive's own mix of sources.
+-- Core archive: named people. `slug` is a leftover optional short
+-- identifier (e.g. "jane_doe") from the retired legacy-YAML importer
+-- (removed in 1.24.0) — nothing writes it anymore, but the column stays
+-- since dropping it buys nothing. The real primary key is the UUID like
+-- every other table in this app. `source_note`/`citation` are free
+-- text, replacing the old source_vha/source_book boolean flags —
+-- generic enough for any archive's own mix of sources.
 CREATE TABLE IF NOT EXISTS people (
   id          CHAR(36)     NOT NULL PRIMARY KEY,
   slug        VARCHAR(128) NULL,
