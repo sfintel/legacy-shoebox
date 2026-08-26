@@ -54,8 +54,9 @@ This creates the full set of tables the app needs — accounts and
 permissions (`users`, `consumed_tokens`, `rate_limits`), the core archive
 (`site_settings`, `audience_modes`, `people`, `places`, `timeline_entries`,
 `quotes`, `primary_testimony`, `discrepancy_notes`), family-contributed
-material (`content_items`, `content_files`, `content_suggestions`), and the
-name-redaction registry (`redacted_names`). See `sql/schema.sql` itself for
+material (`content_items`, `content_files`, `content_suggestions`), the
+app-wide keyword list (`keywords`), and the name-redaction registry
+(`redacted_names`). See `sql/schema.sql` itself for
 what each one is for — every table has a comment explaining its role.
 
 ## 2. Upload the files

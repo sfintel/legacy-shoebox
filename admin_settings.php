@@ -26,6 +26,7 @@ require_admin_page();
     <button class="tab-btn active" data-tab="identity" id="tab-identity" role="tab" aria-selected="true" aria-controls="panel-identity">Site identity</button>
     <button class="tab-btn" data-tab="sources" id="tab-sources" role="tab" aria-selected="false" aria-controls="panel-sources">Sources</button>
     <button class="tab-btn" data-tab="audience" id="tab-audience" role="tab" aria-selected="false" aria-controls="panel-audience">Audience categories</button>
+    <button class="tab-btn" data-tab="keywords" id="tab-keywords" role="tab" aria-selected="false" aria-controls="panel-keywords">Keywords</button>
   </nav>
 
   <main id="app" tabindex="-1" style="max-width:90vw;">
@@ -110,6 +111,32 @@ require_admin_page();
         <table class="admin-table">
           <thead><tr><th></th><th>Label</th><th>AI guidance</th><th>Default</th><th>Actions</th></tr></thead>
           <tbody id="modeRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- KEYWORDS -->
+    <section class="panel" id="panel-keywords" role="tabpanel" aria-labelledby="tab-keywords" tabindex="0">
+      <h2>Add a keyword</h2>
+      <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
+        The single suggestion list the keyword picker on the Content page and the Quotes tab both draw
+        from — rarely needs adding to by hand here, since typing a new keyword anywhere it's picked adds
+        it automatically. Rename one to fix a typo or merge a duplicate spelling (e.g. "WWII" into "WW2")
+        — renaming updates every quote and content item already tagged with the old spelling, not just
+        future suggestions. Deleting only removes it from the suggestion list; anything already tagged
+        with it keeps that tag.
+      </p>
+      <form id="keywordForm" class="content-form">
+        <div class="form-row"><label for="keywordLabel">Keyword</label><input type="text" id="keywordLabel" required></div>
+        <p class="form-error" id="keywordFormError" role="alert" style="display:none;"></p>
+        <button type="submit" class="btn-primary" id="keywordSubmitBtn">Add keyword</button>
+      </form>
+      <h2>Keywords</h2>
+      <p class="meta" id="keywordsStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Label</th><th>Actions</th></tr></thead>
+          <tbody id="keywordRows"></tbody>
         </table>
       </div>
     </section>

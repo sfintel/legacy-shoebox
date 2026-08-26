@@ -926,6 +926,8 @@ function archive_quote_create(array $fields): array
         throw new RuntimeException('Speaker and quote text are required.');
     }
     $id = make_uuid();
+    $tags = archive_normalize_tags($fields['tags'] ?? []);
+    keywords_ensure($tags); // joins the app-wide master list — see includes/keywords.php
     $stmt = db()->prepare(
         'INSERT INTO quotes (id, speaker, source_note, tags, quote_text, citation) VALUES (?, ?, ?, ?, ?, ?)'
     );
@@ -933,7 +935,7 @@ function archive_quote_create(array $fields): array
         $id,
         $speaker,
         archive_trim_or_null($fields['source_note'] ?? null),
-        json_encode(archive_normalize_tags($fields['tags'] ?? []), JSON_UNESCAPED_UNICODE),
+        json_encode($tags, JSON_UNESCAPED_UNICODE),
         $quoteText,
         archive_trim_or_null($fields['citation'] ?? null),
     ]);
@@ -950,13 +952,15 @@ function archive_quote_update(string $id, array $fields): array
     if ($speaker === null || $quoteText === null) {
         throw new RuntimeException('Speaker and quote text are required.');
     }
+    $tags = archive_normalize_tags($fields['tags'] ?? []);
+    keywords_ensure($tags); // joins the app-wide master list — see includes/keywords.php
     $stmt = db()->prepare(
         'UPDATE quotes SET speaker=?, source_note=?, tags=?, quote_text=?, citation=? WHERE id=?'
     );
     $stmt->execute([
         $speaker,
         archive_trim_or_null($fields['source_note'] ?? null),
-        json_encode(archive_normalize_tags($fields['tags'] ?? []), JSON_UNESCAPED_UNICODE),
+        json_encode($tags, JSON_UNESCAPED_UNICODE),
         $quoteText,
         archive_trim_or_null($fields['citation'] ?? null),
         $id,

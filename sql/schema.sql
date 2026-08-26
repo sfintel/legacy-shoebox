@@ -360,6 +360,20 @@ CREATE TABLE IF NOT EXISTS quotes (
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- The app-wide keyword list — see includes/keywords.php's own comment
+-- for the full rationale. NOT a foreign key target for quotes.tags or
+-- content_items.tags (both stay plain JSON string arrays, unchanged) —
+-- this is a curated suggestion list those pickers draw from, populated
+-- automatically as a side effect of tagging, editable afterward
+-- (admin_settings.php's Keywords tab) to fix a typo or merge duplicate
+-- spellings without needing every existing tagged item touched by hand.
+CREATE TABLE IF NOT EXISTS keywords (
+  id         CHAR(36)     NOT NULL PRIMARY KEY,
+  label      VARCHAR(100) NOT NULL,
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_label (label)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Single-row table (see site_settings comment above for the id=1
 -- convention). The primary testimony transcript, if the family has one
 -- (e.g. a recorded interview). raw_markdown uses the convention

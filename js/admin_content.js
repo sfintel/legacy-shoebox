@@ -465,7 +465,7 @@
     const editRow = document.querySelector(`tr.edit-row[data-edit-for="${id}"]`);
     editRow._tagPickerState = ContentForm.renderTagPicker(
       `tagsPicker-edit-${id}`, item.tags || [], `tagsPickerInput-edit-${id}`,
-      () => currentItems.flatMap((i) => i.tags || [])
+      () => allKeywordLabels
     );
     editRow.querySelector(".cancel-edit").addEventListener("click", () => editRow.remove());
     editRow.querySelector(".save-edit").addEventListener("click", () => saveEdit(item, editRow));
@@ -542,11 +542,21 @@
     }
   }
 
+  // App-wide keyword suggestion list (see includes/keywords.php) —
+  // fetched once and reused by the add-content form and every item's
+  // edit-row picker, same source admin_archive.js's Quotes tab and
+  // index.php's modal draw from.
+  let allKeywordLabels = [];
+
   // --- Add-content form (shared implementation — see js/content_form.js,
   // also used by index.php's "Add Content" modal) ---
   const contentFormHandle = ContentForm.initAddForm({
-    getAllTags: () => currentItems.flatMap((i) => i.tags || []),
+    getAllTags: () => allKeywordLabels,
     onSuccess: () => load(),
+  });
+  ContentForm.fetchKeywordLabels().then((labels) => {
+    allKeywordLabels = labels;
+    contentFormHandle.refreshTagPicker();
   });
 
   load();

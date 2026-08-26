@@ -67,17 +67,22 @@
       if (e.key === "Escape" && addContentModal.style.display !== "none") closeModal();
     });
 
-    // No content list is loaded on this page to draw keyword suggestions
-    // from (unlike admin_content.php, which already has every item in
-    // memory for its table) — the picker still works for typing new
-    // keywords, just without suggesting existing ones here.
+    // App-wide keyword suggestion list (see includes/keywords.php) —
+    // same source admin_content.js's and admin_archive.js's pickers draw
+    // from, fetched fresh here since this page never otherwise loads any
+    // content/quote data to derive suggestions from.
     if (window.ContentForm) {
-      window.ContentForm.initAddForm({
-        getAllTags: () => [],
+      let modalKeywordLabels = [];
+      const formHandle = window.ContentForm.initAddForm({
+        getAllTags: () => modalKeywordLabels,
         onSuccess: () => {
           closeModal();
           alert("Content added.");
         },
+      });
+      window.ContentForm.fetchKeywordLabels().then((labels) => {
+        modalKeywordLabels = labels;
+        formHandle.refreshTagPicker();
       });
     }
   }

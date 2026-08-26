@@ -22,6 +22,12 @@
     return str.length > n ? str.slice(0, n - 1) + "…" : str;
   }
 
+  // App-wide keyword suggestion list (see includes/keywords.php) —
+  // fetched once and reused by every keyword picker on this page (the
+  // add-quote form and each quote's edit row), same source
+  // admin_content.js's and index.php's pickers draw from.
+  let allKeywordLabels = [];
+
   // --- Tabs (same pattern as the main app's Browse tabs, js/app.js) ---
   const tabBtns = document.querySelectorAll(".tab-btn");
   tabBtns.forEach((btn) => {
@@ -82,6 +88,7 @@
       if (!row) return;
       row.insertAdjacentHTML("afterend", opts.renderEditRow(item));
       const editRow = document.querySelector(`tr.edit-row[data-edit-for="${id}"]`);
+      if (opts.afterRenderEditRow) opts.afterRenderEditRow(item, editRow);
       editRow.querySelector(".cancel-edit").addEventListener("click", () => editRow.remove());
       editRow.querySelector(".save-edit").addEventListener("click", () => saveEdit(item, editRow));
     }
@@ -141,6 +148,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to add");
         form.reset();
+        if (opts.afterCreate) opts.afterCreate();
         load();
       } catch (err) {
         formError.textContent = err.message;
@@ -355,6 +363,8 @@
   }
 
   // --- Quotes ---
+  let quoteAddTagPickerState = { tags: [] };
+
   const quotes = createListController({
     endpoint: "/api/admin/archive_quotes.php",
     listKey: "quotes",
@@ -369,13 +379,16 @@
       speaker: document.getElementById("quoteSpeaker").value,
       quote_text: document.getElementById("quoteText").value,
       source_note: document.getElementById("quoteSourceNote").value,
-      tags: document.getElementById("quoteTags").value,
+      tags: quoteAddTagPickerState.tags,
       citation: document.getElementById("quoteCitation").value,
     }),
+    afterCreate: () => {
+      quoteAddTagPickerState = ContentForm.renderTagPicker("quoteTagsPicker", [], "quoteTagsPickerInput", () => allKeywordLabels);
+    },
     renderRow: (q) => `<tr data-item-id="${q.id}">
       <td>${esc(q.speaker)}</td>
       <td>${esc(truncate(q.quoteText, 90))}</td>
-      <td>${(q.tags || []).map((t) => `<span class="pill">${esc(t)}</span>`).join(" ")}</td>
+      <td>${(q.tags || []).length ? `<span class="info-icon" title="${esc(q.tags.join(", "))}">i</span>` : "—"}</td>
       <td><div class="admin-actions">
         <button data-id="${q.id}" data-action="edit">Edit</button>
         <button class="danger" data-id="${q.id}" data-action="delete">Delete</button>
@@ -386,19 +399,36 @@
         <div class="form-row"><label>Speaker</label><input type="text" class="e-speaker" value="${esc(q.speaker)}"></div>
         <div class="form-row"><label>Quote — verbatim</label><textarea class="e-quote_text" rows="3">${esc(q.quoteText)}</textarea></div>
         <div class="form-row"><label>Source note</label><input type="text" class="e-source_note" value="${esc(q.sourceNote)}"></div>
-        <div class="form-row"><label>Tags — comma-separated</label><input type="text" class="e-tags" value="${esc((q.tags || []).join(", "))}"></div>
+        <div class="form-row"><label>Keywords</label><div id="quoteTagsPicker-edit-${q.id}"></div></div>
         <div class="form-row"><label>Citation</label><input type="text" class="e-citation" value="${esc(q.citation)}"></div>
         <div style="display:flex; gap:8px;"><button type="button" class="btn-primary save-edit">Save</button><button type="button" class="cancel-edit">Cancel</button></div>
         <p class="form-error edit-error" style="display:none;"></p>
       </div>
     </td></tr>`,
+    afterRenderEditRow: (q, editRow) => {
+      editRow._tagPickerState = ContentForm.renderTagPicker(
+        `quoteTagsPicker-edit-${q.id}`, q.tags || [], `quoteTagsPickerInput-edit-${q.id}`, () => allKeywordLabels
+      );
+    },
     collectEditFields: (row) => ({
       speaker: row.querySelector(".e-speaker").value,
       quote_text: row.querySelector(".e-quote_text").value,
       source_note: row.querySelector(".e-source_note").value,
-      tags: row.querySelector(".e-tags").value,
+      tags: row._tagPickerState ? row._tagPickerState.tags : [],
       citation: row.querySelector(".e-citation").value,
     }),
+  });
+  quoteAddTagPickerState = ContentForm.renderTagPicker("quoteTagsPicker", [], "quoteTagsPickerInput", () => allKeywordLabels);
+  // The picker above renders before this fetch resolves (allKeywordLabels
+  // starts empty), so its suggestion list needs one refresh once real
+  // data is in — renderTagPicker() only reads getAllTags() at render
+  // time, not on every keystroke. Re-rendering with the tags already
+  // picked so far preserves anything typed in that window; edit-row
+  // pickers are rendered on demand (when Edit is clicked) and so always
+  // see the fetched list already, needing no equivalent refresh.
+  ContentForm.fetchKeywordLabels().then((labels) => {
+    allKeywordLabels = labels;
+    quoteAddTagPickerState = ContentForm.renderTagPicker("quoteTagsPicker", quoteAddTagPickerState.tags, "quoteTagsPickerInput", () => allKeywordLabels);
   });
 
   // --- Testimony (single-row settings-style form) ---

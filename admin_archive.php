@@ -128,7 +128,7 @@ require_admin_page();
         <div class="form-row"><label for="quoteSpeaker">Speaker</label><input type="text" id="quoteSpeaker" name="speaker" required></div>
         <div class="form-row"><label for="quoteText">Quote — verbatim</label><textarea id="quoteText" name="quote_text" rows="3" required></textarea></div>
         <div class="form-row"><label for="quoteSourceNote">Source note</label><input type="text" id="quoteSourceNote" name="source_note" placeholder="e.g. Tape 2, or a URL citation"></div>
-        <div class="form-row"><label for="quoteTags">Tags — comma-separated (optional)</label><input type="text" id="quoteTags" name="tags" placeholder="childhood, family"></div>
+        <div class="form-row"><label for="quoteTagsPickerInput">Keywords (optional)</label><div id="quoteTagsPicker"></div></div>
         <div class="form-row"><label for="quoteCitation">Citation (optional)</label><input type="text" id="quoteCitation" name="citation"></div>
         <p class="form-error" id="quoteFormError" role="alert" style="display:none;"></p>
         <button type="submit" class="btn-primary" id="quoteSubmitBtn">Add quote</button>
@@ -137,7 +137,7 @@ require_admin_page();
       <p class="meta" id="quotesStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Speaker</th><th>Quote</th><th>Tags</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Speaker</th><th>Quote</th><th>Keywords</th><th>Actions</th></tr></thead>
           <tbody id="quotesRows"></tbody>
         </table>
       </div>
@@ -180,6 +180,7 @@ require_admin_page();
 
   </main>
 
+<script src="/js/content_form.js"></script>
 <script src="/js/admin_archive.js"></script>
 </body>
 </html>

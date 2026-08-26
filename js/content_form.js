@@ -225,5 +225,21 @@ window.ContentForm = (function () {
     return { refreshTagPicker, syncFormFields };
   }
 
-  return { renderTagPicker, initAddForm };
+  // The app-wide keyword suggestion list (includes/keywords.php) —
+  // shared fetch helper so admin_content.js, admin_archive.js (Quotes),
+  // and index.php's modal all draw from the exact same source instead
+  // of each inventing its own (the old behavior: Content's picker
+  // scanned currentItems.flatMap(tags), Quotes had no picker at all).
+  async function fetchKeywordLabels() {
+    try {
+      const res = await fetch("/api/admin/keywords.php");
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.keywords || []).map((k) => k.label);
+    } catch {
+      return [];
+    }
+  }
+
+  return { renderTagPicker, initAddForm, fetchKeywordLabels };
 })();

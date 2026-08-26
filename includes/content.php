@@ -14,10 +14,16 @@ declare(strict_types=1);
 // drops empties — fine there, but a content-item keyword picker should
 // never be able to produce visible duplicates in its own suggestion
 // pool, so dedupe here rather than changing the shared helper's
-// behavior for its other callers.
+// behavior for its other callers. Also the single choke point every
+// content_items.tags write passes through, so it doubles as where a
+// newly-typed keyword joins the app-wide master list (see
+// includes/keywords.php) — every caller already computes this right
+// before an INSERT/UPDATE, so there's no separate call site to remember.
 function content_normalize_tags(array $tags): array
 {
-    return array_values(array_unique(archive_normalize_tags($tags)));
+    $tags = array_values(array_unique(archive_normalize_tags($tags)));
+    keywords_ensure($tags);
+    return $tags;
 }
 
 function content_allowed_extensions(string $type): array

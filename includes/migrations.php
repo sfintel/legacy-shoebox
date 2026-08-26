@@ -23,6 +23,43 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.29.0' => [
+            'description' => 'Add app-wide keywords table — a single suggestion list Quotes and Content tag pickers both draw from, plus a new admin_settings.php Keywords tab to rename/merge/delete entries. Backfills the table from every tag already in use so an existing archive does not start with an empty list.',
+            'db' => static function (PDO $pdo): void {
+                $pdo->exec(
+                    "CREATE TABLE IF NOT EXISTS keywords (
+                        id CHAR(36) NOT NULL PRIMARY KEY,
+                        label VARCHAR(100) NOT NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE KEY uniq_label (label)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+                );
+
+                // CREATE TABLE IF NOT EXISTS makes the table itself safe to
+                // replay, but this backfill loop is NOT idempotent-by-
+                // skipping the way most other steps here are — it's just
+                // INSERT IGNORE against a UNIQUE column, so re-running it
+                // (e.g. an install re-applying 1.29.0 for any reason) is
+                // still safe: every tag either already has a row or gets
+                // one, never a duplicate.
+                $insert = $pdo->prepare('INSERT IGNORE INTO keywords (id, label) VALUES (?, ?)');
+                $seen = [];
+                foreach (['content_items', 'quotes'] as $table) {
+                    $rows = $pdo->query("SELECT tags FROM $table WHERE tags IS NOT NULL AND tags != '[]'")->fetchAll();
+                    foreach ($rows as $row) {
+                        foreach ((json_decode((string) $row['tags'], true) ?: []) as $tag) {
+                            $tag = trim((string) $tag);
+                            if ($tag === '' || isset($seen[$tag])) {
+                                continue;
+                            }
+                            $seen[$tag] = true;
+                            $insert->execute([make_uuid(), $tag]);
+                        }
+                    }
+                }
+            },
+            'env' => [],
+        ],
         '1.28.0' => [
             'description' => 'Main app "Add Content" opens a lightweight modal instead of navigating to the full admin_content.php page; extracted the add-content form (markup + JS) into a shared implementation (content_add_form_html(), js/content_form.js) used by both',
             'db' => null,

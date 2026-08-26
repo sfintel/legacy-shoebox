@@ -419,7 +419,134 @@
     }
   });
 
+  // --- Keywords ---
+  let currentKeywords = [];
+
+  async function loadKeywords() {
+    const res = await fetch("/api/admin/keywords.php");
+    if (res.status === 403) return;
+    const data = await res.json();
+    currentKeywords = data.keywords || [];
+    renderKeywords();
+  }
+
+  function renderKeywords() {
+    const rows = currentKeywords.map((k) => `<tr data-item-id="${k.id}">
+      <td>${esc(k.label)}</td>
+      <td><div class="admin-actions">
+        <button data-id="${k.id}" data-action="edit">Edit</button>
+        <button class="danger" data-id="${k.id}" data-action="delete">Delete</button>
+      </div></td>
+    </tr>`).join("");
+    document.getElementById("keywordRows").innerHTML = rows || `<tr><td colspan="2" class="meta">No keywords yet.</td></tr>`;
+    document.getElementById("keywordsStatus").textContent = `${currentKeywords.length} keyword${currentKeywords.length === 1 ? "" : "s"}`;
+
+    document.querySelectorAll('#keywordRows button[data-action="edit"]').forEach((btn) => {
+      btn.addEventListener("click", () => toggleKeywordEdit(btn.dataset.id));
+    });
+    document.querySelectorAll('#keywordRows button[data-action="delete"]').forEach((btn) => {
+      btn.addEventListener("click", () => handleKeywordDelete(btn.dataset.id));
+    });
+  }
+
+  function toggleKeywordEdit(id) {
+    const existing = document.querySelector(`tr.edit-row[data-edit-for="${id}"]`);
+    if (existing) {
+      existing.remove();
+      return;
+    }
+    const keyword = currentKeywords.find((k) => k.id === id);
+    if (!keyword) return;
+    const row = document.querySelector(`tr[data-item-id="${id}"]`);
+    if (!row) return;
+    row.insertAdjacentHTML("afterend", `<tr class="edit-row" data-edit-for="${id}"><td colspan="2">
+      <div class="content-form" style="max-width:none;">
+        <div class="form-row">
+          <label>Label</label>
+          <input type="text" class="e-label" value="${esc(keyword.label)}">
+        </div>
+        <p class="meta" style="font-size:.8rem;">Renaming to a label that's already used merges the two — every
+          quote/content item tagged with either spelling ends up tagged with this one.</p>
+        <div style="display:flex; gap:8px;"><button type="button" class="btn-primary save-edit">Save</button><button type="button" class="cancel-edit">Cancel</button></div>
+        <p class="form-error edit-error" style="display:none;"></p>
+      </div>
+    </td></tr>`);
+    const editRow = document.querySelector(`tr.edit-row[data-edit-for="${id}"]`);
+    editRow.querySelector(".cancel-edit").addEventListener("click", () => editRow.remove());
+    editRow.querySelector(".save-edit").addEventListener("click", () => saveKeywordEdit(keyword, editRow));
+  }
+
+  async function saveKeywordEdit(keyword, editRow) {
+    const errEl = editRow.querySelector(".edit-error");
+    errEl.style.display = "none";
+    const saveBtn = editRow.querySelector(".save-edit");
+    saveBtn.disabled = true;
+    try {
+      const res = await fetch("/api/admin/keywords.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "rename",
+          id: keyword.id,
+          label: editRow.querySelector(".e-label").value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Rename failed");
+      loadKeywords();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = "";
+      saveBtn.disabled = false;
+    }
+  }
+
+  async function handleKeywordDelete(id) {
+    if (!confirm("Remove this keyword from the suggestion list? Anything already tagged with it keeps that tag.")) return;
+    try {
+      const res = await fetch("/api/admin/keywords.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Delete failed");
+      loadKeywords();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  const keywordForm = document.getElementById("keywordForm");
+  const keywordSubmitBtn = document.getElementById("keywordSubmitBtn");
+  const keywordFormError = document.getElementById("keywordFormError");
+  keywordForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    keywordFormError.style.display = "none";
+    keywordSubmitBtn.disabled = true;
+    try {
+      const res = await fetch("/api/admin/keywords.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          label: document.getElementById("keywordLabel").value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add");
+      keywordForm.reset();
+      loadKeywords();
+    } catch (err) {
+      keywordFormError.textContent = err.message;
+      keywordFormError.style.display = "";
+    } finally {
+      keywordSubmitBtn.disabled = false;
+    }
+  });
+
   loadIdentity();
   loadSources();
   loadModes();
+  loadKeywords();
 })();

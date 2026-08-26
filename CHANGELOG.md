@@ -14,6 +14,64 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.29.0] — 2026-08-26
+
+### Added
+
+- A single app-wide keyword list: a new `keywords` table that Quotes'
+  and Content's tag pickers both draw their suggestions from, instead
+  of each inventing its own pool from whatever had already been typed
+  on that particular page. Typing a new keyword anywhere still works
+  (it's still free-typeable, not restricted to the list) and joins the
+  master list automatically. A new **Keywords** tab on
+  `/admin_settings.php` lets an admin rename a keyword — to fix a typo
+  or merge a duplicate spelling like "WWII" into "WW2" — which cascades
+  to every quote and content item already tagged with the old spelling,
+  or delete one from the suggestion list (existing tags keep their text
+  either way).
+- The Quotes tab (`/admin_archive.php`) now has the same keyword-picker
+  UI Content already had (previously a plain comma-separated text
+  field, with no suggestions at all) — chips, an inline add field, and
+  suggestions from the master list. Its unexpanded row also switched
+  from showing every tag pill inline to the same circled-i icon Content
+  uses, for the same single-line-per-row reason as 1.27.0.
+- The main app's "Add Content" modal (1.28.0) now gets real keyword
+  suggestions too, fetched from the master list — it previously had none
+  at all, since it never loads a content list to derive them from.
+
+### Changed
+
+- Extracted the Quotes/Content picker's shared rendering logic
+  (`ContentForm.renderTagPicker`, already shared as of 1.28.0) to accept
+  a keyword source, and added `ContentForm.fetchKeywordLabels()` so all
+  three pickers (Content's own, its edit rows, and Quotes') fetch from
+  the exact same endpoint rather than each having its own copy of "what
+  counts as an existing keyword."
+
+### Database changes
+
+Adds a new `keywords` table (`upgrade.sh` handles this automatically,
+including backfilling it from every tag already in use, so an existing
+archive doesn't start with an empty list). Manual equivalent:
+
+```sql
+CREATE TABLE IF NOT EXISTS keywords (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  label VARCHAR(100) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_label (label)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+Then, in PHP, backfill it from every distinct tag already in
+`content_items.tags` and `quotes.tags` (see `includes/migrations.php`'s
+`1.29.0` step for the exact backfill logic) — not required for a fresh
+install, only to seed the suggestion list on an existing archive.
+
+### Environment changes
+
+None.
+
 ## [1.28.0] — 2026-08-26
 
 ### Added
