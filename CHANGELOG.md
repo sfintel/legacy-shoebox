@@ -14,6 +14,38 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.23.0] — 2026-08-25
+
+### Added
+
+- Backup retention: old backups are now deleted automatically once there
+  are more than `BACKUP_RETENTION_COUNT` (default 14), applied every time
+  a backup is created (manual or automatic) — previously nothing ever
+  purged old backups, so they accumulated indefinitely. An "Apply
+  retention now" button on `/admin_backup.php` also applies it on demand,
+  to clean up an existing pile immediately after lowering the count
+  rather than waiting for the next backup.
+- Optional automatic backups on a schedule (`BACKUP_AUTO_INTERVAL_HOURS`,
+  default `0`/off), via a new `cron_backup.php` entry point meant to be
+  triggered by a host cron job (CLI, or HTTP with a `BACKUP_CRON_SECRET`
+  token for hosts that only offer "cron via URL") — this app has no
+  long-running process of its own, so the actual triggering has to come
+  from outside. See README's "Backup & Restore" section for setup.
+- Optional `BACKUP_DIR` override for where backup .zip files are stored
+  (defaults to `ARCHIVE_ROOT/backups`, unchanged), for hosts that want
+  backups on a separate disk/mount with more space.
+- `/admin_backup.php` now shows the currently effective auto-backup
+  interval, retention count, storage directory, and last-backup time.
+
+### Environment changes
+
+New optional variables — see `.env.example`'s "Backup & Restore"
+section: `BACKUP_RETENTION_COUNT` (default 14), `BACKUP_AUTO_INTERVAL_HOURS`
+(default 0/off), `BACKUP_DIR` (default `ARCHIVE_ROOT/backups`),
+`BACKUP_CRON_SECRET` (default blank — only needed for URL-triggered
+cron). All optional; a deployment that adds nothing to `.env` keeps its
+exact previous behavior (manual-only backups, never pruned).
+
 ## [1.22.0] — 2026-08-21
 
 ### Added

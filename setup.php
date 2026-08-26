@@ -192,6 +192,18 @@ $stepNumber = array_search($stage, $stageOrder, true) + 1;
           <label for="mailFrom">"From" address</label>
           <input type="text" id="mailFrom" placeholder="Family Archive <no-reply@example.com>">
         </fieldset>
+        <fieldset>
+          <legend>Backups (optional — see README's "Backup & Restore" for details)</legend>
+          <label for="backupRetentionCount">Backups to keep (oldest deleted automatically beyond this)</label>
+          <input type="number" id="backupRetentionCount" min="0" value="14">
+          <label for="backupAutoIntervalHours">Automatic backup interval, in hours (0 = off, manual-only)</label>
+          <input type="number" id="backupAutoIntervalHours" min="0" value="0">
+          <p class="hint">Also needs a host cron job pointed at <code>cron_backup.php</code> to actually run — this setting alone does nothing. See the README.</p>
+          <label for="backupDir">Backup storage location (optional — advanced; blank = default, next to your uploads)</label>
+          <input type="text" id="backupDir" placeholder="Default: ARCHIVE_ROOT/backups">
+          <label for="backupCronSecret">Cron secret (only needed if your host can only cron a URL, not run a command)</label>
+          <input type="text" id="backupCronSecret" placeholder="Leave blank unless your host requires URL-based cron">
+        </fieldset>
         <p class="err" id="advancedError" role="alert"></p>
         <button type="submit" id="advancedSubmitBtn">Finish setup</button>
       </form>

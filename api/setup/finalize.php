@@ -16,7 +16,8 @@ if (setup_is_complete()) {
 $body = read_json_body();
 $fields = [];
 foreach (['APP_URL', 'NOTIFY_EMAIL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM',
-    'LOGIN_ATTEMPT_LIMIT', 'LOGIN_LOCKOUT_SECONDS', 'CHAT_RATE_LIMIT', 'SIGNUP_RATE_LIMIT'] as $key) {
+    'LOGIN_ATTEMPT_LIMIT', 'LOGIN_LOCKOUT_SECONDS', 'CHAT_RATE_LIMIT', 'SIGNUP_RATE_LIMIT',
+    'BACKUP_RETENTION_COUNT', 'BACKUP_AUTO_INTERVAL_HOURS', 'BACKUP_DIR', 'BACKUP_CRON_SECRET'] as $key) {
     if (isset($body[$key]) && trim((string) $body[$key]) !== '') {
         $fields[$key] = trim((string) $body[$key]);
     }

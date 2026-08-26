@@ -32,6 +32,20 @@
     }
     const data = await res.json();
     render(data.backups || []);
+    renderAutoStatus(data.auto || {});
+  }
+
+  function renderAutoStatus(auto) {
+    const parts = [];
+    parts.push(auto.intervalHours > 0
+      ? `Automatic backups: every ${auto.intervalHours}h (needs cron_backup.php wired up — see README)`
+      : "Automatic backups: off");
+    parts.push(auto.retentionCount > 0
+      ? `Retention: keep the newest ${auto.retentionCount}`
+      : "Retention: keep all (never pruned)");
+    parts.push(`Stored in: ${auto.dir || "—"}`);
+    parts.push(`Last backup: ${fmtDate(auto.lastBackupAt)}`);
+    document.getElementById("autoStatus").textContent = parts.join(" · ");
   }
 
   function render(backups) {
@@ -89,6 +103,31 @@
       createStatus.textContent = err.message;
     } finally {
       createBtn.disabled = false;
+    }
+  });
+
+  const pruneBtn = document.getElementById("pruneBtn");
+  const pruneStatus = document.getElementById("pruneStatus");
+  pruneBtn.addEventListener("click", async () => {
+    pruneBtn.disabled = true;
+    pruneStatus.textContent = "Applying retention…";
+    try {
+      const res = await fetch("/api/admin/backup.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "prune" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to apply retention");
+      const deleted = data.deleted || [];
+      pruneStatus.textContent = deleted.length
+        ? `Deleted ${deleted.length} old backup${deleted.length === 1 ? "" : "s"}.`
+        : "Nothing to prune — already within the retention count.";
+      load();
+    } catch (err) {
+      pruneStatus.textContent = err.message;
+    } finally {
+      pruneBtn.disabled = false;
     }
   });
 

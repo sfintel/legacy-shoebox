@@ -23,6 +23,16 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.23.0' => [
+            'description' => 'Backup retention (auto-prune oldest beyond BACKUP_RETENTION_COUNT), optional automatic backups via new cron_backup.php + BACKUP_AUTO_INTERVAL_HOURS, optional BACKUP_DIR storage-location override',
+            'db' => null,
+            'env' => [
+                'BACKUP_RETENTION_COUNT (optional, defaults to 14 — how many backups to keep; 0 keeps all)',
+                'BACKUP_AUTO_INTERVAL_HOURS (optional, defaults to 0/off — also needs a host cron job pointed at cron_backup.php to actually run; see README)',
+                'BACKUP_DIR (optional, defaults to ARCHIVE_ROOT/backups)',
+                'BACKUP_CRON_SECRET (optional — only needed if your host can only cron a URL, not a CLI command)',
+            ],
+        ],
         '1.1.0' => [
             'description' => 'Backup & Restore admin functionality',
             'db' => null,

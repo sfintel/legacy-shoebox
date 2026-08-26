@@ -16,13 +16,89 @@ declare(strict_types=1);
 // content_upload_dir()) — never served by a direct URL, only through
 // api/admin/backup_download.php's authenticated stream.
 
+// Defaults to ARCHIVE_ROOT/backups (outside the webroot, like uploads/)
+// but can be pointed elsewhere via BACKUP_DIR — e.g. a separate volume
+// with more space, since backups accumulate over time. Same trust level
+// as ARCHIVE_ROOT itself: whoever controls .env controls where files on
+// disk go, no extra validation attempted here.
 function backup_dir(): string
 {
-    $dir = ARCHIVE_ROOT . '/backups';
+    $configured = env('BACKUP_DIR');
+    $dir = $configured !== null && $configured !== '' ? rtrim($configured, '/') : ARCHIVE_ROOT . '/backups';
     if (!is_dir($dir)) {
         mkdir($dir, 0770, true);
     }
     return $dir;
+}
+
+// How many backups to keep — the oldest are deleted once there are more
+// than this. 0 (or unset) means "keep everything", matching the
+// original behavior before retention existed.
+function backup_retention_count(): int
+{
+    return max(0, (int) env('BACKUP_RETENTION_COUNT', '14'));
+}
+
+// 0 (the default) means automatic backups are off — this app only ever
+// backs up when an admin clicks the button, unless a host cron job is
+// wired up to hit cron_backup.php (see that file and README's "Backup &
+// Restore" section).
+function backup_auto_interval_hours(): int
+{
+    return max(0, (int) env('BACKUP_AUTO_INTERVAL_HOURS', '0'));
+}
+
+// Deletes the oldest backups beyond backup_retention_count(), regardless
+// of whether they were made by hand or by cron_backup.php — there's no
+// stored "automatic vs manual" flag, and retention is meant to cap disk
+// usage either way. Called automatically at the end of backup_create(),
+// and also exposed standalone (admin_backup.php's "Apply retention now"
+// button, cron_backup.php) so lowering the count takes effect
+// immediately rather than waiting for the next backup.
+function backup_prune(): array
+{
+    $keep = backup_retention_count();
+    if ($keep === 0) {
+        return [];
+    }
+    $backups = backup_list(); // newest first
+    $toDelete = array_slice($backups, $keep);
+    $deleted = [];
+    foreach ($toDelete as $b) {
+        if (backup_delete($b['filename'])) {
+            $deleted[] = $b['filename'];
+        }
+    }
+    return $deleted;
+}
+
+// True if automatic backups are on and either no backup exists yet or
+// the newest one is older than the configured interval. Deliberately
+// stateless — no separate "last automatic run" record to keep in sync —
+// so this self-corrects if the interval is changed or a cron run is
+// missed, and a recent manual backup naturally pushes out the next
+// automatic one.
+function backup_is_due(): bool
+{
+    $intervalHours = backup_auto_interval_hours();
+    if ($intervalHours === 0) {
+        return false;
+    }
+    $backups = backup_list();
+    if (empty($backups)) {
+        return true;
+    }
+    $newest = strtotime($backups[0]['createdAt']);
+    return $newest === false || $newest <= time() - ($intervalHours * 3600);
+}
+
+// Creates a backup if one is due per backup_auto_interval_hours(),
+// otherwise does nothing. Returns the new filename, or null if none was
+// due. Used by cron_backup.php; a plain admin-triggered backup calls
+// backup_create() directly instead, bypassing the due-check.
+function backup_run_scheduled(): ?string
+{
+    return backup_is_due() ? backup_create() : null;
 }
 
 // A plain, human-readable SQL dump — DROP TABLE IF EXISTS + CREATE
@@ -103,6 +179,7 @@ function backup_create(): string
     ], JSON_PRETTY_PRINT));
 
     $zip->close();
+    backup_prune();
     return $filename;
 }
 
@@ -123,6 +200,23 @@ function backup_list(): array
     }
     usort($out, static fn ($a, $b) => strcmp($b['filename'], $a['filename']));
     return $out;
+}
+
+// Read-only summary of the current .env-configured controls, for
+// admin_backup.php to display — there's no admin form for these (they're
+// infrastructure config, same as SMTP/rate-limit settings, which also
+// live only in .env; see site_settings' own comment in sql/schema.sql
+// for why archive identity and infra config are kept apart).
+function backup_auto_status(): array
+{
+    $backups = backup_list();
+    return [
+        'intervalHours' => backup_auto_interval_hours(),
+        'retentionCount' => backup_retention_count(),
+        'dir' => backup_dir(),
+        'lastBackupAt' => $backups[0]['createdAt'] ?? null,
+        'dueNow' => backup_is_due(),
+    ];
 }
 
 // Rejects anything that isn't a bare filename already known to

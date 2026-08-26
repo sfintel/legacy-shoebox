@@ -7,7 +7,7 @@ require_admin_api();
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
-    json_response(['backups' => backup_list()]);
+    json_response(['backups' => backup_list(), 'auto' => backup_auto_status()]);
 }
 
 if ($method === 'POST') {
@@ -29,6 +29,11 @@ if ($method === 'POST') {
             json_response(['error' => 'Backup not found.'], 404);
         }
         json_response(['ok' => true]);
+    }
+
+    if ($action === 'prune') {
+        $deleted = backup_prune();
+        json_response(['deleted' => $deleted]);
     }
 
     json_response(['error' => 'Unknown action.'], 400);

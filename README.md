@@ -425,6 +425,45 @@ the button becomes clickable. Use it to undo a bad upgrade or other
 mistake, not as a way to apply a single schema change (see
 [UPGRADE.md](UPGRADE.md) for why).
 
+### Retention, scheduling, and storage location
+
+Three things are configurable in `.env` (see `.env.example`'s "Backup &
+Restore" section) — not on `/admin_backup.php` itself, same as SMTP and
+rate-limit settings, since these are infrastructure config rather than
+archive content:
+
+- **`BACKUP_RETENTION_COUNT`** (default 14) — the oldest backups are
+  deleted automatically once there are more than this, whether they were
+  made by hand or automatically. Applied every time a backup is created,
+  and also available on demand via the "Apply retention now" button on
+  `/admin_backup.php` (useful the first time you set a lower count, to
+  clean up an existing pile without waiting for the next backup). Set to
+  `0` to keep everything and never prune.
+- **`BACKUP_AUTO_INTERVAL_HOURS`** (default `0`, meaning off) — how often
+  an automatic backup should run. Setting this alone does nothing by
+  itself: this app has no long-running process of its own (same shared-
+  hosting assumption as everywhere else in this README), so automatic
+  backups need a host cron job to actually trigger them. Point one at
+  `cron_backup.php`:
+  - **Preferred**: cPanel's *Cron Jobs* running the command
+    `php /home/you/public_html/cron_backup.php` (adjust the path) on a
+    short, frequent schedule (e.g. hourly) — each run is a no-op unless a
+    backup is actually due, so scheduling it more often than you want
+    backups is harmless. A command-line cron job isn't reachable over
+    HTTP, so no secret/token is needed for this route.
+  - **If your host only offers "cron via URL"** (wget/curl pinging a URL
+    on a schedule, no shell command option): set `BACKUP_CRON_SECRET` in
+    `.env` to a random string, then point cron at
+    `https://yoursite.example/cron_backup.php?token=that-string`. Without
+    a configured secret, `cron_backup.php` refuses every HTTP request —
+    it creates backups and touches disk, so it's never a publicly
+    reachable no-auth endpoint by default.
+- **`BACKUP_DIR`** (optional) — where backup .zip files are stored.
+  Defaults to `ARCHIVE_ROOT/backups`, outside the webroot like `uploads/`
+  already is; only set this if you specifically want backups on a
+  different disk/mount (e.g. more free space than `ARCHIVE_ROOT`'s
+  volume has), and keep it outside the webroot the same way.
+
 ### Moving to a new host
 
 A backup is a valid way to move the whole archive to a different

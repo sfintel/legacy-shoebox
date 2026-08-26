@@ -216,6 +216,12 @@ function setup_write_env(array $newValues): void
         'LOGIN_ATTEMPT_LIMIT=' . $get('LOGIN_ATTEMPT_LIMIT', '5'),
         'LOGIN_LOCKOUT_SECONDS=' . $get('LOGIN_LOCKOUT_SECONDS', '900'),
         '',
+        '# --- Backup & Restore (/admin_backup.php) ---',
+        'BACKUP_RETENTION_COUNT=' . $get('BACKUP_RETENTION_COUNT', '14'),
+        'BACKUP_AUTO_INTERVAL_HOURS=' . $get('BACKUP_AUTO_INTERVAL_HOURS', '0'),
+        'BACKUP_DIR=' . $get('BACKUP_DIR'),
+        'BACKUP_CRON_SECRET=' . $get('BACKUP_CRON_SECRET'),
+        '',
     ];
 
     file_put_contents(setup_env_path(), implode("\n", $lines));

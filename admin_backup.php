@@ -39,6 +39,16 @@ require_admin_page();
     <button type="button" class="btn-primary" id="createBtn">Create backup now</button>
     <p class="meta" id="createStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
 
+    <h2>Automatic backups &amp; retention</h2>
+    <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
+      These are set in <code>.env</code> (like SMTP and rate-limit settings), not here — see
+      <code>.env.example</code>'s "Backup &amp; Restore" section and the README for
+      <code>cron_backup.php</code> setup. Shown below is what's currently in effect.
+    </p>
+    <p class="meta" id="autoStatus" role="status" style="font-size:.9rem;"></p>
+    <button type="button" class="ghost-btn" id="pruneBtn">Apply retention now</button>
+    <p class="meta" id="pruneStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
+
     <h2>Existing backups</h2>
     <p class="meta" id="listStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
     <div class="table-wrap">
