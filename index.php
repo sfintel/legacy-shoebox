@@ -33,7 +33,17 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
       <span class="brand-sub">Legacy Archive</span>
     </div>
     <div style="display:flex; gap:8px; align-items:center;">
-      <a id="adminLink" href="/admin.php" class="ghost-btn" style="display:none; text-decoration:none;">Admin</a>
+      <div id="adminMenu" class="admin-menu" style="display:none;">
+        <button type="button" id="adminMenuTrigger" class="ghost-btn admin-menu-trigger" aria-haspopup="true" aria-expanded="false">Admin ▾</button>
+        <div class="admin-menu-list" role="menu" aria-label="Admin sections">
+          <a role="menuitem" href="/admin.php">Users</a>
+          <a role="menuitem" href="/admin_content.php">Content</a>
+          <a role="menuitem" href="/admin_archive.php">Archive</a>
+          <a role="menuitem" href="/admin_settings.php">Settings</a>
+          <a role="menuitem" href="/admin_redactions.php">Redactions</a>
+          <a role="menuitem" href="/admin_backup.php">Backup</a>
+        </div>
+      </div>
       <a id="contentLink" href="/admin_content.php" class="ghost-btn" style="display:none; text-decoration:none;">Add Content</a>
       <a id="accountLink" href="/account.php" class="ghost-btn" style="display:none; text-decoration:none;">Account</a>
       <button id="logoutBtn" class="ghost-btn" title="Sign out">Sign out</button>

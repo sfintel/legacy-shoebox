@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.26.0' => [
+            'description' => 'Admin nav overhaul: main-app "Admin" link is now a hover dropdown listing all six sections; every admin_*.php page shows all six with the current one highlighted; fix admin_content.php not hiding the Backup link from non-admin authors',
+            'db' => null,
+            'env' => [],
+        ],
         '1.25.0' => [
             'description' => 'Hide move-up/move-down arrows on the first/last row of reorderable admin tables (Timeline, Sources, Audience categories) instead of always showing both',
             'db' => null,

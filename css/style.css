@@ -35,6 +35,25 @@ h2{font-family:Georgia,'Times New Roman',serif;font-weight:600;margin:0 0 12px;}
   padding:7px 12px; border-radius:7px; cursor:pointer; font-size:.85rem;
 }
 .ghost-btn:hover{border-color:var(--accent); color:var(--text);}
+.ghost-btn.active{background:var(--accent); border-color:var(--accent); color:#1b1a17; font-weight:600;}
+.ghost-btn.active:hover{color:#1b1a17;}
+
+.admin-menu{position:relative; display:inline-flex;}
+.admin-menu-trigger{display:inline-flex; align-items:center; gap:4px;}
+.admin-menu-list{
+  display:none; flex-direction:column; gap:2px;
+  position:absolute; top:calc(100% + 6px); right:0; z-index:20; min-width:160px;
+  background:var(--panel); border:1px solid var(--border); border-radius:8px;
+  padding:6px; box-shadow:0 8px 24px rgba(0,0,0,.35);
+}
+.admin-menu:hover .admin-menu-list,
+.admin-menu:focus-within .admin-menu-list,
+.admin-menu.open .admin-menu-list{display:flex;}
+.admin-menu-list a{
+  display:block; padding:8px 10px; border-radius:6px; color:var(--text);
+  text-decoration:none; font-size:.85rem; white-space:nowrap;
+}
+.admin-menu-list a:hover, .admin-menu-list a:focus-visible{background:var(--tag-bg);}
 
 .tabs{
   display:flex; gap:4px; overflow-x:auto; padding:8px 10px; background:var(--panel-2);

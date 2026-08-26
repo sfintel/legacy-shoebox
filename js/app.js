@@ -8,8 +8,8 @@
       return;
     }
     if (d.role === "admin") {
-      const link = document.getElementById("adminLink");
-      if (link) link.style.display = "inline-block";
+      const menu = document.getElementById("adminMenu");
+      if (menu) menu.style.display = "";
     }
     if (d.role === "admin" || d.canAddContent) {
       const contentLink = document.getElementById("contentLink");
@@ -23,6 +23,24 @@
     await fetch("/api/logout.php", { method: "POST" });
     window.location.href = "/login.php";
   });
+
+  // --- Admin dropdown menu ---
+  // Hover opens it on desktop (pure CSS, see .admin-menu-list in
+  // style.css) — this click handler is only the fallback for touch,
+  // where :hover never fires.
+  const adminMenu = document.getElementById("adminMenu");
+  const adminMenuTrigger = document.getElementById("adminMenuTrigger");
+  if (adminMenu && adminMenuTrigger) {
+    adminMenuTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = adminMenu.classList.toggle("open");
+      adminMenuTrigger.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+    document.addEventListener("click", () => {
+      adminMenu.classList.remove("open");
+      adminMenuTrigger.setAttribute("aria-expanded", "false");
+    });
+  }
 
   // --- Tabs ---
   const tabBtns = document.querySelectorAll(".tab-btn");

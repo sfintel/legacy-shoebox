@@ -14,6 +14,30 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.26.0] — 2026-08-26
+
+### Added
+
+- The main app header's "Admin" link is now a hover dropdown (tap to
+  open on touch) listing all six admin sections — Users, Content,
+  Archive, Settings, Redactions, Backup — instead of linking straight to
+  `/admin.php`.
+- Every admin_*.php page's header now lists all six sections (previously
+  each page omitted the link back to itself, which was the only "you are
+  here" cue) with the current section highlighted via a new
+  `.ghost-btn.active` style and `aria-current="page"`.
+
+### Fixed
+
+- `/admin_content.php`'s nav hid Users/Archive/Settings/Redactions from
+  non-admin authors but not Backup, letting an author see a link to a
+  page they can't actually use (`admin_backup.php` is admin-only) — now
+  hidden consistently with the others.
+
+### Environment changes
+
+None.
+
 ## [1.25.0] — 2026-08-26
 
 ### Fixed

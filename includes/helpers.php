@@ -182,6 +182,47 @@ function app_version(): string
     return $version;
 }
 
+// Renders the header nav shared identically by all six admin_*.php
+// pages — every section always listed (including a link back to
+// whichever page you're already on, unlike the old per-page markup that
+// omitted the self-link as its only "you are here" cue), with the
+// current one highlighted instead. $current is one of
+// 'users'|'content'|'archive'|'settings'|'redactions'|'backup'; kept
+// here rather than duplicated six times so the list of sections and the
+// highlight logic can't drift between pages (see also index.php's
+// "Admin" dropdown menu, which links to the same six URLs).
+//
+// Every link except Content carries an id (e.g. "usersLink") — used
+// only by admin_content.php's own JS, the one admin_* page a non-admin
+// author can also reach (require_content_page(), not
+// require_admin_page()), to hide every admin-only section for them at
+// runtime. The other five pages render these same ids but never
+// reference them, since require_admin_page() already means only an
+// admin ever sees that markup at all.
+function admin_nav_html(string $current): string
+{
+    $sections = [
+        'users' => ['/admin.php', 'Users'],
+        'content' => ['/admin_content.php', 'Content'],
+        'archive' => ['/admin_archive.php', 'Archive'],
+        'settings' => ['/admin_settings.php', 'Settings'],
+        'redactions' => ['/admin_redactions.php', 'Redactions'],
+        'backup' => ['/admin_backup.php', 'Backup'],
+    ];
+    $out = '<div style="display:flex; gap:8px; flex-wrap:wrap;">';
+    foreach ($sections as $key => [$href, $label]) {
+        $isCurrent = $key === $current;
+        $class = 'ghost-btn' . ($isCurrent ? ' active' : '');
+        $aria = $isCurrent ? ' aria-current="page"' : '';
+        $id = $key !== 'content' ? ' id="' . $key . 'Link"' : '';
+        $out .= '<a' . $id . ' class="' . $class . '" href="' . h($href) . '" style="text-decoration:none; display:inline-block;"' . $aria . '>' . h($label) . "</a>\n";
+    }
+    $out .= '<a class="ghost-btn" href="/" style="text-decoration:none; display:inline-block;">Back to app</a>' . "\n";
+    $out .= '<button id="logoutBtn" class="ghost-btn">Sign out</button>' . "\n";
+    $out .= '</div>';
+    return $out;
+}
+
 function simple_page(string $title, string $body): void
 {
     echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'

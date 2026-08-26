@@ -19,15 +19,7 @@ require_admin_page();
       <h1 class="brand-title"><?= h(site_name()) ?></h1>
       <span class="brand-sub">Admin — Redactions</span>
     </div>
-    <div style="display:flex; gap:8px;">
-      <a class="ghost-btn" href="/admin.php" style="text-decoration:none; display:inline-block;">Users</a>
-      <a class="ghost-btn" href="/admin_content.php" style="text-decoration:none; display:inline-block;">Content</a>
-      <a class="ghost-btn" href="/admin_archive.php" style="text-decoration:none; display:inline-block;">Archive</a>
-      <a class="ghost-btn" href="/admin_settings.php" style="text-decoration:none; display:inline-block;">Settings</a>
-      <a class="ghost-btn" href="/admin_backup.php" style="text-decoration:none; display:inline-block;">Backup</a>
-      <a class="ghost-btn" href="/" style="text-decoration:none; display:inline-block;">Back to app</a>
-      <button id="logoutBtn" class="ghost-btn">Sign out</button>
-    </div>
+    <?= admin_nav_html('redactions') ?>
   </header>
 
   <main id="app" tabindex="-1" style="max-width:900px;">

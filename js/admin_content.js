@@ -14,6 +14,7 @@
       document.getElementById("archiveLink").style.display = "none";
       document.getElementById("settingsLink").style.display = "none";
       document.getElementById("redactionsLink").style.display = "none";
+      document.getElementById("backupLink").style.display = "none";
       document.getElementById("backfillBtn").style.display = "none";
       document.getElementById("listHeading").textContent = "Your content";
     }
