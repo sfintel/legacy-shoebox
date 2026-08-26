@@ -23,19 +23,33 @@ require_content_page();
   </header>
 
   <main id="app" tabindex="-1" style="max-width:90vw;">
-    <h2>Add content</h2>
-    <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
-      Anything added here becomes part of what the Ask tab knows — transcript and document text is read
-      in full; photos and videos are included by their title and description (a Document's optional
-      attached file is never read directly — only the pasted text is). Each item's "Narrative connection"
-      note is written automatically by AI; an <span class="status-badge status-unreviewed">unreviewed</span>
-      badge means no admin has looked at that note yet — it's already part of the Ask tab's knowledge
-      base either way, so it's worth checking rather than a gate. Transcripts, Documents, Stories (once
-      approved), and URLs also get a second AI pass proposing new timeline/people/places/quotes entries —
-      these always sit as pending "Suggestions" for you to approve or dismiss individually; nothing is
-      added to the core archive automatically.
-    </p>
-    <?= content_add_form_html() ?>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <h2 style="margin:0;">Content</h2>
+      <button type="button" class="btn-primary" id="addContentBtn">Add content</button>
+    </div>
+
+    <div id="addContentModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="addContentModalTitle">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2 id="addContentModalTitle" style="margin:0;">Add content</h2>
+          <button type="button" id="addContentModalClose" class="modal-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:0;">
+            Anything added here becomes part of what the Ask tab knows — transcript and document text is read
+            in full; photos and videos are included by their title and description (a Document's optional
+            attached file is never read directly — only the pasted text is). Each item's "Narrative connection"
+            note is written automatically by AI; an <span class="status-badge status-unreviewed">unreviewed</span>
+            badge means no admin has looked at that note yet — it's already part of the Ask tab's knowledge
+            base either way, so it's worth checking rather than a gate. Transcripts, Documents, Stories (once
+            approved), and URLs also get a second AI pass proposing new timeline/people/places/quotes entries —
+            these always sit as pending "Suggestions" for you to approve or dismiss individually; nothing is
+            added to the core archive automatically.
+          </p>
+          <?= content_add_form_html() ?>
+        </div>
+      </div>
+    </div>
 
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
       <h2 style="margin:0;" id="listHeading">Added content</h2>
@@ -74,6 +88,7 @@ require_content_page();
     </div>
   </main>
 
+<script src="/js/admin_modal.js"></script>
 <script src="/js/content_form.js"></script>
 <script src="/js/admin_content.js"></script>
 </body>

@@ -553,11 +553,19 @@
   // index.php's modal draw from.
   let allKeywordLabels = [];
 
+  // The add-content form now lives inside a modal (previously always
+  // visible above the table, which was most of this page's "visual
+  // clutter") — opened by its own button instead.
+  const addContentModal = AdminModal.wire("addContentModal", "addContentBtn", "addContentModalClose");
+
   // --- Add-content form (shared implementation — see js/content_form.js,
   // also used by index.php's "Add Content" modal) ---
   const contentFormHandle = ContentForm.initAddForm({
     getAllTags: () => allKeywordLabels,
-    onSuccess: () => load(),
+    onSuccess: () => {
+      load();
+      addContentModal.close();
+    },
   });
   ContentForm.fetchKeywordLabels().then((labels) => {
     allKeywordLabels = labels;

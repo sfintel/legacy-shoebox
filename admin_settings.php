@@ -63,26 +63,14 @@ require_admin_page();
 
     <!-- SOURCES -->
     <section class="panel" id="panel-sources" role="tabpanel" aria-labelledby="tab-sources" tabindex="0">
-      <h2>Add a source</h2>
-      <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
-        Any number of sources — a recorded interview, a memoir, a documentary, a relative's written account.
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <h2 style="margin:0;">Sources</h2>
+        <button type="button" class="btn-primary" id="sourceAddBtn">Add a source</button>
+      </div>
+      <p class="meta" style="color:var(--muted); font-size:.85rem;">
         The first one in the list is treated as the primary source in the Ask tab's AI prompt and About tab;
-        reorder with the arrows below to change which one that is. Mark a source as a dramatisation if it
-        includes invented dialogue or isn't a strictly factual account (e.g. a book written "inspired by"
-        real events) — the AI is instructed to always flag it as such and never present its content as the
-        subject's own words.
+        reorder with the arrows below to change which one that is.
       </p>
-      <form id="sourceForm" class="content-form">
-        <div class="form-row"><label for="sourceLabel">Label</label><input type="text" id="sourceLabel" required placeholder="e.g. USC Shoah Foundation interview 14091"></div>
-        <div class="form-row"><label for="sourceDetails">Details</label><textarea id="sourceDetails" rows="2" placeholder="e.g. recorded April 1996, five tapes, two hours"></textarea></div>
-        <div class="form-row">
-          <label><input type="checkbox" id="sourceIsDramatization" style="width:auto; margin-right:6px;">This source is a dramatisation (invented dialogue, etc.) rather than a strictly factual account</label>
-        </div>
-        <div class="form-row"><label for="sourcePermissionNote">Permission note (optional — e.g. "used with the author's permission")</label><input type="text" id="sourcePermissionNote"></div>
-        <p class="form-error" id="sourceFormError" role="alert" style="display:none;"></p>
-        <button type="submit" class="btn-primary" id="sourceSubmitBtn">Add source</button>
-      </form>
-      <h2>Sources</h2>
       <p class="meta" id="sourcesStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
       <div class="table-wrap">
         <table class="admin-table">
@@ -143,6 +131,34 @@ require_admin_page();
 
   </main>
 
+  <div id="sourceModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="sourceModalTitle">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 id="sourceModalTitle" style="margin:0;">Add a source</h2>
+        <button type="button" id="sourceModalClose" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:0;">
+          A recorded interview, a memoir, a documentary, a relative's written account — any number of
+          sources. Mark a source as a dramatisation if it includes invented dialogue or isn't a strictly
+          factual account (e.g. a book written "inspired by" real events) — the AI is instructed to always
+          flag it as such and never present its content as the subject's own words.
+        </p>
+        <form id="sourceForm" class="content-form" style="max-width:none;">
+          <div class="form-row"><label for="sourceLabel">Label</label><input type="text" id="sourceLabel" required placeholder="e.g. USC Shoah Foundation interview 14091"></div>
+          <div class="form-row"><label for="sourceDetails">Details</label><textarea id="sourceDetails" rows="2" placeholder="e.g. recorded April 1996, five tapes, two hours"></textarea></div>
+          <div class="form-row">
+            <label><input type="checkbox" id="sourceIsDramatization" style="width:auto; margin-right:6px;">This source is a dramatisation (invented dialogue, etc.) rather than a strictly factual account</label>
+          </div>
+          <div class="form-row"><label for="sourcePermissionNote">Permission note (optional — e.g. "used with the author's permission")</label><input type="text" id="sourcePermissionNote"></div>
+          <p class="form-error" id="sourceFormError" role="alert" style="display:none;"></p>
+          <button type="submit" class="btn-primary" id="sourceSubmitBtn">Add source</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<script src="/js/admin_modal.js"></script>
 <script src="/js/admin_settings.js"></script>
 </body>
 </html>

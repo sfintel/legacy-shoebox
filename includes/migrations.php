@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.30.0' => [
+            'description' => 'Replace the always-visible "Add ___" form on Content, Archive (People/Places/Timeline/Quotes), and Settings\' Sources tab with a button + modal (6 forms); new shared js/admin_modal.js also backs the main app\'s existing Add Content modal, replacing its own hand-rolled open/close logic',
+            'db' => null,
+            'env' => [],
+        ],
         '1.29.3' => [
             'description' => 'Add-content submit button now shows the animated typing-dots "working" indicator for every submission (local file upload, transcript/document/story/URL with their synchronous AI narrative-note pass), not just the Photo/Video download-from-URL case that previously was the only one to show any feedback at all',
             'db' => null,

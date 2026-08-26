@@ -51,21 +51,9 @@
   // managing existing items rather than quickly adding one.
   const addContentModal = document.getElementById("addContentModal");
   const contentLink = document.getElementById("contentLink");
-  if (addContentModal && contentLink) {
-    const closeBtn = document.getElementById("addContentModalClose");
-    const openModal = (e) => {
-      e.preventDefault();
-      addContentModal.style.display = "flex";
-    };
-    const closeModal = () => { addContentModal.style.display = "none"; };
-    contentLink.addEventListener("click", openModal);
-    closeBtn.addEventListener("click", closeModal);
-    addContentModal.addEventListener("click", (e) => {
-      if (e.target === addContentModal) closeModal(); // backdrop click
-    });
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && addContentModal.style.display !== "none") closeModal();
-    });
+  if (addContentModal && contentLink && window.AdminModal) {
+    const modal = window.AdminModal.wire("addContentModal", "contentLink", "addContentModalClose");
+    const closeModal = modal.close;
 
     // App-wide keyword suggestion list (see includes/keywords.php) —
     // same source admin_content.js's and admin_archive.js's pickers draw

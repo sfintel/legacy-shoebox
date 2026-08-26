@@ -205,6 +205,7 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
 
   </main>
 
+<script src="/js/admin_modal.js"></script>
 <script src="/js/content_form.js"></script>
 <script src="/js/app.js"></script>
 </body>

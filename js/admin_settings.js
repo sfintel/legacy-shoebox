@@ -219,6 +219,7 @@
     }
   }
 
+  const sourceModal = AdminModal.wire("sourceModal", "sourceAddBtn", "sourceModalClose");
   const sourceForm = document.getElementById("sourceForm");
   const sourceSubmitBtn = document.getElementById("sourceSubmitBtn");
   const sourceFormError = document.getElementById("sourceFormError");
@@ -241,6 +242,7 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to add");
       sourceForm.reset();
+      sourceModal.close();
       loadSources();
     } catch (err) {
       sourceFormError.textContent = err.message;

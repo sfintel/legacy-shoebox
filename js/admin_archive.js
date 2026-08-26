@@ -149,6 +149,7 @@
         if (!res.ok) throw new Error(data.error || "Failed to add");
         form.reset();
         if (opts.afterCreate) opts.afterCreate();
+        if (opts.modal) opts.modal.close();
         load();
       } catch (err) {
         formError.textContent = err.message;
@@ -171,6 +172,7 @@
     submitBtnId: "personSubmitBtn",
     formErrorId: "personFormError",
     columnCount: 5,
+    modal: AdminModal.wire("personModal", "personAddBtn", "personModalClose"),
     deleteConfirm: "Delete this person permanently?",
     collectAddFields: (form) => ({
       names: document.getElementById("personNames").value,
@@ -225,6 +227,7 @@
     submitBtnId: "placeSubmitBtn",
     formErrorId: "placeFormError",
     columnCount: 5,
+    modal: AdminModal.wire("placeModal", "placeAddBtn", "placeModalClose"),
     deleteConfirm: "Delete this place permanently?",
     collectAddFields: () => ({
       names: document.getElementById("placeNames").value,
@@ -282,6 +285,7 @@
     submitBtnId: "timelineSubmitBtn",
     formErrorId: "timelineFormError",
     columnCount: 5,
+    modal: AdminModal.wire("timelineModal", "timelineAddBtn", "timelineModalClose"),
     deleteConfirm: "Delete this timeline entry permanently?",
     collectAddFields: () => ({
       date_label: document.getElementById("timelineDate").value,
@@ -374,6 +378,7 @@
     submitBtnId: "quoteSubmitBtn",
     formErrorId: "quoteFormError",
     columnCount: 4,
+    modal: AdminModal.wire("quoteModal", "quoteAddBtn", "quoteModalClose"),
     deleteConfirm: "Delete this quote permanently?",
     collectAddFields: () => ({
       speaker: document.getElementById("quoteSpeaker").value,

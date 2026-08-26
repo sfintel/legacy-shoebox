@@ -14,6 +14,26 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.30.0] — 2026-08-27
+
+### Changed
+
+- The always-visible "Add a ___" form above each table — on the Content
+  page, the Archive page's People/Places/Timeline/Quotes tabs, and the
+  Settings page's Sources tab (6 in total) — is now a modal opened by an
+  "Add ___" button next to that table's heading instead, removing that
+  form's permanent on-screen footprint. Testimony and Discrepancy Notes
+  are unchanged (single persistent editors, not add-a-new-row forms, so
+  the same treatment doesn't apply). New shared `js/admin_modal.js`
+  provides the open/close/backdrop-click/Escape wiring once instead of
+  each modal reimplementing it; the main app's existing "Add Content"
+  modal (1.28.0) now uses this same shared implementation too, replacing
+  its own hand-rolled copy of the same logic.
+
+### Environment changes
+
+None.
+
 ## [1.29.3] — 2026-08-27
 
 ### Fixed
