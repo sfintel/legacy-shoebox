@@ -14,6 +14,24 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.23.1] — 2026-08-25
+
+### Fixed
+
+- `cron_backup.php` now starts with a `#!/usr/local/bin/php.cli` shebang
+  line, needed by hosting panels (e.g. Plesk's Scheduled Tasks) whose
+  cron UI runs the script directly as an executable rather than via `php
+  script.php` — found while wiring up automatic backups on a real
+  deployment. PHP's CLI SAPI automatically skips a leading `#!` line, so
+  this doesn't change anything for `php cron_backup.php` or a plain URL
+  hit; a panel that needs it may also require the file to have execute
+  permission (`chmod 775`) and Unix line endings, per that panel's own
+  requirements.
+
+### Environment changes
+
+None.
+
 ## [1.23.0] — 2026-08-25
 
 ### Added

@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.23.1' => [
+            'description' => 'cron_backup.php: add #!/usr/local/bin/php.cli shebang line for hosting panels (e.g. Plesk) whose Scheduled Tasks UI requires a directly-executable script',
+            'db' => null,
+            'env' => [],
+        ],
         '1.23.0' => [
             'description' => 'Backup retention (auto-prune oldest beyond BACKUP_RETENTION_COUNT), optional automatic backups via new cron_backup.php + BACKUP_AUTO_INTERVAL_HOURS, optional BACKUP_DIR storage-location override',
             'db' => null,

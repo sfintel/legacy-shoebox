@@ -1,6 +1,16 @@
+#!/usr/local/bin/php.cli
 <?php
 declare(strict_types=1);
 
+// The #!/usr/local/bin/php.cli shebang above is required by some
+// hosting panels' scheduled-task UI (e.g. Plesk), which run a cron
+// script directly as an executable rather than as `php script.php` —
+// PHP's CLI SAPI automatically skips a leading "#!" line, so this
+// doesn't change anything about running it the other way (`php
+// cron_backup.php`, or a plain URL hit). If a panel run fails, also
+// check this file has execute permission (chmod 775) and Unix line
+// endings, per that panel's own requirements.
+//
 // Entry point for a host cron job to trigger automatic backups — see
 // README's "Backup & Restore" section. This app has no long-running
 // process of its own (shared hosting assumption throughout this repo),
