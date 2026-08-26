@@ -36,6 +36,10 @@ Nothing yet.
   backups on a separate disk/mount with more space.
 - `/admin_backup.php` now shows the currently effective auto-backup
   interval, retention count, storage directory, and last-backup time.
+- The setup wizard's advanced-settings stage now offers all four backup
+  settings above, so a new install can set non-default values (or a
+  cron secret) at onboarding time instead of hand-editing `.env`
+  afterward.
 
 ### Environment changes
 
