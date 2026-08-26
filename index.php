@@ -50,6 +50,22 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
     </div>
   </header>
 
+  <div id="addContentModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="addContentModalTitle">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 id="addContentModalTitle" style="margin:0;">Add content</h2>
+        <button type="button" id="addContentModalClose" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:0;">
+          Anything added here becomes part of what the Ask tab knows.
+          <a href="/admin_content.php">Manage everything you've added &rarr;</a>
+        </p>
+        <?= content_add_form_html() ?>
+      </div>
+    </div>
+  </div>
+
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
     <button class="tab-btn active" data-tab="ask" id="tab-ask" role="tab" aria-selected="true" aria-controls="panel-ask">Ask</button>
     <button class="tab-btn" data-tab="timeline" id="tab-timeline" role="tab" aria-selected="false" aria-controls="panel-timeline">Timeline</button>
@@ -187,6 +203,7 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
 
   </main>
 
+<script src="/js/content_form.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

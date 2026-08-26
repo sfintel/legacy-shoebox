@@ -42,6 +42,46 @@
     });
   }
 
+  // --- Add Content modal ---
+  // The header's "Add Content" link used to navigate straight to the
+  // full admin_content.php page (form + the entire content list below
+  // it). It now opens just the form as a modal — admin_content.php
+  // itself (linked from inside the modal, and from the Admin dropdown
+  // for admins) is still where the full list lives, for anyone actually
+  // managing existing items rather than quickly adding one.
+  const addContentModal = document.getElementById("addContentModal");
+  const contentLink = document.getElementById("contentLink");
+  if (addContentModal && contentLink) {
+    const closeBtn = document.getElementById("addContentModalClose");
+    const openModal = (e) => {
+      e.preventDefault();
+      addContentModal.style.display = "flex";
+    };
+    const closeModal = () => { addContentModal.style.display = "none"; };
+    contentLink.addEventListener("click", openModal);
+    closeBtn.addEventListener("click", closeModal);
+    addContentModal.addEventListener("click", (e) => {
+      if (e.target === addContentModal) closeModal(); // backdrop click
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && addContentModal.style.display !== "none") closeModal();
+    });
+
+    // No content list is loaded on this page to draw keyword suggestions
+    // from (unlike admin_content.php, which already has every item in
+    // memory for its table) — the picker still works for typing new
+    // keywords, just without suggesting existing ones here.
+    if (window.ContentForm) {
+      window.ContentForm.initAddForm({
+        getAllTags: () => [],
+        onSuccess: () => {
+          closeModal();
+          alert("Content added.");
+        },
+      });
+    }
+  }
+
   // --- Tabs ---
   const tabBtns = document.querySelectorAll(".tab-btn");
   tabBtns.forEach(btn => {

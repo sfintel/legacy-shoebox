@@ -14,6 +14,31 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.28.0] — 2026-08-26
+
+### Added
+
+- The main app header's "Add Content" link now opens a modal with just
+  the add-content form, instead of navigating to the full
+  `/admin_content.php` page (form + the entire content list below it).
+  The modal links to `/admin_content.php` for anyone who actually wants
+  to manage/edit existing items — admins also have it in the new Admin
+  dropdown (1.26.0); it's the only path there for a non-admin author,
+  so that's preserved.
+
+### Changed
+
+- Extracted the add-content form's markup (`content_add_form_html()` in
+  `includes/helpers.php`) and its JS (new `js/content_form.js`) out of
+  `admin_content.php`/`admin_content.js` so the modal and the full page
+  share one implementation instead of two copies that could drift.
+  `admin_content.js` itself is unchanged in behavior — this is a pure
+  extraction, not a rewrite.
+
+### Environment changes
+
+None.
+
 ## [1.27.0] — 2026-08-26
 
 ### Added

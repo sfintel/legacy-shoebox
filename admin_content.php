@@ -35,56 +35,7 @@ require_content_page();
       these always sit as pending "Suggestions" for you to approve or dismiss individually; nothing is
       added to the core archive automatically.
     </p>
-    <form id="contentForm" class="content-form">
-      <div class="form-row">
-        <label for="typeSelect">Type</label>
-        <select id="typeSelect" name="type">
-          <option value="transcript">Transcript</option>
-          <option value="photo">Photo</option>
-          <option value="video">Video</option>
-          <option value="document">Document</option>
-          <option value="url">URL</option>
-          <option value="story">Story</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label for="titleInput">Title</label>
-        <input type="text" id="titleInput" name="title">
-      </div>
-      <div class="form-row" id="textRow">
-        <label for="textInput" id="textLabel">Transcript text</label>
-        <textarea id="textInput" name="text" rows="8" placeholder="Paste the transcript text here…"></textarea>
-        <p class="meta" id="storyHint" style="display:none; color:var(--muted); font-size:.85rem; margin:4px 0 0;">An admin needs to approve this
-          before it appears on the Stories tab and in the Ask tab's knowledge base.</p>
-      </div>
-      <div class="form-row" id="fileRow" style="display:none;">
-        <label for="fileInput" id="fileLabel">File</label>
-        <input type="file" id="fileInput" name="files[]">
-        <p class="meta" id="fileHint" style="display:none; color:var(--muted); font-size:.85rem; margin:4px 0 0;">Select up to 10 related photos to add them as one album.</p>
-      </div>
-      <div class="form-row" id="mediaUrlRow" style="display:none;">
-        <label for="mediaUrlInput">Or download from a URL</label>
-        <input type="url" id="mediaUrlInput" name="mediaUrl" placeholder="https://…">
-        <p class="meta" style="color:var(--muted); font-size:.85rem; margin:4px 0 0;">For a file too large or slow to upload through the browser — the
-          server downloads it directly. Use exactly one of File or this, not both.</p>
-      </div>
-      <div class="form-row" id="urlRow" style="display:none;">
-        <label for="urlInput">Source URL</label>
-        <input type="url" id="urlInput" name="url" placeholder="https://…">
-        <p class="meta" style="color:var(--muted); font-size:.85rem; margin:4px 0 0;">Claude will read the page and propose new timeline/people/places/quotes
-          entries for your review below — nothing is added to the archive until you approve it.</p>
-      </div>
-      <div class="form-row" id="descRow" style="display:none;">
-        <label for="descInput">Description / caption</label>
-        <textarea id="descInput" name="description" rows="3" placeholder="Optional — helps the Ask tab describe it"></textarea>
-      </div>
-      <div class="form-row">
-        <label id="tagsPickerLabel" for="tagsPickerInput">Keywords (optional)</label>
-        <div id="tagsPicker"></div>
-      </div>
-      <p class="form-error" id="formError" role="alert" style="display:none;"></p>
-      <button type="submit" class="btn-primary" id="submitBtn">Add content</button>
-    </form>
+    <?= content_add_form_html() ?>
 
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
       <h2 style="margin:0;" id="listHeading">Added content</h2>
@@ -123,6 +74,7 @@ require_content_page();
     </div>
   </main>
 
+<script src="/js/content_form.js"></script>
 <script src="/js/admin_content.js"></script>
 </body>
 </html>

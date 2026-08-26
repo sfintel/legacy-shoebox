@@ -70,75 +70,7 @@
     return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
   }
 
-  // Shared by the add-content form and each item's edit row: selected
-  // chips (removable), an input to type a new keyword, and a row of
-  // suggestion chips drawn from every keyword already used on any other
-  // content item (so a recurring keyword like "Piotr Bielewicz" only
-  // needs to be typed out once, ever). Returns a live state object —
-  // callers read .tags at submit time.
-  function renderTagPicker(containerId, selected, inputId) {
-    const allTags = [...new Set(currentItems.flatMap((i) => i.tags || []))].sort();
-    const container = document.getElementById(containerId);
-    const state = { tags: [...selected] };
-
-    // Only touches the suggestions sub-element, never the input itself —
-    // rebuilding the whole container on every keystroke (as draw() does)
-    // would drop focus/cursor position out from under the person typing.
-    function renderSuggestions(filterText) {
-      const suggestionsEl = container.querySelector(".tag-picker-suggestions");
-      if (!suggestionsEl) return;
-      const matches = allTags.filter((t) =>
-        !state.tags.includes(t) && (!filterText || t.toLowerCase().includes(filterText))
-      );
-      suggestionsEl.innerHTML = matches.map((t) =>
-        `<button type="button" class="tag-chip" data-tag="${esc(t)}">${esc(t)}</button>`
-      ).join("");
-      suggestionsEl.querySelectorAll(".tag-chip").forEach((chip) => {
-        chip.addEventListener("click", () => {
-          if (!state.tags.includes(chip.dataset.tag)) state.tags.push(chip.dataset.tag);
-          draw();
-        });
-      });
-    }
-
-    function draw() {
-      const selectedHtml = state.tags.map((t) =>
-        `<button type="button" class="tag-chip active" data-tag="${esc(t)}">${esc(t)} &times;</button>`
-      ).join("");
-      container.innerHTML = `
-        <div class="tag-picker-selected">${selectedHtml}</div>
-        <input type="text" id="${inputId}" class="tag-picker-input" placeholder="Add a keyword and press Enter…" autocomplete="off">
-        <div class="tag-picker-suggestions"></div>
-      `;
-      container.querySelectorAll(".tag-picker-selected .tag-chip").forEach((chip) => {
-        chip.addEventListener("click", () => {
-          state.tags = state.tags.filter((t) => t !== chip.dataset.tag);
-          draw();
-        });
-      });
-      renderSuggestions("");
-      const input = container.querySelector(".tag-picker-input");
-      input.addEventListener("input", () => {
-        renderSuggestions(input.value.trim().toLowerCase());
-      });
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === ",") {
-          e.preventDefault();
-          const val = input.value.trim().replace(/,$/, "");
-          if (val) {
-            if (!state.tags.includes(val)) state.tags.push(val);
-            input.value = "";
-            draw();
-          }
-        }
-      });
-    }
-    draw();
-    return state;
-  }
-
   let currentItems = [];
-  let addTagPickerState = { tags: [] };
   let typeFilter = "all";
   let sortState = { key: null, dir: 1 };
 
@@ -189,7 +121,7 @@
     const data = await res.json();
     currentItems = data.items || [];
     renderVisible();
-    addTagPickerState = renderTagPicker("tagsPicker", addTagPickerState.tags, "tagsPickerInput");
+    contentFormHandle.refreshTagPicker();
   }
 
   function fmtDuration(seconds) {
@@ -531,7 +463,10 @@
     if (!row) return;
     row.insertAdjacentHTML("afterend", renderEditRow(item));
     const editRow = document.querySelector(`tr.edit-row[data-edit-for="${id}"]`);
-    editRow._tagPickerState = renderTagPicker(`tagsPicker-edit-${id}`, item.tags || [], `tagsPickerInput-edit-${id}`);
+    editRow._tagPickerState = ContentForm.renderTagPicker(
+      `tagsPicker-edit-${id}`, item.tags || [], `tagsPickerInput-edit-${id}`,
+      () => currentItems.flatMap((i) => i.tags || [])
+    );
     editRow.querySelector(".cancel-edit").addEventListener("click", () => editRow.remove());
     editRow.querySelector(".save-edit").addEventListener("click", () => saveEdit(item, editRow));
   }
@@ -607,130 +542,11 @@
     }
   }
 
-  // --- Add-content form ---
-  const typeSelect = document.getElementById("typeSelect");
-  const textRow = document.getElementById("textRow");
-  const fileRow = document.getElementById("fileRow");
-  const urlRow = document.getElementById("urlRow");
-  const mediaUrlRow = document.getElementById("mediaUrlRow");
-  const descRow = document.getElementById("descRow");
-  const form = document.getElementById("contentForm");
-  const submitBtn = document.getElementById("submitBtn");
-  const formError = document.getElementById("formError");
-
-  function syncFormFields() {
-    const isTranscript = typeSelect.value === "transcript";
-    const isPhoto = typeSelect.value === "photo";
-    const isUrl = typeSelect.value === "url";
-    const isStory = typeSelect.value === "story";
-    const isDocument = typeSelect.value === "document";
-    const hasText = isTranscript || isStory || isDocument;
-    const isMedia = (typeSelect.value === "photo" || typeSelect.value === "video"); // file+URL+caption fields
-    textRow.style.display = hasText ? "" : "none";
-    fileRow.style.display = (isMedia || isDocument) ? "" : "none";
-    mediaUrlRow.style.display = isMedia ? "" : "none";
-    urlRow.style.display = isUrl ? "" : "none";
-    descRow.style.display = isMedia ? "" : "none";
-    document.getElementById("textLabel").textContent = isStory ? "Story" : (isDocument ? "Document text" : "Transcript text");
-    document.getElementById("textInput").placeholder = isStory
-      ? "What's the story? Write it as you'd tell it…"
-      : (isDocument ? "Paste the document's text here (e.g. a letter or email)…" : "Paste the transcript text here…");
-    document.getElementById("storyHint").style.display = isStory ? "" : "none";
-    document.getElementById("textInput").required = hasText;
-    // Neither fileInput nor mediaUrlInput is marked required here — for
-    // media types exactly one of them is required, which plain HTML
-    // can't express; the submit handler below validates that instead. A
-    // document's file is fully optional either way.
-    document.getElementById("fileInput").required = false;
-    document.getElementById("fileInput").multiple = isPhoto;
-    document.getElementById("fileLabel").textContent = isPhoto ? "Photo(s)" : (isDocument ? "Attach original (optional)" : "File");
-    document.getElementById("fileHint").style.display = (isPhoto || isDocument) ? "" : "none";
-    document.getElementById("fileHint").textContent = isPhoto
-      ? "Select up to 10 related photos to add them as one album."
-      : "Optional — a scan or PDF of the original, kept for reference. The Ask tab only reads the pasted text above, never this file.";
-    document.getElementById("mediaUrlInput").required = false;
-    document.getElementById("urlInput").required = isUrl;
-    document.getElementById("titleInput").required = !isUrl;
-    syncMediaExclusivity();
-  }
-
-  // File and "download from URL" are mutually exclusive (enforced at
-  // submit time regardless — see the submit handler below); this just
-  // greys out whichever option the user isn't using once their choice is
-  // clear, rather than leaving both looking equally live. Only meaningful
-  // for photo/video, the only types where mediaUrlRow is ever shown.
-  function syncMediaExclusivity() {
-    const fileInput = document.getElementById("fileInput");
-    const mediaUrlInput = document.getElementById("mediaUrlInput");
-    if (mediaUrlRow.style.display === "none") {
-      fileInput.disabled = false;
-      mediaUrlInput.disabled = false;
-      fileRow.classList.remove("field-disabled");
-      mediaUrlRow.classList.remove("field-disabled");
-      return;
-    }
-    const hasFile = fileInput.files.length > 0;
-    const hasUrl = mediaUrlInput.value.trim() !== "";
-    mediaUrlInput.disabled = hasFile;
-    mediaUrlRow.classList.toggle("field-disabled", hasFile);
-    fileInput.disabled = hasUrl;
-    fileRow.classList.toggle("field-disabled", hasUrl);
-  }
-  document.getElementById("fileInput").addEventListener("change", syncMediaExclusivity);
-  document.getElementById("mediaUrlInput").addEventListener("input", syncMediaExclusivity);
-
-  typeSelect.addEventListener("change", syncFormFields);
-  syncFormFields();
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    formError.style.display = "none";
-
-    const type = typeSelect.value;
-    const isMedia = type === "photo" || type === "video";
-    const hasFile = document.getElementById("fileInput").files.length > 0;
-    const mediaUrl = document.getElementById("mediaUrlInput").value.trim();
-    if (isMedia && hasFile === (mediaUrl !== "")) {
-      formError.textContent = "Provide exactly one: a file, or a URL to download from.";
-      formError.style.display = "";
-      return;
-    }
-
-    const originalBtnText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    if (isMedia && mediaUrl !== "") {
-      // A server-side download can take a while for a large file — same
-      // animated-dots treatment as the Ask tab's pending reply, rather
-      // than leaving the button just looking stuck.
-      submitBtn.textContent = "";
-      submitBtn.appendChild(document.createTextNode("Downloading"));
-      const dots = document.createElement("span");
-      dots.className = "typing-dots";
-      dots.setAttribute("aria-hidden", "true");
-      dots.style.marginLeft = "6px";
-      for (let i = 0; i < 3; i++) dots.appendChild(document.createElement("span"));
-      submitBtn.appendChild(dots);
-    }
-    try {
-      const formData = new FormData(form);
-      addTagPickerState.tags.forEach((t) => formData.append("tags[]", t));
-      const res = await fetch("/api/admin/content.php", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to add content");
-      form.reset();
-      syncFormFields();
-      addTagPickerState = { tags: [] };
-      load();
-    } catch (err) {
-      formError.textContent = err.message;
-      formError.style.display = "";
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalBtnText;
-    }
+  // --- Add-content form (shared implementation — see js/content_form.js,
+  // also used by index.php's "Add Content" modal) ---
+  const contentFormHandle = ContentForm.initAddForm({
+    getAllTags: () => currentItems.flatMap((i) => i.tags || []),
+    onSuccess: () => load(),
   });
 
   load();

@@ -55,6 +55,27 @@ h2{font-family:Georgia,'Times New Roman',serif;font-weight:600;margin:0 0 12px;}
 }
 .admin-menu-list a:hover, .admin-menu-list a:focus-visible{background:var(--tag-bg);}
 
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:50;
+  display:flex; align-items:flex-start; justify-content:center;
+  padding:40px 16px; overflow-y:auto;
+}
+.modal-dialog{
+  background:var(--panel); border:1px solid var(--border); border-radius:12px;
+  max-width:600px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.modal-header{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:14px 18px; border-bottom:1px solid var(--border);
+}
+.modal-close{
+  background:transparent; border:none; color:var(--muted); font-size:1.4rem;
+  line-height:1; cursor:pointer; padding:4px 8px; border-radius:6px;
+}
+.modal-close:hover{color:var(--text); background:var(--panel-2);}
+.modal-body{padding:18px;}
+.modal-body .content-form{max-width:none; margin-bottom:0;}
+
 .tabs{
   display:flex; gap:4px; overflow-x:auto; padding:8px 10px; background:var(--panel-2);
   border-bottom:1px solid var(--border); -webkit-overflow-scrolling:touch;

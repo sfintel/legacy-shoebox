@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.28.0' => [
+            'description' => 'Main app "Add Content" opens a lightweight modal instead of navigating to the full admin_content.php page; extracted the add-content form (markup + JS) into a shared implementation (content_add_form_html(), js/content_form.js) used by both',
+            'db' => null,
+            'env' => [],
+        ],
         '1.27.0' => [
             'description' => 'Content admin table: add Linked/Keywords columns, type filter, column sort, truncate the Narrative connection cell to one line, distinct color for the unreviewed badge, bigger Backfill AI analysis button with a help tooltip, grey out the unused file/URL field once a choice is made',
             'db' => null,
