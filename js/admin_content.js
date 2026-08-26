@@ -57,6 +57,11 @@
     try { return new Date(iso).toLocaleString(); } catch { return iso; }
   }
 
+  function truncate(str, n) {
+    str = String(str || "");
+    return str.length > n ? str.slice(0, n - 1) + "…" : str;
+  }
+
   function fmtSize(bytes) {
     if (!bytes) return "—";
     const units = ["B", "KB", "MB", "GB"];
@@ -134,6 +139,46 @@
 
   let currentItems = [];
   let addTagPickerState = { tags: [] };
+  let typeFilter = "all";
+  let sortState = { key: null, dir: 1 };
+
+  // Client-side only — every item is already loaded in memory (same
+  // assumption render()'s own tag-picker suggestion list already makes),
+  // so there's no reason to round-trip the server for either operation.
+  function visibleItems() {
+    let items = typeFilter === "all" ? currentItems : currentItems.filter((i) => i.type === typeFilter);
+    if (sortState.key) {
+      items = [...items].sort((a, b) => {
+        const av = String(a[sortState.key] || "").toLowerCase();
+        const bv = String(b[sortState.key] || "").toLowerCase();
+        return av < bv ? -sortState.dir : av > bv ? sortState.dir : 0;
+      });
+    }
+    return items;
+  }
+
+  function renderVisible() {
+    render(visibleItems());
+  }
+
+  document.getElementById("typeFilter").addEventListener("change", (e) => {
+    typeFilter = e.target.value;
+    renderVisible();
+  });
+
+  document.querySelectorAll('.admin-table th.sortable').forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sort;
+      if (sortState.key === key) {
+        sortState.dir *= -1;
+      } else {
+        sortState = { key, dir: 1 };
+      }
+      document.querySelectorAll('.admin-table th.sortable').forEach((h) => h.classList.remove("sort-asc", "sort-desc"));
+      th.classList.add(sortState.dir === 1 ? "sort-asc" : "sort-desc");
+      renderVisible();
+    });
+  });
 
   async function load() {
     const res = await fetch("/api/admin/content.php");
@@ -143,7 +188,7 @@
     }
     const data = await res.json();
     currentItems = data.items || [];
-    render(currentItems);
+    renderVisible();
     addTagPickerState = renderTagPicker("tagsPicker", addTagPickerState.tags, "tagsPickerInput");
   }
 
@@ -213,13 +258,38 @@
   // A note that exists but has never been reviewed by an admin (see
   // narrative_note_reviewed_at in sql/schema.sql) gets an "unreviewed"
   // badge — visibility only, the note already feeds the Ask tab's
-  // knowledge base either way.
+  // knowledge base either way. Truncated to one line, same as every
+  // other cell in this table (Quotes/People/Places/Timeline tables all
+  // truncate in their unexpanded row); the full text is editable in the
+  // Edit row below.
   function renderNarrativeNoteCell(item) {
     if (!item.narrativeNote) return "—";
     const badge = item.narrativeNoteReviewedAt
       ? ""
-      : ` <span class="status-badge status-pending">unreviewed</span>`;
-    return esc(item.narrativeNote) + badge;
+      : ` <span class="status-badge status-unreviewed">unreviewed</span>`;
+    return esc(truncate(item.narrativeNote, 100)) + badge;
+  }
+
+  // Circled-i icon + native title-attribute tooltip, rather than showing
+  // every tag pill inline in the row (that's what made this table not
+  // fit the single-line-per-row shape every other admin table uses) —
+  // the full list is still one hover away.
+  function renderKeywordsCell(item) {
+    const tags = item.tags || [];
+    if (!tags.length) return "—";
+    return `<span class="info-icon" title="${esc(tags.join(", "))}">i</span>`;
+  }
+
+  // Only video/transcript items can be linked to a companion item (see
+  // content_link_items() in includes/content.php) — for anything else,
+  // or an unlinked video/transcript, this is just "—". The linked
+  // item's title isn't in this item's own API shape (only its id is),
+  // so it's looked up from currentItems, which already holds every item
+  // in memory.
+  function renderLinkedCell(item) {
+    if (!item.linkedItemId) return "—";
+    const linked = currentItems.find((i) => i.id === item.linkedItemId);
+    return linked ? esc(truncate(linked.title, 40)) : "—";
   }
 
   function render(items) {
@@ -229,18 +299,17 @@
         const sizeLabel = (item.files || []).length > 1
           ? `${item.files.length} files, ${fmtSize(totalSize)}`
           : fmtSize(totalSize);
-        const tagsHtml = (item.tags || []).length
-          ? `<div>${item.tags.map((t) => `<span class="pill">${esc(t)}</span>`).join("")}</div>`
-          : "";
         const storyBadge = item.type === "story"
           ? ` <span class="status-badge status-${item.storyApprovedAt ? "approved" : "pending"}">${item.storyApprovedAt ? "approved" : "pending"}</span>`
           : "";
-        const titleCell = (item.type === "url" && item.sourceUrl
+        const titleCell = item.type === "url" && item.sourceUrl
           ? `${esc(item.title)}<br><a href="${esc(item.sourceUrl)}" target="_blank" rel="noopener" class="meta">${esc(item.sourceUrl)}</a>`
-          : esc(item.title) + storyBadge) + tagsHtml;
+          : esc(item.title) + storyBadge;
         return `<tr data-item-id="${item.id}">
           <td>${titleCell}</td>
           <td>${esc(item.type)}</td>
+          <td>${renderLinkedCell(item)}</td>
+          <td>${renderKeywordsCell(item)}</td>
           <td>${esc(sizeLabel)}</td>
           <td>${renderCaptured(item)}</td>
           <td>${renderNarrativeNoteCell(item)}</td>
@@ -249,7 +318,7 @@
         </tr>`;
       })
       .join("");
-    document.getElementById("contentRows").innerHTML = rows || `<tr><td colspan="7" class="meta">Nothing added yet.</td></tr>`;
+    document.getElementById("contentRows").innerHTML = rows || `<tr><td colspan="9" class="meta">Nothing added yet.</td></tr>`;
     const unreviewedCount = items.filter((i) => i.narrativeNote && !i.narrativeNoteReviewedAt).length;
     document.getElementById("status").textContent = `${items.length} item${items.length === 1 ? "" : "s"}`
       + (unreviewedCount ? ` — ${unreviewedCount} note${unreviewedCount === 1 ? "" : "s"} unreviewed` : "");
@@ -322,7 +391,7 @@
         }).join("")
       : `<p class="meta">No suggestions.</p>`;
     return `<tr class="edit-row" data-suggestions-for="${item.id}">
-      <td colspan="7">${cards}</td>
+      <td colspan="9">${cards}</td>
     </tr>`;
   }
 
@@ -396,7 +465,7 @@
       ? ""
       : (item.files || []).map((f) => renderFileEditFields(item, f)).join("");
     const unreviewedBadge = item.narrativeNote && !item.narrativeNoteReviewedAt
-      ? ` <span class="status-badge status-pending">unreviewed</span>`
+      ? ` <span class="status-badge status-unreviewed">unreviewed</span>`
       : "";
     // Editing this field only counts as review when it's an admin doing
     // it (see content_update_item()) — the checkbox is a second way to
@@ -427,7 +496,7 @@
         })()
       : "";
     return `<tr class="edit-row" data-edit-for="${item.id}">
-      <td colspan="7">
+      <td colspan="9">
         <div class="content-form" style="max-width:none;">
           <div class="form-row">
             <label>Narrative connection${unreviewedBadge}</label>
@@ -582,7 +651,34 @@
     document.getElementById("mediaUrlInput").required = false;
     document.getElementById("urlInput").required = isUrl;
     document.getElementById("titleInput").required = !isUrl;
+    syncMediaExclusivity();
   }
+
+  // File and "download from URL" are mutually exclusive (enforced at
+  // submit time regardless — see the submit handler below); this just
+  // greys out whichever option the user isn't using once their choice is
+  // clear, rather than leaving both looking equally live. Only meaningful
+  // for photo/video, the only types where mediaUrlRow is ever shown.
+  function syncMediaExclusivity() {
+    const fileInput = document.getElementById("fileInput");
+    const mediaUrlInput = document.getElementById("mediaUrlInput");
+    if (mediaUrlRow.style.display === "none") {
+      fileInput.disabled = false;
+      mediaUrlInput.disabled = false;
+      fileRow.classList.remove("field-disabled");
+      mediaUrlRow.classList.remove("field-disabled");
+      return;
+    }
+    const hasFile = fileInput.files.length > 0;
+    const hasUrl = mediaUrlInput.value.trim() !== "";
+    mediaUrlInput.disabled = hasFile;
+    mediaUrlRow.classList.toggle("field-disabled", hasFile);
+    fileInput.disabled = hasUrl;
+    fileRow.classList.toggle("field-disabled", hasUrl);
+  }
+  document.getElementById("fileInput").addEventListener("change", syncMediaExclusivity);
+  document.getElementById("mediaUrlInput").addEventListener("input", syncMediaExclusivity);
+
   typeSelect.addEventListener("change", syncFormFields);
   syncFormFields();
 

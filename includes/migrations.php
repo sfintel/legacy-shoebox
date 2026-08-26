@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.27.0' => [
+            'description' => 'Content admin table: add Linked/Keywords columns, type filter, column sort, truncate the Narrative connection cell to one line, distinct color for the unreviewed badge, bigger Backfill AI analysis button with a help tooltip, grey out the unused file/URL field once a choice is made',
+            'db' => null,
+            'env' => [],
+        ],
         '1.26.0' => [
             'description' => 'Admin nav overhaul: main-app "Admin" link is now a hover dropdown listing all six sections; every admin_*.php page shows all six with the current one highlighted; fix admin_content.php not hiding the Backup link from non-admin authors',
             'db' => null,

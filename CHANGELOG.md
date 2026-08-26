@@ -14,6 +14,40 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.27.0] — 2026-08-26
+
+### Added
+
+- Content admin table (`/admin_content.php`): new **Linked** column
+  showing a video/transcript pair's companion item title (was only
+  visible by opening Edit before); new **Keywords** column — a
+  circled-i icon with the full keyword list on hover — replacing the
+  inline tag pills that used to clutter the Title cell.
+- A type filter ("Show: All types / Transcript / Photo / …") above the
+  table, and click-to-sort on the Title, Type, and Added column headers
+  (click again to reverse).
+- "Backfill AI analysis" is now a prominent primary button (previously
+  styled the same as a plain nav link) with hover text explaining what
+  it does and when it's worth running.
+- Adding Photo/Video content: once you've started typing a URL to
+  download from, the local-file field greys out (and vice versa) — the
+  two were already mutually exclusive at submit time, this just makes
+  that visible as you fill in the form instead of only on error.
+
+### Fixed
+
+- The Narrative connection cell showed each note's full text inline,
+  breaking the single-line-per-row layout every other admin table uses
+  (Quotes/People/Places/Timeline) — now truncated to one line, same as
+  those, with the full text still editable via Edit.
+- The "unreviewed" narrative-note badge shared its color with unrelated
+  statuses (pending-story approval, the "dramatisation" tag) — it now
+  has its own distinct color.
+
+### Environment changes
+
+None.
+
 ## [1.26.0] — 2026-08-26
 
 ### Added
