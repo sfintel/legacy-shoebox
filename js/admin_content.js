@@ -202,14 +202,12 @@
     return esc(truncate(item.narrativeNote, 100)) + badge;
   }
 
-  // Circled-i icon + native title-attribute tooltip, rather than showing
-  // every tag pill inline in the row (that's what made this table not
-  // fit the single-line-per-row shape every other admin table uses) —
-  // the full list is still one hover away.
+  // Circled-i icon with a real tooltip (see js/content_form.js), rather
+  // than showing every tag pill inline in the row (that's what made this
+  // table not fit the single-line-per-row shape every other admin table
+  // uses) — the full list is still one hover/tap away.
   function renderKeywordsCell(item) {
-    const tags = item.tags || [];
-    if (!tags.length) return "—";
-    return `<span class="info-icon" title="${esc(tags.join(", "))}">i</span>`;
+    return ContentForm.renderKeywordsIcon(item.tags || []);
   }
 
   // Only video/transcript items can be linked to a companion item (see
@@ -559,5 +557,6 @@
     contentFormHandle.refreshTagPicker();
   });
 
+  ContentForm.wireInfoIcons();
   load();
 })();

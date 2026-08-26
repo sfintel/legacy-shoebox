@@ -254,7 +254,10 @@ function content_add_form_html(): string
       </div>
       <div class="form-row" id="fileRow" style="display:none;">
         <label for="fileInput" id="fileLabel">File</label>
-        <input type="file" id="fileInput" name="files[]">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="file" id="fileInput" name="files[]" style="flex:1;">
+          <button type="button" id="fileRemoveBtn" class="ghost-btn" style="display:none;">Remove</button>
+        </div>
         <p class="meta" id="fileHint" style="display:none; color:var(--muted); font-size:.85rem; margin:4px 0 0;">Select up to 10 related photos to add them as one album.</p>
       </div>
       <div class="form-row" id="mediaUrlRow" style="display:none;">

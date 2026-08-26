@@ -32,8 +32,9 @@ $ss = site_settings();
     font-style:italic;font-size:.82rem;line-height:1.5;}
   .signup-link{margin-top:18px;text-align:center;font-size:.85rem;color:var(--muted);}
   .signup-link a{color:var(--accent-2,#c99a4e);}
-  .forgot-link{text-align:right;margin:-10px 0 16px;font-size:.82rem;}
-  .forgot-link a{color:var(--muted);}
+  .forgot-link{text-align:right;margin:-10px 0 16px;font-size:.9rem;}
+  .forgot-link a{color:var(--accent-2,#c99a4e);text-decoration:underline;}
+  .forgot-link a:hover{color:var(--accent);}
 </style>
 </head>
 <body>

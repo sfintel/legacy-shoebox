@@ -388,7 +388,7 @@
     renderRow: (q) => `<tr data-item-id="${q.id}">
       <td>${esc(q.speaker)}</td>
       <td>${esc(truncate(q.quoteText, 90))}</td>
-      <td>${(q.tags || []).length ? `<span class="info-icon" title="${esc(q.tags.join(", "))}">i</span>` : "—"}</td>
+      <td>${ContentForm.renderKeywordsIcon(q.tags || [])}</td>
       <td><div class="admin-actions">
         <button data-id="${q.id}" data-action="edit">Edit</button>
         <button class="danger" data-id="${q.id}" data-action="delete">Delete</button>
@@ -510,6 +510,7 @@
     }
   });
 
+  ContentForm.wireInfoIcons();
   people.load();
   places.load();
   timeline.load();

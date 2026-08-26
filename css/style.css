@@ -41,14 +41,25 @@ h2{font-family:Georgia,'Times New Roman',serif;font-weight:600;margin:0 0 12px;}
 .admin-menu{position:relative; display:inline-flex;}
 .admin-menu-trigger{display:inline-flex; align-items:center; gap:4px;}
 .admin-menu-list{
-  display:none; flex-direction:column; gap:2px;
-  position:absolute; top:calc(100% + 6px); right:0; z-index:20; min-width:160px;
+  display:none;
+  /* top:100% (not e.g. "calc(100% + 6px)") deliberately leaves no gap
+     between the trigger and the list — a gap there is outside both
+     elements' hoverable box, so moving the mouse straight down from the
+     trigger crosses a dead zone where nothing is :hover'd, closing the
+     menu (via the rule below) before the cursor ever reaches an item.
+     The 6px of breathing room is padding-top on this wrapper instead,
+     which is still inside the hoverable box; .admin-menu-list-box (the
+     actual visible, styled box) sits below that padding. */
+  position:absolute; top:100%; right:0; z-index:20; padding-top:6px;
+}
+.admin-menu-list-box{
+  display:flex; flex-direction:column; gap:2px; min-width:160px;
   background:var(--panel); border:1px solid var(--border); border-radius:8px;
   padding:6px; box-shadow:0 8px 24px rgba(0,0,0,.35);
 }
 .admin-menu:hover .admin-menu-list,
 .admin-menu:focus-within .admin-menu-list,
-.admin-menu.open .admin-menu-list{display:flex;}
+.admin-menu.open .admin-menu-list{display:block;}
 .admin-menu-list a{
   display:block; padding:8px 10px; border-radius:6px; color:var(--text);
   text-decoration:none; font-size:.85rem; white-space:nowrap;
@@ -212,17 +223,37 @@ input[type=search]{min-width:180px;}
 
 .admin-table th.sortable{cursor:pointer; user-select:none;}
 .admin-table th.sortable:hover{color:var(--text);}
-.admin-table th.sortable::after{content:"⇅"; margin-left:4px; opacity:.5; font-size:.75em;}
-.admin-table th.sort-asc::after{content:"↑"; opacity:1;}
-.admin-table th.sort-desc::after{content:"↓"; opacity:1;}
+.admin-table th.sortable::after{
+  content:"⇅"; display:inline-block; margin-left:5px; opacity:.55;
+  font-size:1rem; line-height:1; vertical-align:-2px;
+}
+.admin-table th.sort-asc::after, .admin-table th.sort-desc::after{
+  opacity:1; color:var(--accent-2); font-weight:700; font-size:1.05rem;
+}
+.admin-table th.sort-asc::after{content:"↑";}
+.admin-table th.sort-desc::after{content:"↓";}
 
+/* A real tooltip built from CSS/JS rather than the native `title`
+   attribute — title tooltips are unreliable across browsers and
+   effectively don't exist on touch devices at all (no hover, and tap
+   doesn't reveal them), so a hover-only implementation would silently
+   never work for a family member on a phone or tablet. .open is toggled
+   by a click/tap fallback — see content_form.js's wireInfoIcons(). */
 .info-icon{
-  display:inline-flex; align-items:center; justify-content:center;
+  position:relative; display:inline-flex; align-items:center; justify-content:center;
   width:16px; height:16px; border-radius:50%; border:1px solid var(--muted);
   color:var(--muted); font-size:.68rem; font-style:italic; font-family:Georgia,serif;
   cursor:help;
 }
 .info-icon:hover{border-color:var(--accent); color:var(--accent-2);}
+.info-tooltip{
+  display:none; position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
+  background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:6px 10px;
+  font-size:.78rem; font-style:normal; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color:var(--text); text-align:left; line-height:1.4; white-space:normal;
+  width:max-content; max-width:220px; box-shadow:0 6px 20px rgba(0,0,0,.4); z-index:30;
+}
+.info-icon:hover .info-tooltip, .info-icon:focus .info-tooltip, .info-icon.open .info-tooltip{display:block;}
 .admin-actions{display:flex; gap:6px; flex-wrap:wrap;}
 .admin-actions button, .admin-actions a{
   background:var(--panel); border:1px solid var(--border); color:var(--text);

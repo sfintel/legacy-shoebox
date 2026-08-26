@@ -36,12 +36,14 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
       <div id="adminMenu" class="admin-menu" style="display:none;">
         <button type="button" id="adminMenuTrigger" class="ghost-btn admin-menu-trigger" aria-haspopup="true" aria-expanded="false">Admin ▾</button>
         <div class="admin-menu-list" role="menu" aria-label="Admin sections">
-          <a role="menuitem" href="/admin.php">Users</a>
-          <a role="menuitem" href="/admin_content.php">Content</a>
-          <a role="menuitem" href="/admin_archive.php">Archive</a>
-          <a role="menuitem" href="/admin_settings.php">Settings</a>
-          <a role="menuitem" href="/admin_redactions.php">Redactions</a>
-          <a role="menuitem" href="/admin_backup.php">Backup</a>
+          <div class="admin-menu-list-box">
+            <a role="menuitem" href="/admin.php">Users</a>
+            <a role="menuitem" href="/admin_content.php">Content</a>
+            <a role="menuitem" href="/admin_archive.php">Archive</a>
+            <a role="menuitem" href="/admin_settings.php">Settings</a>
+            <a role="menuitem" href="/admin_redactions.php">Redactions</a>
+            <a role="menuitem" href="/admin_backup.php">Backup</a>
+          </div>
         </div>
       </div>
       <a id="contentLink" href="/admin_content.php" class="ghost-btn" style="display:none; text-decoration:none;">Add Content</a>

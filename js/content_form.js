@@ -101,6 +101,7 @@ window.ContentForm = (function () {
     const formError = document.getElementById("formError");
     const fileInput = document.getElementById("fileInput");
     const mediaUrlInput = document.getElementById("mediaUrlInput");
+    const fileRemoveBtn = document.getElementById("fileRemoveBtn");
 
     let tagPickerState = { tags: [] };
 
@@ -109,12 +110,27 @@ window.ContentForm = (function () {
     }
     refreshTagPicker();
 
+    // Native file inputs have no built-in way to un-select a file once
+    // one's chosen (re-opening the OS picker and clicking Cancel leaves
+    // whatever was already selected in place) — this button is the only
+    // way to clear it, which also matters now that a chosen file greys
+    // out (and disables) the URL field below via syncMediaExclusivity().
+    function syncFileRemoveBtn() {
+      fileRemoveBtn.style.display = fileInput.files.length > 0 ? "" : "none";
+    }
+    fileRemoveBtn.addEventListener("click", () => {
+      fileInput.value = "";
+      syncFileRemoveBtn();
+      syncMediaExclusivity();
+    });
+
     // File and "download from URL" are mutually exclusive (enforced at
     // submit time regardless — see below); this just greys out whichever
     // option isn't in use once the choice is clear, instead of leaving
     // both looking equally live. Only meaningful for photo/video, the
     // only types where mediaUrlRow is ever shown.
     function syncMediaExclusivity() {
+      syncFileRemoveBtn();
       if (mediaUrlRow.style.display === "none") {
         fileInput.disabled = false;
         mediaUrlInput.disabled = false;
@@ -133,6 +149,16 @@ window.ContentForm = (function () {
     mediaUrlInput.addEventListener("input", syncMediaExclusivity);
 
     function syncFormFields() {
+      // A file/URL chosen under one type is stale once you switch away
+      // from it (the row hides, but a native file input silently keeps
+      // whatever was already selected) — clearing on every type change
+      // means coming back to the same type never shows a leftover
+      // filename from before. Harmless on the other two callers of this
+      // function (the very first call, and right after a successful
+      // submit): both already start from an empty file input anyway.
+      fileInput.value = "";
+      mediaUrlInput.value = "";
+
       const isTranscript = typeSelect.value === "transcript";
       const isPhoto = typeSelect.value === "photo";
       const isUrl = typeSelect.value === "url";
@@ -241,5 +267,30 @@ window.ContentForm = (function () {
     }
   }
 
-  return { renderTagPicker, initAddForm, fetchKeywordLabels };
+  // Renders the circled-i "Keywords" indicator used by both the Content
+  // table and the Quotes table — a real tooltip (see .info-icon /
+  // .info-tooltip in style.css), not the native `title` attribute, since
+  // title tooltips don't reliably appear across browsers and effectively
+  // never appear on touch devices at all.
+  function renderKeywordsIcon(labels) {
+    if (!labels || !labels.length) return "—";
+    return `<span class="info-icon" tabindex="0">i<span class="info-tooltip">${esc(labels.join(", "))}</span></span>`;
+  }
+
+  // Click/tap fallback for touch devices, where :hover never fires —
+  // toggles .open on the tapped icon and closes any other open one. Call
+  // once per page; event delegation means it keeps working for icons
+  // rendered later (e.g. after a table reloads). Hover and keyboard
+  // focus (:hover/:focus in CSS) already work without this.
+  function wireInfoIcons() {
+    document.addEventListener("click", (e) => {
+      const icon = e.target.closest(".info-icon");
+      document.querySelectorAll(".info-icon.open").forEach((el) => {
+        if (el !== icon) el.classList.remove("open");
+      });
+      if (icon) icon.classList.toggle("open");
+    });
+  }
+
+  return { renderTagPicker, initAddForm, fetchKeywordLabels, renderKeywordsIcon, wireInfoIcons };
 })();

@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.29.1' => [
+            'description' => 'Fix admin dropdown hover dead-zone, clear stale file selection on type change + add a Remove-file button, enlarge sort-direction arrows, replace the Keywords info-icon\'s native title tooltip with a real hover/tap tooltip, make the login page\'s existing Forgot-password link more visible',
+            'db' => null,
+            'env' => [],
+        ],
         '1.29.0' => [
             'description' => 'Add app-wide keywords table — a single suggestion list Quotes and Content tag pickers both draw from, plus a new admin_settings.php Keywords tab to rename/merge/delete entries. Backfills the table from every tag already in use so an existing archive does not start with an empty list.',
             'db' => static function (PDO $pdo): void {

@@ -14,6 +14,37 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.29.1] — 2026-08-27
+
+### Fixed
+
+- Admin dropdown menu (1.26.0): a 6px gap between the "Admin" trigger and
+  the menu list sat outside both elements' hoverable area, so moving the
+  mouse straight down from the trigger broke `:hover` before reaching a
+  menu item — the menu closed before you could click anything, forcing a
+  click-then-click workaround instead of a plain hover. The gap is now
+  padding inside the hoverable wrapper instead of a true gap outside it.
+- Add-content form: a previously selected file stayed selected after
+  switching content type away and back (native file inputs don't clear
+  on their own, and there was no way to un-select one at all — reopening
+  the OS picker and clicking Cancel leaves the prior selection in
+  place). Switching type now clears the file/URL fields, and a new
+  "Remove" button next to the file field clears it explicitly.
+- Sort-direction arrows on sortable column headers (1.27.0) were tiny
+  and low-contrast — enlarged and given an accent color once a column is
+  actively sorted.
+- The Keywords circled-i icon (Content table and, as of 1.29.0, Quotes)
+  relied on the native `title` attribute for its tooltip, which several
+  browsers don't show reliably and touch devices generally don't show at
+  all — replaced with a real CSS/JS tooltip that also works via tap.
+- The existing "Forgot password?" link on the login page was easy to
+  miss (small, muted gray, tucked above the button) — no functional
+  change, just made more visually prominent.
+
+### Environment changes
+
+None.
+
 ## [1.29.0] — 2026-08-26
 
 ### Added
