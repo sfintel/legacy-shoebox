@@ -14,6 +14,20 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.25.0] — 2026-08-26
+
+### Fixed
+
+- Reorderable admin tables (Timeline entries, Sources, Audience
+  categories) no longer show a move-up arrow on the first row or a
+  move-down arrow on the last row — previously both arrows were always
+  shown regardless of position, so clicking them on an edge row was a
+  silent no-op.
+
+### Environment changes
+
+None.
+
 ## [1.24.0] — 2026-08-26
 
 ### Removed

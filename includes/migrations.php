@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.25.0' => [
+            'description' => 'Hide move-up/move-down arrows on the first/last row of reorderable admin tables (Timeline, Sources, Audience categories) instead of always showing both',
+            'db' => null,
+            'env' => [],
+        ],
         '1.24.0' => [
             'description' => 'Remove the legacy YAML importer (admin_archive.php Import tab, includes/legacy_import.php, api/admin/legacy_import.php) — deprecated, no longer used by any active deployment',
             'db' => null,

@@ -107,8 +107,8 @@
   function renderSources() {
     const rows = currentSources.map((s, i) => `<tr data-item-id="${s.id}">
       <td><div class="admin-actions">
-        <button data-id="${s.id}" data-action="move-up" title="Move up">↑</button>
-        <button data-id="${s.id}" data-action="move-down" title="Move down">↓</button>
+        ${i > 0 ? `<button data-id="${s.id}" data-action="move-up" title="Move up">↑</button>` : ""}
+        ${i < currentSources.length - 1 ? `<button data-id="${s.id}" data-action="move-down" title="Move down">↓</button>` : ""}
       </div></td>
       <td>${esc(s.label)}${i === 0 ? ' <span class="status-badge status-approved">primary</span>' : ""}</td>
       <td>${esc(truncate(s.details, 70))}</td>
@@ -262,10 +262,10 @@
   }
 
   function renderModes() {
-    const rows = currentModes.map((m) => `<tr data-item-id="${m.id}">
+    const rows = currentModes.map((m, i) => `<tr data-item-id="${m.id}">
       <td><div class="admin-actions">
-        <button data-id="${m.id}" data-action="move-up" title="Move up">↑</button>
-        <button data-id="${m.id}" data-action="move-down" title="Move down">↓</button>
+        ${i > 0 ? `<button data-id="${m.id}" data-action="move-up" title="Move up">↑</button>` : ""}
+        ${i < currentModes.length - 1 ? `<button data-id="${m.id}" data-action="move-down" title="Move down">↓</button>` : ""}
       </div></td>
       <td>${esc(m.label)}</td>
       <td>${esc(truncate(m.aiGuidance, 90))}</td>

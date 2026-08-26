@@ -55,7 +55,7 @@
     }
 
     function render() {
-      const rows = currentItems.map((item) => opts.renderRow(item)).join("");
+      const rows = currentItems.map((item, i) => opts.renderRow(item, i, currentItems.length)).join("");
       document.getElementById(opts.rowsId).innerHTML =
         rows || `<tr><td colspan="${opts.columnCount}" class="meta">Nothing added yet.</td></tr>`;
       document.getElementById(opts.statusId).textContent =
@@ -285,10 +285,10 @@
       source_note: document.getElementById("timelineSourceNote").value,
       citation: document.getElementById("timelineCitation").value,
     }),
-    renderRow: (t) => `<tr data-item-id="${t.id}">
+    renderRow: (t, i, total) => `<tr data-item-id="${t.id}">
       <td><div class="admin-actions">
-        <button data-id="${t.id}" data-action="move-up" title="Move up">↑</button>
-        <button data-id="${t.id}" data-action="move-down" title="Move down">↓</button>
+        ${i > 0 ? `<button data-id="${t.id}" data-action="move-up" title="Move up">↑</button>` : ""}
+        ${i < total - 1 ? `<button data-id="${t.id}" data-action="move-down" title="Move down">↓</button>` : ""}
       </div></td>
       <td>${esc(t.dateLabel)}</td>
       <td>${esc(truncate(t.event, 80))}</td>
