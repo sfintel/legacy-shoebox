@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.31.1' => [
+            'description' => 'Fix reorder-arrow buttons stacking vertically instead of side by side on People/Places (and, pre-emptively, Timeline/Quotes/Sources/Audience categories) when the column gets squeezed by real content — pin the column width and stop the buttons wrapping',
+            'db' => null,
+            'env' => [],
+        ],
         '1.31.0' => [
             'description' => 'Add up/down reorder arrows to People, Places, and Quotes on admin_archive.php (already existed on Timeline) — new sort_order column on people/places/quotes, backfilled to match each table\'s previous display order (people: subject role first, then created_at; places/quotes: created_at) so nothing visibly reshuffles on upgrade',
             'db' => static function (PDO $pdo): void {

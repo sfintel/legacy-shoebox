@@ -255,6 +255,20 @@ input[type=search]{min-width:180px;}
 }
 .info-icon:hover .info-tooltip, .info-icon:focus .info-tooltip, .info-icon.open .info-tooltip{display:block;}
 .admin-actions{display:flex; gap:6px; flex-wrap:wrap;}
+/* The reorder-arrows column (Timeline/People/Places/Quotes/Sources/
+   Audience categories) needs the opposite of .admin-actions' own
+   flex-wrap:wrap — with 6 columns competing for width (e.g. People,
+   Places) and real, long production content in the other columns, the
+   browser can squeeze this one down far enough that the two buttons
+   wrap onto separate lines instead of sitting side by side. col-reorder
+   on the <th> hints the table's column-width algorithm to keep the
+   whole column no wider than its content needs (leaving the squeeze to
+   fall on the other, actually-flexible columns instead); reorder-actions
+   on the buttons' own wrapper guarantees they never wrap regardless.
+   1-2 short arrow buttons never need to wrap, unlike the Edit/Delete/
+   Suggestions/etc. row .admin-actions is also used for. */
+.admin-table th.col-reorder{width:1%;}
+.reorder-actions{flex-wrap:nowrap;}
 .admin-actions button, .admin-actions a{
   background:var(--panel); border:1px solid var(--border); color:var(--text);
   padding:5px 10px; border-radius:6px; font-size:.78rem; cursor:pointer;

@@ -14,6 +14,25 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.31.1] — 2026-08-27
+
+### Fixed
+
+- Reorder-arrow columns (People, Places, Timeline, Quotes, and Settings'
+  Sources/Audience categories) could show the up/down arrows stacked
+  vertically instead of side by side — visible only with real,
+  longer-than-demo content and, for People/Places specifically, only
+  because those two tables have 6 columns instead of 5, squeezing that
+  narrow column enough for the buttons to wrap. Fixed by pinning that
+  column's width to its content (`col-reorder`) and making the two
+  arrow buttons' wrapper never wrap (`reorder-actions`), applied
+  consistently to all six reorder locations rather than just the two
+  that happened to be reported.
+
+### Environment changes
+
+None.
+
 ## [1.31.0] — 2026-08-27
 
 ### Added

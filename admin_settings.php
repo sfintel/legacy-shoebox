@@ -74,7 +74,7 @@ require_admin_page();
       <p class="meta" id="sourcesStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th></th><th>Label</th><th>Details</th><th>Dramatisation</th><th>Actions</th></tr></thead>
+          <thead><tr><th class="col-reorder"></th><th>Label</th><th>Details</th><th>Dramatisation</th><th>Actions</th></tr></thead>
           <tbody id="sourceRows"></tbody>
         </table>
       </div>
@@ -97,7 +97,7 @@ require_admin_page();
       <p class="meta" id="modesStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th></th><th>Label</th><th>AI guidance</th><th>Default</th><th>Actions</th></tr></thead>
+          <thead><tr><th class="col-reorder"></th><th>Label</th><th>AI guidance</th><th>Default</th><th>Actions</th></tr></thead>
           <tbody id="modeRows"></tbody>
         </table>
       </div>

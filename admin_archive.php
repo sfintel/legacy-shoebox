@@ -43,7 +43,7 @@ require_admin_page();
       <p class="meta" style="color:var(--muted); font-size:.82rem;">Displayed in the order shown here — use the arrows to reorder.</p>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th></th><th>Names</th><th>Role</th><th>Fate</th><th>Notes</th><th>Actions</th></tr></thead>
+          <thead><tr><th class="col-reorder"></th><th>Names</th><th>Role</th><th>Fate</th><th>Notes</th><th>Actions</th></tr></thead>
           <tbody id="peopleRows"></tbody>
         </table>
       </div>
@@ -59,7 +59,7 @@ require_admin_page();
       <p class="meta" style="color:var(--muted); font-size:.82rem;">Displayed in the order shown here — use the arrows to reorder.</p>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th></th><th>Names</th><th>Countries</th><th>Role</th><th>Notes</th><th>Actions</th></tr></thead>
+          <thead><tr><th class="col-reorder"></th><th>Names</th><th>Countries</th><th>Role</th><th>Notes</th><th>Actions</th></tr></thead>
           <tbody id="placesRows"></tbody>
         </table>
       </div>
@@ -75,7 +75,7 @@ require_admin_page();
       <p class="meta" style="color:var(--muted); font-size:.82rem;">Displayed in the order shown here — use the arrows to reorder.</p>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th></th><th>Date</th><th>Event</th><th>Confidence</th><th>Actions</th></tr></thead>
+          <thead><tr><th class="col-reorder"></th><th>Date</th><th>Event</th><th>Confidence</th><th>Actions</th></tr></thead>
           <tbody id="timelineRows"></tbody>
         </table>
       </div>
@@ -91,7 +91,7 @@ require_admin_page();
       <p class="meta" style="color:var(--muted); font-size:.82rem;">Displayed in the order shown here — use the arrows to reorder.</p>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th></th><th>Speaker</th><th>Quote</th><th>Keywords</th><th>Actions</th></tr></thead>
+          <thead><tr><th class="col-reorder"></th><th>Speaker</th><th>Quote</th><th>Keywords</th><th>Actions</th></tr></thead>
           <tbody id="quotesRows"></tbody>
         </table>
       </div>

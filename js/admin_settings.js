@@ -106,7 +106,7 @@
 
   function renderSources() {
     const rows = currentSources.map((s, i) => `<tr data-item-id="${s.id}">
-      <td><div class="admin-actions">
+      <td><div class="admin-actions reorder-actions">
         ${i > 0 ? `<button data-id="${s.id}" data-action="move-up" title="Move up">↑</button>` : ""}
         ${i < currentSources.length - 1 ? `<button data-id="${s.id}" data-action="move-down" title="Move down">↓</button>` : ""}
       </div></td>
@@ -265,7 +265,7 @@
 
   function renderModes() {
     const rows = currentModes.map((m, i) => `<tr data-item-id="${m.id}">
-      <td><div class="admin-actions">
+      <td><div class="admin-actions reorder-actions">
         ${i > 0 ? `<button data-id="${m.id}" data-action="move-up" title="Move up">↑</button>` : ""}
         ${i < currentModes.length - 1 ? `<button data-id="${m.id}" data-action="move-down" title="Move down">↓</button>` : ""}
       </div></td>

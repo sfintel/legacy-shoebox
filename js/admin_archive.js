@@ -210,7 +210,7 @@
       citation: document.getElementById("personCitation").value,
     }),
     renderRow: (p, i, total) => `<tr data-item-id="${p.id}">
-      <td><div class="admin-actions">
+      <td><div class="admin-actions reorder-actions">
         ${i > 0 ? `<button data-id="${p.id}" data-action="move-up" title="Move up">↑</button>` : ""}
         ${i < total - 1 ? `<button data-id="${p.id}" data-action="move-down" title="Move down">↓</button>` : ""}
       </div></td>
@@ -270,7 +270,7 @@
       citation: document.getElementById("placeCitation").value,
     }),
     renderRow: (p, i, total) => `<tr data-item-id="${p.id}">
-      <td><div class="admin-actions">
+      <td><div class="admin-actions reorder-actions">
         ${i > 0 ? `<button data-id="${p.id}" data-action="move-up" title="Move up">↑</button>` : ""}
         ${i < total - 1 ? `<button data-id="${p.id}" data-action="move-down" title="Move down">↓</button>` : ""}
       </div></td>
@@ -332,7 +332,7 @@
       citation: document.getElementById("timelineCitation").value,
     }),
     renderRow: (t, i, total) => `<tr data-item-id="${t.id}">
-      <td><div class="admin-actions">
+      <td><div class="admin-actions reorder-actions">
         ${i > 0 ? `<button data-id="${t.id}" data-action="move-up" title="Move up">↑</button>` : ""}
         ${i < total - 1 ? `<button data-id="${t.id}" data-action="move-down" title="Move down">↓</button>` : ""}
       </div></td>
@@ -402,7 +402,7 @@
       quoteAddTagPickerState = ContentForm.renderTagPicker("quoteTagsPicker", [], "quoteTagsPickerInput", () => allKeywordLabels);
     },
     renderRow: (q, i, total) => `<tr data-item-id="${q.id}">
-      <td><div class="admin-actions">
+      <td><div class="admin-actions reorder-actions">
         ${i > 0 ? `<button data-id="${q.id}" data-action="move-up" title="Move up">↑</button>` : ""}
         ${i < total - 1 ? `<button data-id="${q.id}" data-action="move-down" title="Move down">↓</button>` : ""}
       </div></td>
