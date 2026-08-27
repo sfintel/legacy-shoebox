@@ -15,6 +15,18 @@
 }
 .skip-link:focus{top:8px;}
 :focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
+/* Baseline for any plain, unclassed <a> — without this, a link falls
+   back to the browser default (blue unvisited / purple visited), which
+   has very poor contrast against this theme's dark brown background.
+   Every more specific link style elsewhere (.ghost-btn, .admin-actions
+   a, .admin-menu-list a, .related-content-link, etc.) already overrides
+   this via a class selector, so it only ever affects a link that has no
+   more specific rule of its own. :visited is pinned to the same color
+   as unvisited — a used/unused distinction has no purpose in this app
+   (e.g. a "view file" or "map" link isn't a trail of pages to track). */
+a{color:var(--accent-2);}
+a:visited{color:var(--accent-2);}
+a:hover{color:var(--accent);}
 html,body{height:100%;}
 body{
   margin:0; background:var(--bg); color:var(--text);

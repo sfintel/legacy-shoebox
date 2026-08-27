@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.31.2' => [
+            'description' => 'Add a site-wide baseline color for plain <a> links (previously unstyled, falling back to the browser default blue/purple which had very poor contrast against this theme\'s dark background) — every existing more-specific link style is unaffected',
+            'db' => null,
+            'env' => [],
+        ],
         '1.31.1' => [
             'description' => 'Fix reorder-arrow buttons stacking vertically instead of side by side on People/Places (and, pre-emptively, Timeline/Quotes/Sources/Audience categories) when the column gets squeezed by real content — pin the column width and stop the buttons wrapping',
             'db' => null,

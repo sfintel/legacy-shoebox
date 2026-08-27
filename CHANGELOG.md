@@ -14,6 +14,24 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.31.2] — 2026-08-27
+
+### Fixed
+
+- There was no site-wide color rule for plain links at all, so any `<a>`
+  without a specific style of its own (e.g. the "map" link on a photo's
+  GPS metadata, a document's "View" link on the Content admin page)
+  fell back to the browser's default blue/purple — very poor contrast
+  against this theme's dark brown background. Added a baseline `a`
+  color (the same gold accent already used for other links) with a
+  distinct hover color; every existing more-specific link style
+  (`.ghost-btn`, `.admin-actions a`, `.related-content-link`, etc.) is
+  unaffected, since a class selector already wins over this.
+
+### Environment changes
+
+None.
+
 ## [1.31.1] — 2026-08-27
 
 ### Fixed
