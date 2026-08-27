@@ -292,10 +292,16 @@ CREATE TABLE IF NOT EXISTS audience_modes (
 -- since dropping it buys nothing. The real primary key is the UUID like
 -- every other table in this app. `source_note`/`citation` are free
 -- text, replacing the old source_vha/source_book boolean flags —
--- generic enough for any archive's own mix of sources.
+-- generic enough for any archive's own mix of sources. `sort_order` is
+-- an explicit, admin-adjustable display order (same up/down-arrow
+-- convention as timeline_entries.sort_order below) — added in 1.31.0,
+-- replacing the previous fixed "subject role first, then by
+-- created_at" ordering; the migration backfills sort_order to match
+-- that same order so existing archives don't visibly reshuffle.
 CREATE TABLE IF NOT EXISTS people (
   id          CHAR(36)     NOT NULL PRIMARY KEY,
   slug        VARCHAR(128) NULL,
+  sort_order  INT UNSIGNED NOT NULL DEFAULT 0,
   names       JSON         NOT NULL,
   role        VARCHAR(255) NULL,
   fate        TEXT         NULL,
@@ -312,6 +318,7 @@ CREATE TABLE IF NOT EXISTS people (
 CREATE TABLE IF NOT EXISTS places (
   id               CHAR(36)     NOT NULL PRIMARY KEY,
   slug             VARCHAR(128) NULL,
+  sort_order       INT UNSIGNED NOT NULL DEFAULT 0,
   names            JSON         NOT NULL,
   wartime_country  VARCHAR(255) NULL,
   modern_country   VARCHAR(255) NULL,
@@ -349,9 +356,12 @@ CREATE TABLE IF NOT EXISTS timeline_entries (
 
 -- Verbatim quote bank. quote_text must be copied exactly from the
 -- source — never paraphrased (enforced by convention/prompt, same as
--- today's quotes.yaml header comment, not by the schema).
+-- today's quotes.yaml header comment, not by the schema). sort_order —
+-- see people.sort_order's comment above for the convention; added in
+-- 1.31.0, backfilled to match the previous created_at ordering.
 CREATE TABLE IF NOT EXISTS quotes (
   id          CHAR(36)     NOT NULL PRIMARY KEY,
+  sort_order  INT UNSIGNED NOT NULL DEFAULT 0,
   speaker     VARCHAR(255) NOT NULL,
   source_note VARCHAR(255) NULL,
   tags        JSON         NULL,

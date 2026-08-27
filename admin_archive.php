@@ -40,9 +40,10 @@ require_admin_page();
         <button type="button" class="btn-primary" id="personAddBtn">Add a person</button>
       </div>
       <p class="meta" id="peopleStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
+      <p class="meta" style="color:var(--muted); font-size:.82rem;">Displayed in the order shown here — use the arrows to reorder.</p>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Names</th><th>Role</th><th>Fate</th><th>Notes</th><th>Actions</th></tr></thead>
+          <thead><tr><th></th><th>Names</th><th>Role</th><th>Fate</th><th>Notes</th><th>Actions</th></tr></thead>
           <tbody id="peopleRows"></tbody>
         </table>
       </div>
@@ -55,9 +56,10 @@ require_admin_page();
         <button type="button" class="btn-primary" id="placeAddBtn">Add a place</button>
       </div>
       <p class="meta" id="placesStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
+      <p class="meta" style="color:var(--muted); font-size:.82rem;">Displayed in the order shown here — use the arrows to reorder.</p>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Names</th><th>Countries</th><th>Role</th><th>Notes</th><th>Actions</th></tr></thead>
+          <thead><tr><th></th><th>Names</th><th>Countries</th><th>Role</th><th>Notes</th><th>Actions</th></tr></thead>
           <tbody id="placesRows"></tbody>
         </table>
       </div>
@@ -86,9 +88,10 @@ require_admin_page();
         <button type="button" class="btn-primary" id="quoteAddBtn">Add a quote</button>
       </div>
       <p class="meta" id="quotesStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
+      <p class="meta" style="color:var(--muted); font-size:.82rem;">Displayed in the order shown here — use the arrows to reorder.</p>
       <div class="table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Speaker</th><th>Quote</th><th>Keywords</th><th>Actions</th></tr></thead>
+          <thead><tr><th></th><th>Speaker</th><th>Quote</th><th>Keywords</th><th>Actions</th></tr></thead>
           <tbody id="quotesRows"></tbody>
         </table>
       </div>

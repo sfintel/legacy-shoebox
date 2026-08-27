@@ -16,12 +16,12 @@ declare(strict_types=1);
 // they were added.
 function archive_people(): array
 {
-    return db()->query("SELECT * FROM people ORDER BY (role = 'subject') DESC, created_at ASC")->fetchAll();
+    return db()->query('SELECT * FROM people ORDER BY sort_order ASC, created_at ASC')->fetchAll();
 }
 
 function archive_places(): array
 {
-    return db()->query('SELECT * FROM places ORDER BY created_at ASC')->fetchAll();
+    return db()->query('SELECT * FROM places ORDER BY sort_order ASC, created_at ASC')->fetchAll();
 }
 
 function archive_timeline(): array
@@ -31,7 +31,7 @@ function archive_timeline(): array
 
 function archive_quotes(): array
 {
-    return db()->query('SELECT * FROM quotes ORDER BY created_at ASC')->fetchAll();
+    return db()->query('SELECT * FROM quotes ORDER BY sort_order ASC, created_at ASC')->fetchAll();
 }
 
 function archive_primary_testimony(): ?array
@@ -677,14 +677,16 @@ function archive_person_create(array $fields): array
     if (!$names) {
         throw new RuntimeException('At least one name is required.');
     }
+    $maxOrder = (int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM people')->fetchColumn();
     $id = make_uuid();
     $stmt = db()->prepare(
-        'INSERT INTO people (id, slug, names, role, fate, notes, name_note, source_note, citation)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO people (id, slug, sort_order, names, role, fate, notes, name_note, source_note, citation)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $id,
         archive_slug_or_null($fields['slug'] ?? null),
+        $maxOrder + 1,
         json_encode($names, JSON_UNESCAPED_UNICODE),
         archive_trim_or_null($fields['role'] ?? null),
         archive_trim_or_null($fields['fate'] ?? null),
@@ -728,6 +730,13 @@ function archive_person_delete(string $id): bool
     return $stmt->rowCount() > 0;
 }
 
+// See archive_move_row() (below, near archive_timeline_move()) for the
+// shared swap logic.
+function archive_person_move(string $id, string $direction): void
+{
+    archive_move_row('people', archive_people(), $id, $direction);
+}
+
 // --- Places ---
 
 function archive_place_find(string $id): ?array
@@ -744,14 +753,16 @@ function archive_place_create(array $fields): array
     if (!$names) {
         throw new RuntimeException('At least one name is required.');
     }
+    $maxOrder = (int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM places')->fetchColumn();
     $id = make_uuid();
     $stmt = db()->prepare(
-        'INSERT INTO places (id, slug, names, wartime_country, modern_country, approx_coords, role, notes, source_note, citation)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO places (id, slug, sort_order, names, wartime_country, modern_country, approx_coords, role, notes, source_note, citation)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $id,
         archive_slug_or_null($fields['slug'] ?? null),
+        $maxOrder + 1,
         json_encode($names, JSON_UNESCAPED_UNICODE),
         archive_trim_or_null($fields['wartime_country'] ?? null),
         archive_trim_or_null($fields['modern_country'] ?? null),
@@ -795,6 +806,13 @@ function archive_place_delete(string $id): bool
     $stmt = db()->prepare('DELETE FROM places WHERE id = ?');
     $stmt->execute([$id]);
     return $stmt->rowCount() > 0;
+}
+
+// See archive_move_row() (below, near archive_timeline_move()) for the
+// shared swap logic.
+function archive_place_move(string $id, string $direction): void
+{
+    archive_move_row('places', archive_places(), $id, $direction);
 }
 
 // --- Timeline ---
@@ -877,15 +895,21 @@ function archive_timeline_delete(string $id): bool
     return $stmt->rowCount() > 0;
 }
 
-// Swaps sort_order with the adjacent entry — simpler and far more usable
+// Swaps sort_order with the adjacent row — simpler and far more usable
 // for a non-technical admin than hand-entering a raw sort_order number,
 // same "explicit, admin-adjustable order" idea as content_files.sort_order.
-function archive_timeline_move(string $id, string $direction): void
+// Shared by every reorderable list (Timeline, People, Places, Quotes) —
+// the swap logic is identical regardless of table, so this is the one
+// implementation; each entity keeps its own thin archive_X_move()
+// wrapper (below, and alongside people/places/quotes) so callers don't
+// need to know $table/$rows plumbing details. $table is always one of
+// this app's own hardcoded table names, never user input — same trust
+// level as backup_dump_sql()'s table-name interpolation.
+function archive_move_row(string $table, array $rows, string $id, string $direction): void
 {
     if (!in_array($direction, ['up', 'down'], true)) {
         throw new RuntimeException('Direction must be up or down.');
     }
-    $rows = archive_timeline();
     $index = null;
     foreach ($rows as $i => $row) {
         if ($row['id'] === $id) {
@@ -894,7 +918,7 @@ function archive_timeline_move(string $id, string $direction): void
         }
     }
     if ($index === null) {
-        throw new RuntimeException('Timeline entry not found.');
+        throw new RuntimeException('Item not found.');
     }
     $swapWith = $direction === 'up' ? $index - 1 : $index + 1;
     if ($swapWith < 0 || $swapWith >= count($rows)) {
@@ -902,10 +926,14 @@ function archive_timeline_move(string $id, string $direction): void
     }
     $a = $rows[$index];
     $b = $rows[$swapWith];
-    $pdo = db();
-    $stmt = $pdo->prepare('UPDATE timeline_entries SET sort_order = ? WHERE id = ?');
+    $stmt = db()->prepare("UPDATE $table SET sort_order = ? WHERE id = ?");
     $stmt->execute([$b['sort_order'], $a['id']]);
     $stmt->execute([$a['sort_order'], $b['id']]);
+}
+
+function archive_timeline_move(string $id, string $direction): void
+{
+    archive_move_row('timeline_entries', archive_timeline(), $id, $direction);
 }
 
 // --- Quotes ---
@@ -925,14 +953,16 @@ function archive_quote_create(array $fields): array
     if ($speaker === null || $quoteText === null) {
         throw new RuntimeException('Speaker and quote text are required.');
     }
+    $maxOrder = (int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM quotes')->fetchColumn();
     $id = make_uuid();
     $tags = archive_normalize_tags($fields['tags'] ?? []);
     keywords_ensure($tags); // joins the app-wide master list — see includes/keywords.php
     $stmt = db()->prepare(
-        'INSERT INTO quotes (id, speaker, source_note, tags, quote_text, citation) VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO quotes (id, sort_order, speaker, source_note, tags, quote_text, citation) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $id,
+        $maxOrder + 1,
         $speaker,
         archive_trim_or_null($fields['source_note'] ?? null),
         json_encode($tags, JSON_UNESCAPED_UNICODE),
@@ -973,6 +1003,13 @@ function archive_quote_delete(string $id): bool
     $stmt = db()->prepare('DELETE FROM quotes WHERE id = ?');
     $stmt->execute([$id]);
     return $stmt->rowCount() > 0;
+}
+
+// See archive_move_row() (below, near archive_timeline_move()) for the
+// shared swap logic.
+function archive_quote_move(string $id, string $direction): void
+{
+    archive_move_row('quotes', archive_quotes(), $id, $direction);
 }
 
 // --- Primary testimony & discrepancy notes (single-row "settings-style"

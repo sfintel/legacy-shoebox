@@ -14,6 +14,41 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.31.0] — 2026-08-27
+
+### Added
+
+- Up/down reorder arrows for People, Places, and Quotes on
+  `admin_archive.php` — previously only Timeline had these; the other
+  three showed items in a fixed order (People: subject role first, then
+  by date added; Places/Quotes: by date added) with no way to change it.
+  Same behavior as Timeline throughout: no arrow on the first/last row,
+  and a shared "Move" implementation (`archive_move_row()`,
+  `js/admin_archive.js`'s generic `handleMove()`) rather than four
+  separate copies of the same swap logic.
+
+### Database changes
+
+Adds a `sort_order` column to `people`, `places`, and `quotes`
+(`upgrade.sh` handles this automatically, including backfilling it to
+match each table's previous display order so nothing visibly reshuffles
+on upgrade). Manual equivalent:
+
+```sql
+ALTER TABLE people ADD COLUMN sort_order INT UNSIGNED NOT NULL DEFAULT 0;
+ALTER TABLE places ADD COLUMN sort_order INT UNSIGNED NOT NULL DEFAULT 0;
+ALTER TABLE quotes ADD COLUMN sort_order INT UNSIGNED NOT NULL DEFAULT 0;
+```
+
+Then backfill each table's `sort_order` from its old ordering (people:
+`ORDER BY (role = 'subject') DESC, created_at ASC`; places/quotes:
+`ORDER BY created_at ASC`) — see `includes/migrations.php`'s `1.31.0`
+step for the exact backfill logic; not required for a fresh install.
+
+### Environment changes
+
+None.
+
 ## [1.30.0] — 2026-08-27
 
 ### Changed

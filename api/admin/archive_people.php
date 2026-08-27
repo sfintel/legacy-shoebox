@@ -28,6 +28,10 @@ if ($method === 'POST') {
             }
             json_response(['ok' => true]);
         }
+        if ($action === 'move') {
+            archive_person_move($id, (string) ($body['direction'] ?? ''));
+            json_response(['ok' => true]);
+        }
     } catch (RuntimeException $e) {
         json_response(['error' => $e->getMessage()], 400);
     }

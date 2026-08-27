@@ -117,10 +117,10 @@ automatically, so writing it is part of adding a category.
 
 `/admin_archive.php` (admin-only) is where the core archive itself gets
 built: People, Places, Timeline, Quotes, Testimony, and Discrepancy/source
-notes, each with add/edit/delete (Timeline entries also support
-reordering). Everything here is what the Ask tab is grounded in and what
-the Browse tab displays — there's no separate file format to hand-edit or
-keep in sync.
+notes, each with add/edit/delete — People, Places, Timeline, and Quotes
+also support reordering (up/down arrows). Everything here is what the
+Ask tab is grounded in and what the Browse tab displays — there's no
+separate file format to hand-edit or keep in sync.
 
 **Note on the subject's own People-tab entry**: `admin_settings.php`'s
 "Date of passing" field (site identity — feeds the About tab and the Ask

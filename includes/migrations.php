@@ -23,6 +23,44 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.31.0' => [
+            'description' => 'Add up/down reorder arrows to People, Places, and Quotes on admin_archive.php (already existed on Timeline) — new sort_order column on people/places/quotes, backfilled to match each table\'s previous display order (people: subject role first, then created_at; places/quotes: created_at) so nothing visibly reshuffles on upgrade',
+            'db' => static function (PDO $pdo): void {
+                foreach (['people', 'places', 'quotes'] as $table) {
+                    $exists = (int) $pdo->query(
+                        "SELECT COUNT(*) FROM information_schema.columns
+                         WHERE table_schema = DATABASE() AND table_name = '$table' AND column_name = 'sort_order'"
+                    )->fetchColumn();
+                    if ($exists === 0) {
+                        $pdo->exec("ALTER TABLE $table ADD COLUMN sort_order INT UNSIGNED NOT NULL DEFAULT 0");
+                    }
+                }
+
+                // Backfill only matters for rows still at the column's
+                // DEFAULT 0 — re-running this step (a fresh ALTER TABLE
+                // above, or a second pass for any other reason) never
+                // clobbers an order an admin has since set by hand via
+                // the new up/down arrows.
+                $peopleIds = $pdo->query(
+                    "SELECT id FROM people WHERE sort_order = 0 ORDER BY (role = 'subject') DESC, created_at ASC"
+                )->fetchAll(PDO::FETCH_COLUMN);
+                $stmt = $pdo->prepare('UPDATE people SET sort_order = ? WHERE id = ?');
+                foreach ($peopleIds as $i => $id) {
+                    $stmt->execute([$i + 1, $id]);
+                }
+
+                foreach (['places', 'quotes'] as $table) {
+                    $ids = $pdo->query(
+                        "SELECT id FROM $table WHERE sort_order = 0 ORDER BY created_at ASC"
+                    )->fetchAll(PDO::FETCH_COLUMN);
+                    $stmt = $pdo->prepare("UPDATE $table SET sort_order = ? WHERE id = ?");
+                    foreach ($ids as $i => $id) {
+                        $stmt->execute([$i + 1, $id]);
+                    }
+                }
+            },
+            'env' => [],
+        ],
         '1.30.0' => [
             'description' => 'Replace the always-visible "Add ___" form on Content, Archive (People/Places/Timeline/Quotes), and Settings\' Sources tab with a button + modal (6 forms); new shared js/admin_modal.js also backs the main app\'s existing Add Content modal, replacing its own hand-rolled open/close logic',
             'db' => null,

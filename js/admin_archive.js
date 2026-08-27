@@ -73,7 +73,33 @@
       document.querySelectorAll(`#${opts.rowsId} button[data-action="delete"]`).forEach((btn) => {
         btn.addEventListener("click", () => handleDelete(btn.dataset.id));
       });
+      // Generic — any entity can get reorder arrows just by having its
+      // own renderRow() emit data-action="move-up"/"move-down" buttons
+      // (see Timeline/People/Places/Quotes below); this wires them all
+      // the same way, using this controller's own endpoint/load(), so
+      // there's one implementation of "move" rather than one per entity.
+      document.querySelectorAll(`#${opts.rowsId} button[data-action="move-up"]`).forEach((btn) => {
+        btn.addEventListener("click", () => handleMove(btn.dataset.id, "up"));
+      });
+      document.querySelectorAll(`#${opts.rowsId} button[data-action="move-down"]`).forEach((btn) => {
+        btn.addEventListener("click", () => handleMove(btn.dataset.id, "down"));
+      });
       if (opts.wireExtraRowActions) opts.wireExtraRowActions();
+    }
+
+    async function handleMove(id, direction) {
+      try {
+        const res = await fetch(opts.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "move", id, direction }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Move failed");
+        load();
+      } catch (err) {
+        alert(err.message);
+      }
     }
 
     function toggleEdit(id) {
@@ -171,7 +197,7 @@
     formId: "personForm",
     submitBtnId: "personSubmitBtn",
     formErrorId: "personFormError",
-    columnCount: 5,
+    columnCount: 6,
     modal: AdminModal.wire("personModal", "personAddBtn", "personModalClose"),
     deleteConfirm: "Delete this person permanently?",
     collectAddFields: (form) => ({
@@ -183,7 +209,11 @@
       source_note: document.getElementById("personSourceNote").value,
       citation: document.getElementById("personCitation").value,
     }),
-    renderRow: (p) => `<tr data-item-id="${p.id}">
+    renderRow: (p, i, total) => `<tr data-item-id="${p.id}">
+      <td><div class="admin-actions">
+        ${i > 0 ? `<button data-id="${p.id}" data-action="move-up" title="Move up">↑</button>` : ""}
+        ${i < total - 1 ? `<button data-id="${p.id}" data-action="move-down" title="Move down">↓</button>` : ""}
+      </div></td>
       <td>${esc((p.names || []).join(", "))}</td>
       <td>${esc(p.role)}</td>
       <td>${esc(truncate(p.fate, 60))}</td>
@@ -193,7 +223,7 @@
         <button class="danger" data-id="${p.id}" data-action="delete">Delete</button>
       </div></td>
     </tr>`,
-    renderEditRow: (p) => `<tr class="edit-row" data-edit-for="${p.id}"><td colspan="5">
+    renderEditRow: (p) => `<tr class="edit-row" data-edit-for="${p.id}"><td colspan="6">
       <div class="content-form" style="max-width:none;">
         <div class="form-row"><label>Name(s) — comma-separated</label><input type="text" class="e-names" value="${esc((p.names || []).join(", "))}"></div>
         <div class="form-row"><label>Role</label><input type="text" class="e-role" value="${esc(p.role)}"></div>
@@ -226,7 +256,7 @@
     formId: "placeForm",
     submitBtnId: "placeSubmitBtn",
     formErrorId: "placeFormError",
-    columnCount: 5,
+    columnCount: 6,
     modal: AdminModal.wire("placeModal", "placeAddBtn", "placeModalClose"),
     deleteConfirm: "Delete this place permanently?",
     collectAddFields: () => ({
@@ -239,7 +269,11 @@
       source_note: document.getElementById("placeSourceNote").value,
       citation: document.getElementById("placeCitation").value,
     }),
-    renderRow: (p) => `<tr data-item-id="${p.id}">
+    renderRow: (p, i, total) => `<tr data-item-id="${p.id}">
+      <td><div class="admin-actions">
+        ${i > 0 ? `<button data-id="${p.id}" data-action="move-up" title="Move up">↑</button>` : ""}
+        ${i < total - 1 ? `<button data-id="${p.id}" data-action="move-down" title="Move down">↓</button>` : ""}
+      </div></td>
       <td>${esc((p.names || []).join(", "))}</td>
       <td>${esc([p.wartimeCountry, p.modernCountry].filter(Boolean).join(" → "))}</td>
       <td>${esc(p.role)}</td>
@@ -249,7 +283,7 @@
         <button class="danger" data-id="${p.id}" data-action="delete">Delete</button>
       </div></td>
     </tr>`,
-    renderEditRow: (p) => `<tr class="edit-row" data-edit-for="${p.id}"><td colspan="5">
+    renderEditRow: (p) => `<tr class="edit-row" data-edit-for="${p.id}"><td colspan="6">
       <div class="content-form" style="max-width:none;">
         <div class="form-row"><label>Name(s) — comma-separated</label><input type="text" class="e-names" value="${esc((p.names || []).join(", "))}"></div>
         <div class="form-row"><label>Wartime country</label><input type="text" class="e-wartime_country" value="${esc(p.wartimeCountry)}"></div>
@@ -341,30 +375,7 @@
       source_note: row.querySelector(".e-source_note").value,
       citation: row.querySelector(".e-citation").value,
     }),
-    wireExtraRowActions: () => {
-      document.querySelectorAll('#timelineRows button[data-action="move-up"]').forEach((btn) => {
-        btn.addEventListener("click", () => handleMove(btn.dataset.id, "up"));
-      });
-      document.querySelectorAll('#timelineRows button[data-action="move-down"]').forEach((btn) => {
-        btn.addEventListener("click", () => handleMove(btn.dataset.id, "down"));
-      });
-    },
   });
-
-  async function handleMove(id, direction) {
-    try {
-      const res = await fetch("/api/admin/archive_timeline.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "move", id, direction }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Move failed");
-      timeline.load();
-    } catch (err) {
-      alert(err.message);
-    }
-  }
 
   // --- Quotes ---
   let quoteAddTagPickerState = { tags: [] };
@@ -377,7 +388,7 @@
     formId: "quoteForm",
     submitBtnId: "quoteSubmitBtn",
     formErrorId: "quoteFormError",
-    columnCount: 4,
+    columnCount: 5,
     modal: AdminModal.wire("quoteModal", "quoteAddBtn", "quoteModalClose"),
     deleteConfirm: "Delete this quote permanently?",
     collectAddFields: () => ({
@@ -390,7 +401,11 @@
     afterCreate: () => {
       quoteAddTagPickerState = ContentForm.renderTagPicker("quoteTagsPicker", [], "quoteTagsPickerInput", () => allKeywordLabels);
     },
-    renderRow: (q) => `<tr data-item-id="${q.id}">
+    renderRow: (q, i, total) => `<tr data-item-id="${q.id}">
+      <td><div class="admin-actions">
+        ${i > 0 ? `<button data-id="${q.id}" data-action="move-up" title="Move up">↑</button>` : ""}
+        ${i < total - 1 ? `<button data-id="${q.id}" data-action="move-down" title="Move down">↓</button>` : ""}
+      </div></td>
       <td>${esc(q.speaker)}</td>
       <td>${esc(truncate(q.quoteText, 90))}</td>
       <td>${ContentForm.renderKeywordsIcon(q.tags || [])}</td>
@@ -399,7 +414,7 @@
         <button class="danger" data-id="${q.id}" data-action="delete">Delete</button>
       </div></td>
     </tr>`,
-    renderEditRow: (q) => `<tr class="edit-row" data-edit-for="${q.id}"><td colspan="4">
+    renderEditRow: (q) => `<tr class="edit-row" data-edit-for="${q.id}"><td colspan="5">
       <div class="content-form" style="max-width:none;">
         <div class="form-row"><label>Speaker</label><input type="text" class="e-speaker" value="${esc(q.speaker)}"></div>
         <div class="form-row"><label>Quote — verbatim</label><textarea class="e-quote_text" rows="3">${esc(q.quoteText)}</textarea></div>
