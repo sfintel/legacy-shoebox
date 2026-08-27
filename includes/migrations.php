@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.31.3' => [
+            'description' => 'Admin table header rows now stick to the top of the page while scrolling a long list, instead of scrolling away with the rest of the table',
+            'db' => null,
+            'env' => [],
+        ],
         '1.31.2' => [
             'description' => 'Add a site-wide baseline color for plain <a> links (previously unstyled, falling back to the browser default blue/purple which had very poor contrast against this theme\'s dark background) — every existing more-specific link style is unaffected',
             'db' => null,

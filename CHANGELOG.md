@@ -14,6 +14,20 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.31.3] — 2026-08-27
+
+### Added
+
+- Every admin table's header row now stays visible ("sticks") at the
+  top while scrolling a long list (Content, Users, People, Places,
+  Timeline, Quotes, Sources, Audience categories, Keywords) — previously
+  it scrolled away with the rest of the table, so a long list left you
+  guessing which column was which partway down.
+
+### Environment changes
+
+None.
+
 ## [1.31.2] — 2026-08-27
 
 ### Fixed
