@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.31.4' => [
+            'description' => 'Fix sticky table header (1.31.3) not actually sticking on the Content admin table — .table-wrap now uses a bounded max-height with overflow:auto on both axes instead of mixing overflow-x:auto with overflow-y:visible, which a CSS spec quirk silently forced back to auto anyway, making it a broken sticky container with no scrolling distance',
+            'db' => null,
+            'env' => [],
+        ],
         '1.31.3' => [
             'description' => 'Admin table header rows now stick to the top of the page while scrolling a long list, instead of scrolling away with the rest of the table',
             'db' => null,

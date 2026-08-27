@@ -14,6 +14,27 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.31.4] — 2026-08-27
+
+### Fixed
+
+- The sticky table header (1.31.3) didn't actually stick on the Content
+  admin table. Root cause: `.table-wrap` mixed `overflow-x:auto` with
+  `overflow-y:visible`, which a CSS Overflow spec quirk silently forces
+  back to `auto` as the *used* value regardless — making `.table-wrap`
+  an unintended sticky-positioning container with no actual scrolling
+  distance (no `max-height` was set), so the header never tracked the
+  page's scroll at all. Invisible on a table narrow enough to need no
+  horizontal scrollbar (Quotes, Places), but broke outright on Content's
+  9-column table, which always needs one. Fixed by giving `.table-wrap`
+  a bounded height (`overflow:auto` on both axes, `max-height`) so it's
+  unambiguously its own scroll container in every browser — the header
+  now sticks to the top of that box rather than the page.
+
+### Environment changes
+
+None.
+
 ## [1.31.3] — 2026-08-27
 
 ### Added

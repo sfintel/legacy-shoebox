@@ -221,16 +221,15 @@ input[type=search]{min-width:180px;}
 .admin-table th, .admin-table td{padding:9px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:middle;}
 .admin-table th{
   color:var(--muted); font-weight:600; font-size:.78rem; text-transform:uppercase; letter-spacing:.03em;
-  /* Keeps the header row visible while scrolling a long table. The
-     actual vertical scrolling happens on #app (main), not .table-wrap —
-     .table-wrap only ever scrolls horizontally (see its own comment
-     below) — so position:sticky here anchors relative to #app, not a
-     tiny boxed-in scroll region. A solid background is required for a
-     stuck header to stay opaque over rows scrolling underneath it;
-     var(--bg) matches body's own background, since nothing between the
-     table and body sets its own (.panel/main are transparent). z-index
-     5 keeps it below .topbar (10, also sticky, above the table
-     entirely) and well below modals/tooltips/dropdowns (20-50). */
+  /* Keeps the header row visible while scrolling a long table — anchors
+     to .table-wrap's own bounded-height scrollport (see that class's
+     own comment for why it, not #app/the page, has to be the sticky
+     container). A solid background is required for a stuck header to
+     stay opaque over rows scrolling underneath it; var(--bg) matches
+     body's own background, since nothing between the table and body
+     sets its own (.panel/main are transparent). z-index 5 keeps it
+     below .topbar (10, also sticky) and well below modals/tooltips/
+     dropdowns (20-50). */
   position:sticky; top:0; background:var(--bg); z-index:5;
 }
 .captured-cell{
@@ -302,14 +301,23 @@ input[type=search]{min-width:180px;}
 .admin-actions button.primary{background:var(--accent); color:#1b1a17; border-color:var(--accent); font-weight:600;}
 .admin-actions button.danger{border-color:#7a3b34; color:#e08a7d;}
 .admin-actions button:hover, .admin-actions a:hover{filter:brightness(1.15);}
-/* overflow-y:visible is explicit, not redundant with the default — per
-   the CSS Overflow spec, setting only overflow-x to a non-visible value
-   makes browsers compute the unspecified overflow-y as auto too, which
-   would silently turn this into its own small vertical scroll box
-   instead of letting the page (#app) scroll normally, breaking the
-   sticky table header above (position:sticky needs #app, not this
-   wrapper, as its scrolling ancestor). */
-.table-wrap{overflow-x:auto; overflow-y:visible;}
+/* Both axes explicitly overflow:auto (not overflow-x:auto plus
+   overflow-y:visible, tried first and reverted — see git history)
+   makes .table-wrap unambiguously its own scroll container in every
+   browser, which is what the sticky header above actually needs to
+   anchor to. Mixing "auto" on one axis with "visible" on the other
+   triggers a CSS Overflow spec quirk: browsers are required to force
+   the visible axis to auto too as its *used* value, even when it's
+   explicitly declared — so .table-wrap silently became a sticky
+   container anyway, just one with no visible scrolling distance (no
+   max-height was set), meaning the header never actually tracked the
+   page's scroll position at all. That was invisible on a table narrow
+   enough to need no horizontal scrollbar (Quotes, Places) but broke
+   outright on a wide one that always needs it (Content, 9 columns) —
+   which is exactly the table it was reported broken on. max-height
+   caps this box's size only when content actually exceeds it — a short
+   table (few rows) renders at its natural height, unaffected. */
+.table-wrap{overflow:auto; max-height:min(600px, 70vh);}
 
 /* Content-page keyword picker — reuses .tag-chip/.tag-chip.active
    (defined above for the Quotes tab's filter chips) for appearance;
