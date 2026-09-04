@@ -392,6 +392,19 @@ function narrative_prompt_for_document_suggestions(string $title, string $text):
         . 'Propose new archive additions per the rules above.';
 }
 
+// Most photo captions are too short/casual to plausibly ground a new
+// archive entry ("Wedding day, 1952") — this only runs at all when a
+// caption is present (see content_create_photo_album()), so the common
+// short-caption case never reaches here. When it does run, a caption
+// that turns out to be routine still correctly yields the system
+// prompt's "empty array" answer, same as any other source type.
+function narrative_prompt_for_photo_suggestions(string $title, string $description): string
+{
+    return "New photo added to the archive, with a substantive caption (not the subject's own testimony)."
+        . "\nTitle: $title\n\nCaption:\n$description\n\n"
+        . 'Propose new archive additions per the rules above.';
+}
+
 // Returns a list of ['kind' => ..., 'fields' => [...]] ready for
 // content_suggestions_insert() — never throws; a missing API key, parse
 // failure, or malformed item just yields fewer (or zero) suggestions,

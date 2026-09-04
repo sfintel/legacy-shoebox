@@ -44,10 +44,10 @@ require_content_page();
             "Narrative connection" note is written automatically by AI; an
             <span class="status-badge status-unreviewed">unreviewed</span> badge means no admin has looked at
             that note yet — it's already part of the Ask tab's knowledge base either way, so it's worth
-            checking rather than a gate. Transcripts, Documents, Stories (once approved), and URLs also get a
-            second AI pass proposing new timeline/people/places/quotes entries — these always sit as pending
-            "Suggestions" for you to approve or dismiss individually; nothing is added to the core archive
-            automatically.
+            checking rather than a gate. Transcripts, Documents, Stories (once approved), URLs, and a Photo with
+            a caption also get a second AI pass proposing new timeline/people/places/quotes entries — these
+            always sit as pending "Suggestions" for you to approve or dismiss individually; nothing is added to
+            the core archive automatically.
           </p>
           <?= content_add_form_html() ?>
         </div>
@@ -56,7 +56,7 @@ require_content_page();
 
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
       <h2 style="margin:0;" id="listHeading">Added content</h2>
-      <button id="backfillBtn" class="btn-primary" title="Runs the AI narrative-connection note and, for Transcript/Document/URL/approved Story items, the suggestion-extraction pass on every item that's missing them — safe to run repeatedly, since it only fills in what's missing and never re-runs analysis an item already has. Also links any unlinked video-or-audio/transcript pair whose titles match exactly. Use this after adding several items at once, or if an AI call failed silently when an item was first added.">Backfill AI analysis</button>
+      <button id="backfillBtn" class="btn-primary" title="Runs the AI narrative-connection note and, for Transcript/Document/URL/approved Story/captioned Photo items, the suggestion-extraction pass on every item that's missing them — safe to run repeatedly, since it only fills in what's missing and never re-runs analysis an item already has. Also links any unlinked video-or-audio/transcript pair whose titles match exactly. Use this after adding several items at once, or if an AI call failed silently when an item was first added.">Backfill AI analysis</button>
     </div>
     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
       <label for="typeFilter" style="font-size:.85rem; color:var(--muted);">Show:</label>

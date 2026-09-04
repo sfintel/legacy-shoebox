@@ -14,6 +14,27 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.34.3] — 2026-09-04
+
+### Added
+
+- Photo now gets the same "propose new timeline/people/places/quotes
+  entries" AI pass (`narrative_suggest_additions()`) that Transcript,
+  Document, Story, and URL already had — but only when the photo has a
+  caption, since most captions are too short/casual to plausibly ground
+  a new archive entry and running the pass on every photo would burn an
+  extra AI call for no benefit. This covers the case of a photo whose
+  caption is really substantive source text — e.g. a scanned
+  citation/certificate imported as a Photo (for its image) rather than
+  as a Document (which was previously the only way to get this pass to
+  run on that text at all). "Backfill AI analysis" also now covers any
+  existing captioned photo that predates this fix, so an already-added
+  photo doesn't need to be deleted and re-added to pick it up.
+
+### Environment changes
+
+None.
+
 ## [1.34.2] — 2026-09-04
 
 ### Fixed

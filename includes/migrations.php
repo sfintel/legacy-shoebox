@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.34.3' => [
+            'description' => 'Photo now gets the same "propose new timeline/people/places/quotes entries" AI pass as Transcript/Document/Story/URL, whenever a caption is present — covers a photo whose caption is really substantive source text (e.g. a scanned citation imported as a photo for its image rather than as a Document). Skipped entirely for a photo with no caption, so the common case costs nothing extra. Backfill AI analysis also now covers any existing captioned photo that predates this fix',
+            'db' => null,
+            'env' => [],
+        ],
         '1.34.2' => [
             'description' => 'Fix an admin-approved AI suggestion (Timeline/People/Places/Quotes) never recording a real link back to its source content item — now inserts the same content_links row narrative_analyze()\'s "related content" already uses, so the new entry shows a clickable link to the source, and that link (and only that link) disappears on its own via content_links\' existing ON DELETE CASCADE if the source is later deleted. Forward-only: entries approved before this fix keep their old dangling plain-text citation and need a manual edit',
             'db' => null,

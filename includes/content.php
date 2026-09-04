@@ -171,7 +171,7 @@ function content_public(array $item): array
         'tags' => json_decode((string) ($item['tags'] ?? '[]'), true) ?: [],
         'createdAt' => $item['created_at'],
         'files' => array_map('content_file_public', content_files_for_item($item['id'])),
-        'suggestions' => in_array($item['type'], ['url', 'transcript', 'story', 'document'], true) ? content_suggestions_for_item($item['id']) : [],
+        'suggestions' => in_array($item['type'], ['url', 'transcript', 'story', 'document', 'photo'], true) ? content_suggestions_for_item($item['id']) : [],
         'storyApprovedAt' => $item['type'] === 'story' ? $item['story_approved_at'] : null,
         // `?? null`: same deploy-before-upgrade window as narrativeNoteReviewedAt above.
         'linkedItemId' => $item['linked_item_id'] ?? null,
@@ -1196,6 +1196,22 @@ function content_create_photo_album(string $title, ?string $description, array $
     }
     archive_content_links_apply($itemId, $analysis['links']);
 
+    // Most photo captions are just that — a caption — with nothing to
+    // mine for a new archive entry, so this only runs at all when a
+    // caption was actually given (unlike Document, where the text field
+    // is required and always run through this pass). Covers the case of
+    // a photo whose "caption" is really substantive source text — e.g. a
+    // scanned citation/certificate imported as a photo for its image
+    // rather than as a Document.
+    if ($description !== '') {
+        $suggestions = narrative_suggest_additions(
+            narrative_prompt_for_photo_suggestions($title, $description),
+            $title,
+            'AI-suggested from a photo caption'
+        );
+        content_suggestions_insert($itemId, $suggestions);
+    }
+
     return content_find($itemId);
 }
 
@@ -1555,13 +1571,27 @@ function content_analyze_existing_item(array $item): array
 
 // Mirrors content_analyze_existing_item(), but for the structured
 // suggestion-extraction pass (narrative_suggest_additions()) — used by
-// content_backfill_ai_analysis() to retroactively cover transcripts and
-// approved stories added before this pass existed for those types. Only
-// transcript and (approved) story are covered here: url already gets
-// this at creation (content_create_url()), and photo/video captions are
-// too short to plausibly ground a new archive entry.
+// content_backfill_ai_analysis() to retroactively cover transcripts,
+// approved stories, and captioned photos added before this pass existed
+// for those types (or, for photo, before a caption was added/it was
+// re-imported as a photo in place of a Document). url already gets this
+// at creation (content_create_url()). video/audio captions aren't
+// covered — unlike photo, there's no known case of substantive source
+// text ending up there instead of a Document.
 function content_suggest_additions_for_existing_item(array $item): array
 {
+    if ($item['type'] === 'photo') {
+        $description = trim((string) ($item['description'] ?? ''));
+        if ($description === '') {
+            return [];
+        }
+        return narrative_suggest_additions(
+            narrative_prompt_for_photo_suggestions($item['title'], $description),
+            $item['title'],
+            'AI-suggested from a photo caption'
+        );
+    }
+
     $file = content_files_for_item($item['id'])[0] ?? null;
     if (!$file) {
         return [];
@@ -1599,10 +1629,13 @@ function content_suggest_additions_for_existing_item(array $item): array
 // (and (re-)applies its content_links) — unchanged from this function's
 // original narrative-notes-only behavior; (2) fills in suggestions
 // (timeline/person/place/quote proposals, same as content_create_url())
-// for every transcript/approved-story item that doesn't have any yet.
-// A pending (unapproved) story is excluded from both sweeps — see
-// content_create_story()'s comment for why nothing runs on it before
-// approval; content_approve_story() covers it once approved.
+// for every transcript/document/approved-story/captioned-photo item that
+// doesn't have any yet — the photo case covers one added (or
+// re-captioned) before this pass existed for photos, or a photo whose
+// caption holds source text substantive enough to have warranted a
+// Document instead. A pending (unapproved) story is excluded from both
+// sweeps — see content_create_story()'s comment for why nothing runs on
+// it before approval; content_approve_story() covers it once approved.
 function content_backfill_ai_analysis(): array
 {
     $noteItems = db()->query(
@@ -1610,7 +1643,9 @@ function content_backfill_ai_analysis(): array
     )->fetchAll();
     $suggestionItems = db()->query(
         "SELECT * FROM content_items
-         WHERE (type IN ('transcript', 'document') OR (type = 'story' AND story_approved_at IS NOT NULL))
+         WHERE (type IN ('transcript', 'document')
+                OR (type = 'story' AND story_approved_at IS NOT NULL)
+                OR (type = 'photo' AND description IS NOT NULL AND description != ''))
            AND id NOT IN (SELECT DISTINCT content_item_id FROM content_suggestions)
          ORDER BY created_at ASC"
     )->fetchAll();
