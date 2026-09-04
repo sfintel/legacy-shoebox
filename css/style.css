@@ -3,6 +3,24 @@
   --accent:#b8863b; --accent-2:#c99a4e; --text:#f3ede2; --muted:#a89f8f;
   --tag-bg:#332e26; --tag-active:#b8863b;
 }
+/* Admin pages (the six admin_*.php templates — see admin_nav_html() in
+   includes/helpers.php for the same six-page grouping) get a distinct
+   accent hue so admin operations read as visually unmistakable from the
+   main app, without a full second theme — --bg/--panel/--text/--muted
+   stay shared, so it still reads as one product. Every component in
+   this stylesheet already references var(--accent)/var(--accent-2)
+   rather than a hardcoded color, so overriding just these two variables
+   on body.admin-theme cascades correctly through .btn-primary,
+   .tab-btn.active, .ghost-btn.active, sort-indicator arrows, focus
+   outlines, etc. with no per-component changes needed. A steel-blue
+   pairing was chosen to sit at roughly the same brightness/contrast as
+   the gold it replaces (so text color choices made against the gold —
+   e.g. dark text on an accent-filled button — stay legible), while
+   being unambiguously a different color at a glance. Status colors
+   (.status-badge variants, the danger-red delete button) are
+   deliberately NOT overridden here — "pending", "approved", "danger"
+   mean the same thing in both contexts, so those stay constant. */
+body.admin-theme{--accent:#4a86ac; --accent-2:#6ba7cc; --tag-active:#4a86ac;}
 *{box-sizing:border-box;}
 .visually-hidden{
   position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;

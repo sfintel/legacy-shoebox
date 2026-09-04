@@ -12,7 +12,7 @@ require_admin_page();
 <meta name="theme-color" content="#1b1a17">
 <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body class="admin-theme">
   <a href="#app" class="skip-link">Skip to main content</a>
   <header class="topbar">
     <div class="brand">

@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.32.0' => [
+            'description' => 'Distinct steel-blue accent color for the six admin_*.php pages (body.admin-theme overriding --accent/--accent-2), so admin operations are visually unmistakable from the main app at a glance',
+            'db' => null,
+            'env' => [],
+        ],
         '1.31.6' => [
             'description' => 'Fix narrative_suggest_additions() JSON-array parsing logging a correct "no suggestions" answer as a parse failure whenever the model prefixed its JSON array with explanatory prose — now finds the array anywhere in the response instead of requiring an exact whole-string match',
             'db' => null,

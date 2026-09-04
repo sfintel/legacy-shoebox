@@ -14,6 +14,24 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.32.0] — 2026-09-04
+
+### Added
+
+- The six `admin_*.php` pages (Users, Content, Archive, Settings,
+  Redactions, Backup) now use a distinct steel-blue accent color instead
+  of the main app's gold, so admin operations are visually unmistakable
+  from ordinary browsing at a glance. The shared dark background/text
+  stay the same — this is a targeted accent swap (`body.admin-theme`
+  overriding just `--accent`/`--accent-2`), not a second full theme.
+  Status colors (pending/approved/danger badges, the delete button)
+  intentionally stay constant across both, since what they mean doesn't
+  change based on which pages you're on.
+
+### Environment changes
+
+None.
+
 ## [1.31.6] — 2026-09-04
 
 ### Fixed
