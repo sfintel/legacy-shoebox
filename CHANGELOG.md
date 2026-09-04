@@ -14,6 +14,60 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.33.0] — 2026-09-04
+
+### Added
+
+- New **Audio** content type, for an audio-only recording (e.g. an
+  audio interview with no video) — full parity with Video: EXIF-style
+  capture metadata extraction, local file or "download from URL",
+  narrative-connection note, and transcript linking.
+- The Content page's separate "Transcript" and "Video" add-content
+  types are now one combined **"Video/Audio + Transcript"** type: pick
+  Video or Audio as the recording's kind, and provide the recording
+  (file or URL), the transcript text, or both in a single submission.
+  Providing both creates and links them automatically (same as manually
+  linking two separately-added items, just in one step); providing just
+  one is equally valid — a transcript alone with no recording yet, or a
+  recording alone with no transcript yet, exactly like before. Either
+  can still be added later and linked from the other's Edit row.
+- A transcript's "Linked recording" dropdown (Content page Edit row)
+  now lists both video and audio candidates, each labeled with its
+  kind, since either can be a transcript's companion.
+
+### Changed
+
+- "Backfill AI analysis" now also sweeps unlinked audio/transcript
+  pairs for automatic title-match linking, alongside the existing
+  video/transcript sweep.
+
+### Fixed
+
+- The Ask tab's knowledge-base context always described a transcript's
+  linked companion as "a companion video" regardless of its actual
+  type, and would point the model at a `[[video:ID]]` citation-seek
+  token even when the linked item was audio (which that token can't
+  correctly resolve — video_seek.php stays video-only, deliberately not
+  extended to audio in this release). Caught before it could reach
+  production: a linked audio companion is now described accurately and
+  without inviting an unresolvable token. A separate existing dispatch
+  function (used by "Backfill AI analysis" for items missing a
+  narrative note) would likewise have mis-handled an audio item as if
+  it were a photo album, also caught and fixed before release.
+
+### Database changes
+
+Adds `'audio'` to `content_items.type` (`upgrade.sh` handles this
+automatically). Manual equivalent:
+
+```sql
+ALTER TABLE content_items MODIFY COLUMN type ENUM('transcript','photo','video','url','story','document','audio') NOT NULL;
+```
+
+### Environment changes
+
+None.
+
 ## [1.32.0] — 2026-09-04
 
 ### Added

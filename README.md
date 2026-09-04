@@ -241,20 +241,31 @@ nothing else about the `users` table or password login changes.
 `/admin_content.php` (linked from the header for anyone with content
 access — admins and authors) lets family members
 add material beyond the core archive built via `/admin_archive.php`:
-transcripts (pasted text), photos, videos, a URL, or a Story. Everything
-added here becomes part of what the Ask tab knows about — except a
-pending Story, see below.
+a video or audio recording (with its transcript, either or both), a
+Document, photos, a URL, or a Story. Everything added here becomes part
+of what the Ask tab knows about — except a pending Story, see below.
 
-- **Photos/videos**: title + optional caption; EXIF metadata is
-  auto-extracted (date taken, camera, GPS, dimensions/duration) via
-  `exiftool`, editable afterward if the host doesn't have `exiftool` or
-  the auto-read value is wrong. A photo "album" (up to 10 files sharing
-  one title/caption) is analyzed together as a set. Instead of a local
-  file, you can give a **URL to download from** — the server fetches it
-  directly, which sidesteps browser upload size/timeout limits for a
-  large video (see "Uploading large files" below). Give exactly one of
-  a file or a URL, not both; a URL always produces a single file (no
-  multi-photo album from a URL).
+- **Video/Audio + Transcript**: one combined add-content type covering a
+  recording and its transcript together — give a title, pick Video or
+  Audio as the "Kind," and provide the recording (file or URL), the
+  transcript text, or both. Providing both in one submission creates and
+  links them automatically (see "Linking a recording to its transcript"
+  below); providing just one is equally valid — e.g. a transcript alone
+  when you don't have the recording file yet, or a recording alone when
+  no transcript exists — and the two can still be linked later from
+  either item's Edit row. EXIF-style capture metadata (date, device, GPS,
+  duration) is auto-extracted from a video/audio file via `exiftool`,
+  editable afterward if the host doesn't have `exiftool` or the
+  auto-read value is wrong. Instead of a local file, you can give a
+  **URL to download from** — the server fetches it directly, which
+  sidesteps browser upload size/timeout limits for a large file (see
+  "Uploading large files" below). Give exactly one of a file or a URL,
+  not both, for whichever one you're providing.
+- **Photos**: title + optional caption; EXIF metadata is auto-extracted
+  the same way. A photo "album" (up to 10 files sharing one
+  title/caption) is analyzed together as a set. Instead of a local
+  file, you can give a **URL to download from**, same as above; a URL
+  always produces a single file (no multi-photo album from a URL).
 - **Uploading large files**: PHP's own `post_max_size` and
   `upload_max_filesize` limits (commonly a shared host's small default,
   e.g. 20M) apply to a browser upload through the file picker — a large
@@ -266,7 +277,7 @@ pending Story, see below.
   PHP-FPM's `request_terminate_timeout` if it takes longer than that to
   complete — raise it alongside the size limits if your host exposes it.
 - **Transcripts, URLs, and Stories** all run two AI passes: a short
-  narrative-connection note (same as photos/videos get) and a separate
+  narrative-connection note (same as photos/videos/audio get) and a separate
   structured pass that proposes new timeline/people/places/quotes
   entries grounded in that material — treating a family-submitted
   transcript or story the same way a URL source already was. Proposals
@@ -302,16 +313,23 @@ pending Story, see below.
   covered their type, or where the original AI call failed. Safe to run
   repeatedly: it only ever fills in what's missing, never re-runs
   analysis on an item that already has it. It also links any unlinked
-  video/transcript pair whose titles match exactly (see below).
-- **Linking a video to its transcript**: a video item can be paired with
-  the transcript of that same interview, so an Ask-tab reply that quotes
-  the transcript can offer to jump the video to that moment (see below).
-  Pairing happens automatically when a video and a transcript share the
-  exact same title (case-insensitive) and neither is already linked — no
-  AI involved, just an exact match. Edit either item's row and use the
-  "Linked transcript"/"Linked video" dropdown to link, relink, or unlink
-  them by hand when titles don't match or the automatic pairing missed
-  it. A transcript can additionally use a per-segment-timecode format
+  video-or-audio/transcript pair whose titles match exactly (see below).
+- **Linking a recording to its transcript**: a video or audio item can
+  be paired with the transcript of that same interview. For a **video**
+  specifically, this also lets an Ask-tab reply that quotes the
+  transcript offer to jump the video to that moment (see below) — an
+  audio recording can be linked and displayed the same way in the admin
+  Content list, but doesn't yet get that same seek-to-moment behavior in
+  Ask-tab replies. Pairing happens automatically when a recording and a
+  transcript share the exact same title (case-insensitive) and neither
+  is already linked — no AI involved, just an exact match (submitting
+  both together via the combined Video/Audio + Transcript type above
+  always triggers this, since both get the same title). Edit either
+  item's row and use the "Linked transcript"/"Linked recording" dropdown
+  to link, relink, or unlink them by hand when titles don't match or the
+  automatic pairing missed it — a transcript's dropdown lists both video
+  and audio candidates, each labeled with its kind. A transcript can
+  additionally use a per-segment-timecode format
   instead of the `## Tape N` convention above — one block per speaker
   turn, a `HH:MM:SS:FF - HH:MM:SS:FF` timecode line, then the speaker's
   name, then their spoken text:

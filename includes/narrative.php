@@ -184,6 +184,25 @@ function narrative_prompt_for_media(string $title, ?string $description, ?array 
     return implode("\n", $lines);
 }
 
+// Exact mirror of narrative_prompt_for_media() above, for an audio-only
+// recording — kept as its own function rather than a parameter on the
+// video one, matching this file's existing one-function-per-content-
+// flavor convention (narrative_prompt_for_photo_album/_transcript/
+// _document/_url/_story alongside it).
+function narrative_prompt_for_audio(string $title, ?string $description, ?array $metadata): string
+{
+    $lines = ['New audio recording added to the archive.', "Title: $title"];
+    if ($description !== null && $description !== '') {
+        $lines[] = "Caption: $description";
+    }
+    if ($metadata) {
+        $lines[] = 'Captured info: ' . content_format_metadata_summary($metadata);
+    }
+    $lines[] = '';
+    $lines[] = 'How does this (based on its caption) connect to the existing archive material provided as context? Follow the rules above.';
+    return implode("\n", $lines);
+}
+
 // $metadataList is one entry per photo, in the same order the photos'
 // image blocks are attached, so the model can refer to "photo 2" etc.
 function narrative_prompt_for_photo_album(string $title, ?string $description, array $metadataList): string

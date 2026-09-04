@@ -110,6 +110,8 @@ window.ContentForm = (function () {
   //     index.php modal closes itself)
   function initAddForm(opts) {
     const typeSelect = document.getElementById("typeSelect");
+    const mediaKindRow = document.getElementById("mediaKindRow");
+    const mediaKindSelect = document.getElementById("mediaKindSelect");
     const textRow = document.getElementById("textRow");
     const fileRow = document.getElementById("fileRow");
     const urlRow = document.getElementById("urlRow");
@@ -146,8 +148,9 @@ window.ContentForm = (function () {
     // File and "download from URL" are mutually exclusive (enforced at
     // submit time regardless — see below); this just greys out whichever
     // option isn't in use once the choice is clear, instead of leaving
-    // both looking equally live. Only meaningful for photo/video, the
-    // only types where mediaUrlRow is ever shown.
+    // both looking equally live. Only meaningful for Photo and the
+    // combined Video/Audio+Transcript type ("recording"), the only types
+    // where mediaUrlRow is ever shown.
     function syncMediaExclusivity() {
       syncFileRemoveBtn();
       if (mediaUrlRow.style.display === "none") {
@@ -178,31 +181,41 @@ window.ContentForm = (function () {
       fileInput.value = "";
       mediaUrlInput.value = "";
 
-      const isTranscript = typeSelect.value === "transcript";
+      const isRecording = typeSelect.value === "recording"; // combined Video/Audio + Transcript
       const isPhoto = typeSelect.value === "photo";
       const isUrl = typeSelect.value === "url";
       const isStory = typeSelect.value === "story";
       const isDocument = typeSelect.value === "document";
-      const hasText = isTranscript || isStory || isDocument;
-      const isMedia = (typeSelect.value === "photo" || typeSelect.value === "video"); // file+URL+caption fields
-      textRow.style.display = hasText ? "" : "none";
+      const isAudio = isRecording && mediaKindSelect.value === "audio";
+      // A recording's transcript is optional — a media file/URL and/or a
+      // transcript is required (validated at submit time below), unlike
+      // Story/Document where the text box is the one required field.
+      const showText = isRecording || isStory || isDocument;
+      const requireText = isStory || isDocument;
+      const isMedia = isPhoto || isRecording; // file+URL+caption fields
+      mediaKindRow.style.display = isRecording ? "" : "none";
+      textRow.style.display = showText ? "" : "none";
       fileRow.style.display = (isMedia || isDocument) ? "" : "none";
       mediaUrlRow.style.display = isMedia ? "" : "none";
       urlRow.style.display = isUrl ? "" : "none";
       descRow.style.display = isMedia ? "" : "none";
-      document.getElementById("textLabel").textContent = isStory ? "Story" : (isDocument ? "Document text" : "Transcript text");
+      document.getElementById("textLabel").textContent = isStory ? "Story" : (isDocument ? "Document text" : "Transcript text (optional)");
       document.getElementById("textInput").placeholder = isStory
         ? "What's the story? Write it as you'd tell it…"
-        : (isDocument ? "Paste the document's text here (e.g. a letter or email)…" : "Paste the transcript text here…");
+        : (isDocument ? "Paste the document's text here (e.g. a letter or email)…"
+          : (isRecording ? "Paste the transcript text here, if you have one yet…" : "Paste the transcript text here…"));
       document.getElementById("storyHint").style.display = isStory ? "" : "none";
-      document.getElementById("textInput").required = hasText;
+      document.getElementById("textInput").required = requireText;
       // Neither fileInput nor mediaUrlInput is marked required here — for
       // media types exactly one of them is required, which plain HTML
-      // can't express; the submit handler below validates that instead. A
-      // document's file is fully optional either way.
+      // can't express (and for a recording, neither is required at all
+      // as long as a transcript is given instead); the submit handler
+      // below validates that instead. A document's file is fully
+      // optional either way.
       fileInput.required = false;
       fileInput.multiple = isPhoto;
-      document.getElementById("fileLabel").textContent = isPhoto ? "Photo(s)" : (isDocument ? "Attach original (optional)" : "File");
+      document.getElementById("fileLabel").textContent = isPhoto ? "Photo(s)"
+        : (isDocument ? "Attach original (optional)" : (isAudio ? "Audio file (optional if a transcript is given)" : "Video file (optional if a transcript is given)"));
       document.getElementById("fileHint").style.display = (isPhoto || isDocument) ? "" : "none";
       document.getElementById("fileHint").textContent = isPhoto
         ? "Select up to 10 related photos to add them as one album."
@@ -213,6 +226,7 @@ window.ContentForm = (function () {
       syncMediaExclusivity();
     }
     typeSelect.addEventListener("change", syncFormFields);
+    mediaKindSelect.addEventListener("change", syncFormFields);
     syncFormFields();
 
     form.addEventListener("submit", async (e) => {
@@ -220,13 +234,35 @@ window.ContentForm = (function () {
       formError.style.display = "none";
 
       const type = typeSelect.value;
-      const isMedia = type === "photo" || type === "video";
+      const isRecording = type === "recording"; // combined Video/Audio + Transcript
+      const isPhoto = type === "photo";
+      const isMedia = isPhoto || isRecording;
       const hasFile = fileInput.files.length > 0;
       const mediaUrl = mediaUrlInput.value.trim();
-      if (isMedia && hasFile === (mediaUrl !== "")) {
+      const hasUrl = mediaUrl !== "";
+      const hasText = document.getElementById("textInput").value.trim() !== "";
+      // Photo still requires exactly one of file/url, same as always. A
+      // recording's file/URL is mutually exclusive too, but — unlike
+      // Photo — both may be entirely absent as long as a transcript is
+      // given instead (mirrors the server-side check in
+      // api/admin/content.php's "recording" branch, which is the
+      // authoritative one; this is just a fast client-side echo of it).
+      if (isPhoto && hasFile === hasUrl) {
         formError.textContent = "Provide exactly one: a file, or a URL to download from.";
         formError.style.display = "";
         return;
+      }
+      if (isRecording) {
+        if (hasFile && hasUrl) {
+          formError.textContent = "Provide exactly one: a file, or a URL to download from, not both.";
+          formError.style.display = "";
+          return;
+        }
+        if (!hasFile && !hasUrl && !hasText) {
+          formError.textContent = "Provide a recording (file or URL) and/or a transcript.";
+          formError.style.display = "";
+          return;
+        }
       }
 
       const originalBtnText = submitBtn.textContent;

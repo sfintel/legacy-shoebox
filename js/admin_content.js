@@ -375,7 +375,7 @@
       </div>`;
     }
     const m = file.metadata || {};
-    const durationRow = item.type === "video"
+    const durationRow = (item.type === "video" || item.type === "audio")
       ? `<div class="form-row"><label>Duration (seconds)</label>
           <input type="text" data-file-id="${file.id}" data-field="durationSeconds" value="${fieldValue(m, "durationSeconds")}"></div>`
       : "";
@@ -413,21 +413,27 @@
           <input type="checkbox" class="edit-mark-reviewed" style="width:auto;" ${item.narrativeNoteReviewedAt ? "checked" : ""}> Mark reviewed
         </label>`
       : "";
-    // Linking only makes sense once both a video and a transcript exist,
-    // so this control lives here (edit) rather than on the add-content
-    // form. Always shown for these two types, even with zero candidate
-    // options, so the control is discoverable — automatic exact-title
-    // matching (see content_auto_link_match() in includes/content.php)
-    // can miss a pair, and this is the manual override for that.
-    const linkHtml = (item.type === "video" || item.type === "transcript")
+    // Linking only makes sense once both a recording (video or audio)
+    // and a transcript exist, so this control lives here (edit) rather
+    // than on the add-content form. Always shown for these types, even
+    // with zero candidate options, so the control is discoverable —
+    // automatic exact-title matching (see content_auto_link_match() in
+    // includes/content.php) can miss a pair, and this is the manual
+    // override for that. A transcript's candidates are BOTH video and
+    // audio items (either can be its companion); a video/audio's
+    // candidates are transcripts only — each option is labeled with its
+    // own type so a transcript's dropdown (mixing video and audio
+    // candidates) stays unambiguous.
+    const linkHtml = (item.type === "video" || item.type === "audio" || item.type === "transcript")
       ? (() => {
-          const complementaryType = item.type === "video" ? "transcript" : "video";
-          const options = currentItems.filter((i) => i.type === complementaryType);
+          const complementaryTypes = item.type === "transcript" ? ["video", "audio"] : ["transcript"];
+          const label = item.type === "transcript" ? "recording (video/audio)" : "transcript";
+          const options = currentItems.filter((i) => complementaryTypes.includes(i.type));
           return `<div class="form-row">
-            <label>Linked ${complementaryType}</label>
+            <label>Linked ${label}</label>
             <select class="edit-linked-item">
               <option value="">— none —</option>
-              ${options.map((o) => `<option value="${o.id}" ${o.id === item.linkedItemId ? "selected" : ""}>${esc(o.title)}</option>`).join("")}
+              ${options.map((o) => `<option value="${o.id}" ${o.id === item.linkedItemId ? "selected" : ""}>${esc(o.title)} (${esc(o.type)})</option>`).join("")}
             </select>
           </div>`;
         })()
@@ -495,7 +501,7 @@
         gpsLat: get("gpsLat"),
         gpsLng: get("gpsLng"),
       };
-      if (item.type === "video") {
+      if (item.type === "video" || item.type === "audio") {
         metadata.durationSeconds = get("durationSeconds");
       }
       return { id: f.id, metadata };

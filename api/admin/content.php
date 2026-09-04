@@ -21,7 +21,51 @@ if ($method === 'POST') {
     $mediaUrl = trim((string) ($_POST['mediaUrl'] ?? ''));
 
     try {
-        if ($type === 'transcript') {
+        if ($type === 'recording') {
+            // The combined "Video/Audio + Transcript" add-content flow —
+            // a media file/URL and transcript text are both optional
+            // (transcript-only, and — new here — media-only, are both
+            // still valid), but at least one of the two must be given.
+            // Reuses content_create_video()/content_create_audio()/
+            // content_create_transcript() unchanged rather than a new
+            // combined creation function, so each sub-item gets exactly
+            // the same narrative-note/suggestion-extraction/auto-link
+            // behavior it would get submitted standalone — then links
+            // the two explicitly with the SAME $title used for both,
+            // rather than relying only on content_auto_link_attempt()'s
+            // incidental title-match (which would likely catch this too,
+            // since both share the literal same title, but doing it
+            // explicitly here is the actual intent, not a side effect).
+            $kind = ((string) ($_POST['kind'] ?? 'video')) === 'audio' ? 'audio' : 'video';
+            $text = trim((string) ($_POST['text'] ?? ''));
+            $hasText = $text !== '';
+            $hasFile = count($files) === 1;
+            $hasUrl = $mediaUrl !== '';
+            if (count($files) > 1) {
+                json_response(['error' => 'Provide at most one file.'], 400);
+            }
+            if ($hasFile && $hasUrl) {
+                json_response(['error' => 'Provide exactly one: a file, or a URL to download from, not both.'], 400);
+            }
+            $hasMedia = $hasFile || $hasUrl;
+            if (!$hasMedia && !$hasText) {
+                json_response(['error' => 'Provide a recording (file or URL) and/or a transcript.'], 400);
+            }
+
+            $mediaItem = null;
+            $transcriptItem = null;
+            if ($hasMedia) {
+                $mediaItem = $kind === 'audio'
+                    ? content_create_audio($title, $description, $hasFile ? $files[0] : null, $user['id'], $tags, $hasUrl ? $mediaUrl : null)
+                    : content_create_video($title, $description, $hasFile ? $files[0] : null, $user['id'], $tags, $hasUrl ? $mediaUrl : null);
+            }
+            if ($hasText) {
+                $transcriptItem = content_create_transcript($title, $text, $user['id'], $tags);
+            }
+            $item = ($mediaItem && $transcriptItem)
+                ? content_link_items($mediaItem['id'], $transcriptItem['id'], $user['id'])
+                : ($mediaItem ?? $transcriptItem);
+        } elseif ($type === 'transcript') {
             $item = content_create_transcript($title, (string) ($_POST['text'] ?? ''), $user['id'], $tags);
         } elseif ($type === 'video') {
             if (count($files) === 1 && $mediaUrl === '') {

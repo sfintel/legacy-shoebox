@@ -216,12 +216,25 @@ function content_context(): string
             $file = $files[0] ?? null;
             $path = $file ? content_upload_dir('transcript') . '/' . $file['file_name'] : null;
             $body = $path && is_file($path) ? file_get_contents($path) : '(file missing)';
+            // A linked companion is either a video or an audio recording
+            // (see content_link_items() in includes/content.php) — only
+            // the video case gets an "id=" pointer, since that's what
+            // invites the [[video:ID]] citation-seek token below (see
+            // knowledge_system_role()'s own rule for it); there is no
+            // audio equivalent of that token/mechanism yet (video_seek.php
+            // stays video-only), so an audio companion is mentioned for
+            // the model's own grounding only, deliberately with no id to
+            // avoid inviting a token the app can't resolve.
             $companionNote = '';
             if (!empty($item['linked_item_id'])) {
-                $video = content_find($item['linked_item_id']);
-                $videoFile = $video ? (content_files_for_item($video['id'])[0] ?? null) : null;
-                if ($video && $videoFile) {
-                    $companionNote = "\nA companion video of this testimony exists: id={$videoFile['id']}.";
+                $companion = content_find($item['linked_item_id']);
+                if ($companion && $companion['type'] === 'video') {
+                    $companionFile = content_files_for_item($companion['id'])[0] ?? null;
+                    if ($companionFile) {
+                        $companionNote = "\nA companion video of this testimony exists: id={$companionFile['id']}.";
+                    }
+                } elseif ($companion && $companion['type'] === 'audio') {
+                    $companionNote = "\nA companion audio recording of this testimony also exists in the archive (not yet linkable from a reply).";
                 }
             }
             $out .= "\n## Family-contributed transcript: {$item['title']}\n" . $body . $companionNote . $narrative . "\n";

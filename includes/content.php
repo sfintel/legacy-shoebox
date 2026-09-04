@@ -31,6 +31,7 @@ function content_allowed_extensions(string $type): array
     return match ($type) {
         'photo' => ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'],
         'video' => ['mp4' => 'video/mp4', 'mov' => 'video/quicktime', 'webm' => 'video/webm', 'm4v' => 'video/x-m4v'],
+        'audio' => ['mp3' => 'audio/mpeg', 'm4a' => 'audio/mp4', 'wav' => 'audio/wav', 'ogg' => 'audio/ogg'],
         // doc/docx deliberately excluded — finfo often can't reliably tell
         // a .docx (a zip container) apart from a plain .zip, which would
         // make the MIME check below either falsely reject real .docx
@@ -330,7 +331,11 @@ function content_store_uploaded_file(string $type, array $file): array
             throw new RuntimeException("The uploaded file doesn't look like a valid document.");
         }
     } else {
-        $expectedPrefix = $type === 'photo' ? 'image/' : 'video/';
+        $expectedPrefix = match ($type) {
+            'photo' => 'image/',
+            'audio' => 'audio/',
+            default => 'video/',
+        };
         if (!str_starts_with($realMime, $expectedPrefix)) {
             throw new RuntimeException("The uploaded file doesn't look like a valid $type.");
         }
@@ -437,7 +442,11 @@ function content_download_media_from_url(string $type, string $url, int $maxRedi
 
             $finfo = new finfo(FILEINFO_MIME_TYPE);
             $realMime = (string) $finfo->file($tmpPath);
-            $expectedPrefix = $type === 'photo' ? 'image/' : 'video/';
+            $expectedPrefix = match ($type) {
+                'photo' => 'image/',
+                'audio' => 'audio/',
+                default => 'video/',
+            };
             if (!str_starts_with($realMime, $expectedPrefix)) {
                 throw new RuntimeException("That URL doesn't look like a valid $type.");
             }
@@ -954,6 +963,49 @@ function content_create_video(string $title, ?string $description, ?array $file,
     return content_find($itemId);
 }
 
+// Audio-only recording (an interview or similar with no accompanying
+// video) — otherwise an exact mirror of content_create_video() above,
+// down to the file-vs-URL mutual exclusivity and auto-link attempt.
+// Kept as its own function rather than parameterizing
+// content_create_video() by type, matching this file's existing
+// convention of one small function per content flavor
+// (content_create_photo_album/_document/_url/_story alongside it) —
+// deliberately not `[[video:ID]]`-style Ask-tab citation-seek capable
+// (see includes/video_seek.php, which stays video-only); an audio item
+// only stores/links to its transcript, same as video did before v1.18.0
+// added seeking.
+function content_create_audio(string $title, ?string $description, ?array $file, string $userId, array $tags = [], ?string $sourceUrl = null): array
+{
+    $title = trim($title);
+    if ($title === '') {
+        throw new RuntimeException('Title is required.');
+    }
+    $sourceUrl = $sourceUrl !== null ? trim($sourceUrl) : null;
+    $hasFile = $file !== null;
+    $hasUrl = $sourceUrl !== null && $sourceUrl !== '';
+    if ($hasFile === $hasUrl) {
+        throw new RuntimeException('Provide exactly one: an audio file or a URL to download from.');
+    }
+
+    $stored = $hasUrl ? content_download_media_from_url('audio', $sourceUrl) : content_store_uploaded_file('audio', $file);
+    $description = $description !== null ? trim($description) : '';
+    $analysis = narrative_analyze(
+        narrative_prompt_for_audio($title, $description !== '' ? $description : null, $stored['metadata'])
+    );
+
+    $itemId = make_uuid();
+    $pdo = db();
+    $pdo->prepare(
+        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, created_by)
+         VALUES (?, \'audio\', ?, ?, ?, ?, ?)'
+    )->execute([$itemId, $title, $description !== '' ? $description : null, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
+    content_insert_file($pdo, $itemId, $stored, 0);
+    archive_content_links_apply($itemId, $analysis['links']);
+    content_auto_link_attempt($itemId);
+
+    return content_find($itemId);
+}
+
 // $files is a list of normalized upload arrays (content_normalize_multi_files()),
 // one per selected photo. All photos share one title/caption and get a
 // single combined narrative analysis considering them together, rather
@@ -1163,15 +1215,17 @@ function content_update_item(
     return content_find($id);
 }
 
-// Links two content items symmetrically — a video<->transcript companion
-// pairing (see includes/video_seek.php) that Ask-tab video citations use
-// to resolve a seek time. Always deterministic/PHP-decided, never
-// model-decided. Both directions are written so "what's this item's
-// companion" is a single content_find() away from either side. $ownerId,
-// when given (a non-admin editor), requires BOTH items to be owned by
-// that user — a contributor can't link their own item to someone else's
-// without permission, mirroring content_update_item()'s own ownership
-// gate above.
+// Links two content items symmetrically — a video/audio<->transcript
+// companion pairing. Only the video<->transcript pairing feeds
+// Ask-tab citation-seek (see includes/video_seek.php, which stays
+// video-only — an audio<->transcript link stores/displays the
+// companion but has no seek behavior of its own). Always
+// deterministic/PHP-decided, never model-decided. Both directions are
+// written so "what's this item's companion" is a single content_find()
+// away from either side. $ownerId, when given (a non-admin editor),
+// requires BOTH items to be owned by that user — a contributor can't
+// link their own item to someone else's without permission, mirroring
+// content_update_item()'s own ownership gate above.
 function content_link_items(string $idA, string $idB, ?string $ownerId = null): array
 {
     if ($idA === $idB) {
@@ -1187,8 +1241,8 @@ function content_link_items(string $idA, string $idB, ?string $ownerId = null): 
     }
     $types = [$a['type'], $b['type']];
     sort($types);
-    if ($types !== ['transcript', 'video']) {
-        throw new RuntimeException('Only a video and a transcript can be linked to each other.');
+    if (!in_array($types, [['transcript', 'video'], ['audio', 'transcript']], true)) {
+        throw new RuntimeException('Only a video or audio recording can be linked to a transcript.');
     }
 
     // Clear any existing reciprocal link on either side first, so neither
@@ -1216,29 +1270,34 @@ function content_unlink_item(string $id): void
 }
 
 // Deterministic (non-AI, no model call) exact-title auto-match: an
-// unlinked video/transcript's companion is the oldest unlinked item of
-// the complementary type whose title matches exactly, case-insensitively
-// and trimmed. Presented to users as automatic matching, not "AI" — this
-// never calls narrative_analyze() or any model. Ties (multiple same-
-// titled unlinked candidates) resolve to the oldest by created_at,
-// deterministically; the Content page's manual link picker always
-// remains available as an override regardless of what this finds.
+// unlinked video/audio/transcript's companion is the oldest unlinked
+// item of a complementary type whose title matches exactly,
+// case-insensitively and trimmed. A transcript's complementary set is
+// BOTH video and audio (either can be its companion); a video or
+// audio's complementary set is just transcript. Presented to users as
+// automatic matching, not "AI" — this never calls narrative_analyze()
+// or any model. Ties (multiple same-titled unlinked candidates, or a
+// transcript matching both an unlinked video AND an unlinked audio of
+// the same title) resolve to the oldest by created_at, deterministically;
+// the Content page's manual link picker always remains available as an
+// override regardless of what this finds.
 function content_auto_link_match(array $item): ?array
 {
-    $complementaryType = match ($item['type']) {
-        'video' => 'transcript',
-        'transcript' => 'video',
-        default => null,
+    $complementaryTypes = match ($item['type']) {
+        'video', 'audio' => ['transcript'],
+        'transcript' => ['video', 'audio'],
+        default => [],
     };
-    if ($complementaryType === null || $item['linked_item_id'] !== null) {
+    if (!$complementaryTypes || $item['linked_item_id'] !== null) {
         return null;
     }
+    $placeholders = implode(',', array_fill(0, count($complementaryTypes), '?'));
     $stmt = db()->prepare(
-        'SELECT * FROM content_items
-         WHERE type = ? AND linked_item_id IS NULL AND id != ? AND LOWER(TRIM(title)) = LOWER(TRIM(?))
-         ORDER BY created_at ASC LIMIT 1'
+        "SELECT * FROM content_items
+         WHERE type IN ($placeholders) AND linked_item_id IS NULL AND id != ? AND LOWER(TRIM(title)) = LOWER(TRIM(?))
+         ORDER BY created_at ASC LIMIT 1"
     );
-    $stmt->execute([$complementaryType, $item['id'], $item['title']]);
+    $stmt->execute([...$complementaryTypes, $item['id'], $item['title']]);
     $match = $stmt->fetch();
     return $match ?: null;
 }
@@ -1259,17 +1318,17 @@ function content_auto_link_attempt(string $itemId): void
     }
 }
 
-// Retroactive sweep for pre-existing unlinked video/transcript pairs
-// (e.g. everything added before this feature shipped) — same matching
-// rule as content_auto_link_attempt(), safe to re-run. Wired into the
-// existing "Backfill AI analysis" button alongside
+// Retroactive sweep for pre-existing unlinked video/audio/transcript
+// pairs (e.g. everything added before this feature shipped) — same
+// matching rule as content_auto_link_attempt(), safe to re-run. Wired
+// into the existing "Backfill AI analysis" button alongside
 // content_backfill_ai_analysis(), even though this part isn't AI —
 // reusing the one button avoids a second one for a related, infrequent
 // admin action.
 function content_backfill_auto_links(): array
 {
     $unlinked = db()->query(
-        "SELECT * FROM content_items WHERE type IN ('video','transcript') AND linked_item_id IS NULL ORDER BY created_at ASC"
+        "SELECT * FROM content_items WHERE type IN ('video','audio','transcript') AND linked_item_id IS NULL ORDER BY created_at ASC"
     )->fetchAll();
 
     $linked = [];
@@ -1325,10 +1384,12 @@ function content_analyze_existing_item(array $item): array
             : $empty;
     }
 
-    if ($item['type'] === 'video') {
+    if ($item['type'] === 'video' || $item['type'] === 'audio') {
         $file = $files[0] ?? null;
         $metadata = $file && $file['metadata'] !== null ? json_decode($file['metadata'], true) : null;
-        return narrative_analyze(narrative_prompt_for_media($item['title'], $item['description'], $metadata));
+        return $item['type'] === 'audio'
+            ? narrative_analyze(narrative_prompt_for_audio($item['title'], $item['description'], $metadata))
+            : narrative_analyze(narrative_prompt_for_media($item['title'], $item['description'], $metadata));
     }
 
     if ($item['type'] === 'url') {

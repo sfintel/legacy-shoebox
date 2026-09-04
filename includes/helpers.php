@@ -234,12 +234,18 @@ function content_add_form_html(): string
       <div class="form-row">
         <label for="typeSelect">Type</label>
         <select id="typeSelect" name="type">
-          <option value="transcript">Transcript</option>
+          <option value="recording">Video/Audio + Transcript</option>
           <option value="photo">Photo</option>
-          <option value="video">Video</option>
           <option value="document">Document</option>
           <option value="url">URL</option>
           <option value="story">Story</option>
+        </select>
+      </div>
+      <div class="form-row" id="mediaKindRow" style="display:none;">
+        <label for="mediaKindSelect">Kind</label>
+        <select id="mediaKindSelect" name="kind">
+          <option value="video">Video</option>
+          <option value="audio">Audio</option>
         </select>
       </div>
       <div class="form-row">

@@ -23,6 +23,19 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.33.0' => [
+            'description' => 'New Audio content type, and a combined "Video/Audio + Transcript" add-content flow replacing the separate Transcript/Video type choices — a media file/URL and a transcript can be added together in one submission (either alone is still valid too) and are linked automatically. content_items.type ENUM gains \'audio\'; linking/auto-link-matching now cover video-or-audio <-> transcript pairs (Ask-tab citation-seek stays video-only)',
+            'db' => static function (PDO $pdo): void {
+                $typeCol = (string) $pdo->query(
+                    "SELECT COLUMN_TYPE FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'content_items' AND column_name = 'type'"
+                )->fetchColumn();
+                if (!str_contains($typeCol, "'audio'")) {
+                    $pdo->exec("ALTER TABLE content_items MODIFY COLUMN type ENUM('transcript','photo','video','url','story','document','audio') NOT NULL");
+                }
+            },
+            'env' => [],
+        ],
         '1.32.0' => [
             'description' => 'Distinct steel-blue accent color for the six admin_*.php pages (body.admin-theme overriding --accent/--accent-2), so admin operations are visually unmistakable from the main app at a glance',
             'db' => null,
