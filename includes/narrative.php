@@ -392,9 +392,23 @@ function narrative_suggest_additions(string $prompt, string $citation, string $s
     }
 
     // Tolerate a ```json ... ``` fence even though the prompt asks for
-    // bare JSON — models don't always comply exactly.
+    // bare JSON — models don't always comply exactly. The fence and the
+    // "find the array" fallback below are both unanchored (no ^/$) —
+    // the model quite often prefixes its answer with a sentence of
+    // prose explaining *why* there's nothing to suggest (e.g. "This
+    // transcript is identical to the existing Tape 1 entry... \n\n[]"),
+    // which an anchored "the whole string must be exactly this" match
+    // would miss entirely, wrongly logging a correct "no suggestions"
+    // answer as a parse failure (seen repeatedly in production logs).
     $raw = trim($raw);
-    if (preg_match('/^```(?:json)?\s*(.*?)\s*```$/is', $raw, $m)) {
+    if (preg_match('/```(?:json)?\s*(\[.*?\])\s*```/is', $raw, $m)) {
+        $raw = $m[1];
+    } elseif (preg_match('/(\[.*\])/s', $raw, $m)) {
+        // No fence — fall back to the first "[" through the LAST "]" in
+        // the text, which correctly spans a JSON array containing
+        // nested arrays/objects (a naive "first [ to first ]" would
+        // truncate at the first nested array's own closing bracket
+        // instead of the outer one).
         $raw = $m[1];
     }
 

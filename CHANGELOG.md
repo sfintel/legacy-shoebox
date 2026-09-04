@@ -14,6 +14,28 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.31.6] — 2026-09-04
+
+### Fixed
+
+- `narrative_suggest_additions()`'s JSON-array parsing only stripped a
+  ` ```json ... ``` ` fence when it wrapped the model's *entire*
+  response, and otherwise required the whole trimmed response to be
+  nothing but the array. In practice the model quite often prefixes its
+  answer with a sentence of prose (e.g. explaining why a transcript has
+  no new facts to propose) before the array — a correct "no
+  suggestions" answer that this parsing rejected outright, logging it as
+  `model did not return a JSON array` even though the model's actual
+  answer was right (confirmed against several real examples in
+  production's error log). Parsing now finds a fenced or bare JSON array
+  anywhere in the response instead of requiring an exact whole-string
+  match, eliminating this false-warning noise with no change in
+  behavior for the already-common case of a bare JSON response.
+
+### Environment changes
+
+None.
+
 ## [1.31.5] — 2026-09-03
 
 ### Fixed

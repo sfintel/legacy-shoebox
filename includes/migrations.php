@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.31.6' => [
+            'description' => 'Fix narrative_suggest_additions() JSON-array parsing logging a correct "no suggestions" answer as a parse failure whenever the model prefixed its JSON array with explanatory prose — now finds the array anywhere in the response instead of requiring an exact whole-string match',
+            'db' => null,
+            'env' => [],
+        ],
         '1.31.5' => [
             'description' => 'Fix keyword pickers (Content add/edit, Quotes add/edit) silently dropping a newly-typed keyword when Save/Add was clicked directly instead of pressing Enter/comma first to commit it',
             'db' => null,
