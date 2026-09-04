@@ -240,6 +240,32 @@ function content_normalize_exif_date(string $raw): ?string
     return "{$m[1]}-{$m[2]}-{$m[3]} {$m[4]}";
 }
 
+// Best-effort text extraction from a PDF's own embedded text layer, via
+// poppler-utils' pdftotext (shelled out, same optional-binary posture as
+// content_extract_metadata()'s exiftool call above — degrades to null,
+// never an error, if shell_exec is disabled or the binary isn't
+// installed). `-layout` preserves the PDF's rough visual layout
+// (columns, spacing) rather than reflowing everything into one run-on
+// paragraph, which reads better for a typical letter/document. Deliberately
+// NOT OCR — a purely scanned/image-only PDF with no real text layer
+// returns empty output here, same as this app's existing "described, not
+// OCR'd" limitation for a Document's attached scan (see
+// content_create_document()) or a Photo's caption.
+function content_extract_pdf_text(string $path): ?string
+{
+    if (!function_exists('shell_exec') || stripos((string) ini_get('disable_functions'), 'shell_exec') !== false) {
+        return null;
+    }
+    // Trailing "-" tells pdftotext to write to stdout instead of a
+    // sibling .txt file, so no temp output file needs cleanup.
+    $output = @shell_exec('pdftotext -layout ' . escapeshellarg($path) . ' - 2>/dev/null');
+    if ($output === null) {
+        return null;
+    }
+    $text = trim($output);
+    return $text !== '' ? $text : null;
+}
+
 function content_format_duration(float $seconds): string
 {
     $total = (int) round($seconds);
@@ -1006,13 +1032,110 @@ function content_create_audio(string $title, ?string $description, ?array $file,
     return content_find($itemId);
 }
 
+// Renders every page of an uploaded PDF to its own JPEG via
+// poppler-utils' pdftoppm (shelled out, same optional-binary posture as
+// content_extract_metadata()/content_extract_pdf_text() above) and
+// stores each rendered page exactly like content_store_uploaded_file()
+// would a directly-uploaded photo — same returned shape (fileId/
+// fileName/destPath/originalName/mimeType/size/metadata), one entry per
+// page, in page order, so content_create_photo_album() can treat the
+// result identically to a normal multi-file photo selection. Unlike
+// content_extract_metadata()'s silent degrade-to-null, a missing
+// pdftoppm here throws — this is an explicit, user-initiated "import my
+// PDF" action, not a background enrichment step, so silently producing
+// nothing would just be confusing.
+function content_render_pdf_to_photos(array $file): array
+{
+    $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+    if ($error !== UPLOAD_ERR_OK) {
+        throw new RuntimeException(content_upload_error_message($error));
+    }
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    if ($finfo->file($file['tmp_name']) !== 'application/pdf') {
+        throw new RuntimeException("That file doesn't look like a valid PDF.");
+    }
+    if (!function_exists('shell_exec') || stripos((string) ini_get('disable_functions'), 'shell_exec') !== false) {
+        throw new RuntimeException('PDF import is not available on this host (it needs shell_exec, which is disabled here).');
+    }
+
+    $workDir = sys_get_temp_dir() . '/pdf_import_' . bin2hex(random_bytes(8));
+    mkdir($workDir, 0770, true);
+    try {
+        $prefix = "$workDir/page";
+        // -r 150: a plain "screen-ish" resolution — high enough to read
+        // clearly, without producing an unreasonably large JPEG per page.
+        shell_exec('pdftoppm -jpeg -r 150 ' . escapeshellarg($file['tmp_name']) . ' ' . escapeshellarg($prefix) . ' 2>/dev/null');
+        $pages = glob("$prefix-*.jpg") ?: [];
+        // pdftoppm numbers pages "-1", "-2", ... (or "-01" once there are
+        // 10+ pages) — sort numerically on that suffix rather than
+        // alphabetically, since alphabetical would put page 10 before 2.
+        usort($pages, static function (string $a, string $b): int {
+            $numOf = static fn (string $p) => (int) preg_replace('/^.*-(\d+)\.jpg$/', '$1', $p);
+            return $numOf($a) <=> $numOf($b);
+        });
+        if (!$pages) {
+            throw new RuntimeException('Could not extract any pages from that PDF — the host may be missing poppler-utils, or the file may be corrupt.');
+        }
+        if (count($pages) > 10) {
+            throw new RuntimeException('That PDF has ' . count($pages) . ' pages — please split it or add at most 10 pages/photos at a time.');
+        }
+
+        $stored = [];
+        foreach ($pages as $i => $pagePath) {
+            $fileId = make_uuid();
+            $fileName = "$fileId.jpg";
+            $destPath = content_upload_dir('photo') . "/$fileName";
+            rename($pagePath, $destPath);
+            $stored[] = [
+                'fileId' => $fileId,
+                'fileName' => $fileName,
+                'destPath' => $destPath,
+                'originalName' => 'page-' . ($i + 1) . '.jpg',
+                'mimeType' => 'image/jpeg',
+                'size' => (int) filesize($destPath),
+                'metadata' => content_extract_metadata($destPath),
+            ];
+        }
+        return $stored;
+    } finally {
+        content_rrmdir_if_exists($workDir);
+    }
+}
+
+// Deletes $dir and everything in it, if it exists — used by
+// content_render_pdf_to_photos() to clean up its temp working
+// directory regardless of success or failure (hence the `finally`
+// there). A small local helper rather than reusing e.g.
+// backup_rrmdir() from includes/backup.php, to avoid a cross-file
+// dependency between two otherwise-unrelated features for one
+// three-line utility.
+function content_rrmdir_if_exists(string $dir): void
+{
+    if (!is_dir($dir)) {
+        return;
+    }
+    foreach (glob("$dir/*") ?: [] as $path) {
+        is_dir($path) ? content_rrmdir_if_exists($path) : @unlink($path);
+    }
+    @rmdir($dir);
+}
+
 // $files is a list of normalized upload arrays (content_normalize_multi_files()),
 // one per selected photo. All photos share one title/caption and get a
 // single combined narrative analysis considering them together, rather
 // than N independent ones. $sourceUrl is an alternative to $files — a
 // single photo downloaded server-side instead of picked locally (see
 // content_download_media_from_url()); the two are mutually exclusive,
-// and $sourceUrl only ever produces a one-photo "album".
+// and $sourceUrl only ever produces a one-photo "album". As a THIRD
+// alternative to a normal image selection, $files may instead be a
+// single PDF — detected by extension, expanded via
+// content_render_pdf_to_photos() into one photo per page — since a
+// multi-page scanned document/photo album saved as one PDF is a real,
+// common case this form has no other way to import. A PDF must be the
+// only file in the submission (never mixed with ordinary image files in
+// the same request) — simpler to reason about than interleaving PDF
+// pages with hand-picked images, and importing both is still just two
+// separate submissions away.
 function content_create_photo_album(string $title, ?string $description, array $files, string $userId, array $tags = [], ?string $sourceUrl = null): array
 {
     $title = trim($title);
@@ -1031,10 +1154,17 @@ function content_create_photo_album(string $title, ?string $description, array $
     if (count($files) > 10) {
         throw new RuntimeException('Please add at most 10 photos at a time.');
     }
+    $pdfFiles = array_filter($files, static fn (array $f) =>
+        strtolower(pathinfo((string) ($f['name'] ?? ''), PATHINFO_EXTENSION)) === 'pdf');
+    if ($pdfFiles && count($files) > 1) {
+        throw new RuntimeException('A PDF must be the only file in the submission — import it on its own to add every page as a photo.');
+    }
 
     $stored = [];
     if ($hasUrl) {
         $stored[] = content_download_media_from_url('photo', $sourceUrl);
+    } elseif ($pdfFiles) {
+        $stored = content_render_pdf_to_photos($files[0]);
     } else {
         foreach ($files as $file) {
             $stored[] = content_store_uploaded_file('photo', $file);

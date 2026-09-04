@@ -123,6 +123,8 @@ window.ContentForm = (function () {
     const fileInput = document.getElementById("fileInput");
     const mediaUrlInput = document.getElementById("mediaUrlInput");
     const fileRemoveBtn = document.getElementById("fileRemoveBtn");
+    const pdfExtractBtn = document.getElementById("pdfExtractBtn");
+    const pdfExtractError = document.getElementById("pdfExtractError");
 
     let tagPickerState = { tags: [] };
 
@@ -169,6 +171,53 @@ window.ContentForm = (function () {
     }
     fileInput.addEventListener("change", syncMediaExclusivity);
     mediaUrlInput.addEventListener("input", syncMediaExclusivity);
+
+    // Shows the "Extract text from PDF" button only for a Document whose
+    // selected file is actually a .pdf — Document is the one type this
+    // applies to (it's the type meant for non-testimony written material
+    // like a scanned permission letter, and already accepts .pdf as its
+    // attachment). Extraction happens server-side (see
+    // api/admin/pdf_extract_text.php, includes/content.php's
+    // content_extract_pdf_text() — poppler-utils' pdftotext, shelled
+    // out, same optional-binary posture as EXIF extraction) and lands
+    // back in the still-editable text box for review before the actual
+    // "Add content" submit — there's no way to edit a Document's pasted
+    // text after creation, so this has to happen as a pre-submit step,
+    // not something silently baked into content creation itself.
+    function syncPdfExtractBtn() {
+      const isDocument = typeSelect.value === "document";
+      const file = fileInput.files[0];
+      const isPdf = !!file && file.name.toLowerCase().endsWith(".pdf");
+      pdfExtractBtn.style.display = (isDocument && isPdf) ? "" : "none";
+      pdfExtractError.style.display = "none";
+    }
+    fileInput.addEventListener("change", syncPdfExtractBtn);
+    pdfExtractBtn.addEventListener("click", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const textInput = document.getElementById("textInput");
+      if (textInput.value.trim() !== "" && !confirm("Replace the current text with the PDF's extracted text?")) {
+        return;
+      }
+      pdfExtractBtn.disabled = true;
+      const originalText = pdfExtractBtn.textContent;
+      pdfExtractBtn.textContent = "Extracting…";
+      pdfExtractError.style.display = "none";
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/admin/pdf_extract_text.php", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Extraction failed.");
+        textInput.value = data.text;
+      } catch (err) {
+        pdfExtractError.textContent = err.message;
+        pdfExtractError.style.display = "";
+      } finally {
+        pdfExtractBtn.disabled = false;
+        pdfExtractBtn.textContent = originalText;
+      }
+    });
 
     function syncFormFields() {
       // A file/URL chosen under one type is stale once you switch away
@@ -218,12 +267,13 @@ window.ContentForm = (function () {
         : (isDocument ? "Attach original (optional)" : (isAudio ? "Audio file (optional if a transcript is given)" : "Video file (optional if a transcript is given)"));
       document.getElementById("fileHint").style.display = (isPhoto || isDocument) ? "" : "none";
       document.getElementById("fileHint").textContent = isPhoto
-        ? "Select up to 10 related photos to add them as one album."
+        ? "Select up to 10 related photos to add them as one album — or a single multi-page PDF instead, to add each page as a photo."
         : "Optional — a scan or PDF of the original, kept for reference. The Ask tab only reads the pasted text above, never this file.";
       mediaUrlInput.required = false;
       document.getElementById("urlInput").required = isUrl;
       document.getElementById("titleInput").required = !isUrl;
       syncMediaExclusivity();
+      syncPdfExtractBtn();
     }
     typeSelect.addEventListener("change", syncFormFields);
     mediaKindSelect.addEventListener("change", syncFormFields);

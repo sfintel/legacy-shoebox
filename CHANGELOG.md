@@ -14,6 +14,37 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.34.0] — 2026-09-04
+
+### Added
+
+- **PDF text extraction for Document**: an "Extract text from PDF"
+  button appears next to the file field when a Document's attached file
+  is a PDF — reads the PDF's own embedded text (via poppler-utils'
+  `pdftotext`) and fills the pasted-text box with it, still fully
+  editable before submitting. Deliberately not OCR — a purely
+  scanned/image PDF with no real text layer produces a clear "couldn't
+  extract any text" message rather than silently leaving the box empty.
+- **PDF photo import**: the Photo type now also accepts a single
+  multi-page PDF instead of image files — each page is rendered (via
+  poppler-utils' `pdftoppm`) and added as its own photo in the album,
+  getting the same AI narrative-connection analysis any photo album
+  gets. A PDF must be the only file in a submission (not mixed with
+  hand-picked images in the same request).
+- Both features require poppler-utils on the host (`pdftotext`/
+  `pdftoppm`) — same optional-binary posture as the existing EXIF
+  metadata extraction (`exiftool`), except these two are explicit,
+  user-initiated actions, so a missing binary surfaces as a clear error
+  rather than silently doing nothing.
+
+### Database changes
+
+None — no schema change, purely new code paths.
+
+### Environment changes
+
+None.
+
 ## [1.33.0] — 2026-09-04
 
 ### Added

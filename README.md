@@ -266,6 +266,21 @@ of what the Ask tab knows about — except a pending Story, see below.
   title/caption) is analyzed together as a set. Instead of a local
   file, you can give a **URL to download from**, same as above; a URL
   always produces a single file (no multi-photo album from a URL).
+  Instead of image files, you can also select a **single multi-page
+  PDF** — each page is rendered to its own photo and added as an album
+  (a PDF must be the only file in the submission; mixing PDF pages with
+  hand-picked images in one submission isn't supported — do two
+  separate submissions instead). Requires poppler-utils (`pdftoppm`) on
+  the host; if it's not available, importing a PDF this way fails with
+  a clear error rather than silently doing nothing.
+- **PDF text extraction (Document)**: when adding a Document with an
+  attached PDF, an "Extract text from PDF" button appears next to the
+  file field — it reads the PDF's own embedded text (via `pdftotext`,
+  same optional-binary requirement as above) and fills the pasted-text
+  box with it, still fully editable before you submit. This only reads
+  real embedded text, never OCR — a purely scanned/image PDF with no
+  text layer won't produce anything (the tool tells you so, rather than
+  silently leaving the box empty).
 - **Uploading large files**: PHP's own `post_max_size` and
   `upload_max_filesize` limits (commonly a shared host's small default,
   e.g. 20M) apply to a browser upload through the file picker — a large

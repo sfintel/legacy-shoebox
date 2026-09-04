@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.34.0' => [
+            'description' => 'PDF text extraction for Document (via poppler-utils pdftotext) and PDF-to-photos import for Photo (via pdftoppm, one photo per page) — both optional, degrading to a clear error (not a silent no-op, since these are explicit user actions) if poppler-utils isn\'t installed on the host',
+            'db' => null,
+            'env' => [],
+        ],
         '1.33.0' => [
             'description' => 'New Audio content type, and a combined "Video/Audio + Transcript" add-content flow replacing the separate Transcript/Video type choices — a media file/URL and a transcript can be added together in one submission (either alone is still valid too) and are linked automatically. content_items.type ENUM gains \'audio\'; linking/auto-link-matching now cover video-or-audio <-> transcript pairs (Ask-tab citation-seek stays video-only)',
             'db' => static function (PDO $pdo): void {
