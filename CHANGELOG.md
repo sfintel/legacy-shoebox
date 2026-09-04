@@ -14,6 +14,25 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.31.5] — 2026-09-03
+
+### Fixed
+
+- Typing a new keyword into any keyword picker (Content's add-content
+  form and each item's edit row; Quotes' add form and each quote's edit
+  row) and then clicking Save/Add directly — without pressing Enter or
+  comma first — silently dropped that keyword. The typed text only ever
+  got added to the picker's selected list via the input's own Enter/
+  comma key handler; nothing else ever read what was still sitting
+  uncommitted in the box, so a keyword typed and then "saved" by
+  clicking a button was lost with no error or warning. Every keyword
+  picker now commits any in-progress typed text before the form/row is
+  submitted, the same way pressing Enter would have.
+
+### Environment changes
+
+None.
+
 ## [1.31.4] — 2026-08-27
 
 ### Fixed

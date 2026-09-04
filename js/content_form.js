@@ -26,6 +26,25 @@ window.ContentForm = (function () {
     const container = document.getElementById(containerId);
     const state = { tags: [...selected] };
 
+    // Typing a keyword only ever landed in state.tags via the input's own
+    // Enter/comma keydown handler (see draw() below) — clicking a
+    // Save/Add button directly, with text still sitting uncommitted in
+    // the box, submitted the form without that keyword ever being read
+    // anywhere, silently dropping it. Every submit path (this form's own
+    // submit handler in initAddForm, and each caller's
+    // collectAddFields/collectEditFields/saveEdit in admin_content.js
+    // and admin_archive.js) now calls this first so a still-typed
+    // keyword is captured the same way pressing Enter would have.
+    state.commitPending = function commitPending() {
+      const input = container.querySelector(".tag-picker-input");
+      if (!input) return;
+      const val = input.value.trim().replace(/,$/, "");
+      if (val && !state.tags.includes(val)) {
+        state.tags.push(val);
+        input.value = "";
+      }
+    };
+
     // Only touches the suggestions sub-element, never the input itself —
     // rebuilding the whole container on every keystroke (as draw() does)
     // would drop focus/cursor position out from under the person typing.
@@ -230,6 +249,7 @@ window.ContentForm = (function () {
       for (let i = 0; i < 3; i++) dots.appendChild(document.createElement("span"));
       submitBtn.appendChild(dots);
       try {
+        tagPickerState.commitPending();
         const formData = new FormData(form);
         tagPickerState.tags.forEach((t) => formData.append("tags[]", t));
         const res = await fetch("/api/admin/content.php", {

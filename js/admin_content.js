@@ -501,6 +501,7 @@
       return { id: f.id, metadata };
     });
 
+    if (editRow._tagPickerState) editRow._tagPickerState.commitPending();
     const tags = editRow._tagPickerState ? editRow._tagPickerState.tags : (item.tags || []);
     const markReviewedEl = editRow.querySelector(".edit-mark-reviewed");
     const markReviewed = markReviewedEl ? markReviewedEl.checked : false;

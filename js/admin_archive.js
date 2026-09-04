@@ -391,13 +391,16 @@
     columnCount: 5,
     modal: AdminModal.wire("quoteModal", "quoteAddBtn", "quoteModalClose"),
     deleteConfirm: "Delete this quote permanently?",
-    collectAddFields: () => ({
-      speaker: document.getElementById("quoteSpeaker").value,
-      quote_text: document.getElementById("quoteText").value,
-      source_note: document.getElementById("quoteSourceNote").value,
-      tags: quoteAddTagPickerState.tags,
-      citation: document.getElementById("quoteCitation").value,
-    }),
+    collectAddFields: () => {
+      quoteAddTagPickerState.commitPending();
+      return {
+        speaker: document.getElementById("quoteSpeaker").value,
+        quote_text: document.getElementById("quoteText").value,
+        source_note: document.getElementById("quoteSourceNote").value,
+        tags: quoteAddTagPickerState.tags,
+        citation: document.getElementById("quoteCitation").value,
+      };
+    },
     afterCreate: () => {
       quoteAddTagPickerState = ContentForm.renderTagPicker("quoteTagsPicker", [], "quoteTagsPickerInput", () => allKeywordLabels);
     },
@@ -430,13 +433,16 @@
         `quoteTagsPicker-edit-${q.id}`, q.tags || [], `quoteTagsPickerInput-edit-${q.id}`, () => allKeywordLabels
       );
     },
-    collectEditFields: (row) => ({
-      speaker: row.querySelector(".e-speaker").value,
-      quote_text: row.querySelector(".e-quote_text").value,
-      source_note: row.querySelector(".e-source_note").value,
-      tags: row._tagPickerState ? row._tagPickerState.tags : [],
-      citation: row.querySelector(".e-citation").value,
-    }),
+    collectEditFields: (row) => {
+      if (row._tagPickerState) row._tagPickerState.commitPending();
+      return {
+        speaker: row.querySelector(".e-speaker").value,
+        quote_text: row.querySelector(".e-quote_text").value,
+        source_note: row.querySelector(".e-source_note").value,
+        tags: row._tagPickerState ? row._tagPickerState.tags : [],
+        citation: row.querySelector(".e-citation").value,
+      };
+    },
   });
   quoteAddTagPickerState = ContentForm.renderTagPicker("quoteTagsPicker", [], "quoteTagsPickerInput", () => allKeywordLabels);
   // The picker above renders before this fetch resolves (allKeywordLabels
