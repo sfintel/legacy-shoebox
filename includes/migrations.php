@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.35.0' => [
+            'description' => 'A Timeline/People/Places/Quotes entry\'s related-content link to a multi-page scanned document (imported as a photo album) now links every page, not just the first — and clicking any page opens a shared lightbox to page through all of them (arrow keys/buttons, Escape to close) instead of opening each page in a new tab',
+            'db' => null,
+            'env' => [],
+        ],
         '1.34.3' => [
             'description' => 'Photo now gets the same "propose new timeline/people/places/quotes entries" AI pass as Transcript/Document/Story/URL, whenever a caption is present — covers a photo whose caption is really substantive source text (e.g. a scanned citation imported as a photo for its image rather than as a Document). Skipped entirely for a photo with no caption, so the common case costs nothing extra. Backfill AI analysis also now covers any existing captioned photo that predates this fix',
             'db' => null,

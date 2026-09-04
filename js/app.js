@@ -103,6 +103,66 @@
     }[c]));
   }
 
+  // Shared lightbox for related-content photos — a scanned multi-page
+  // document imported as a photo album links to every one of its pages
+  // (see fileIds below), and paging through them here beats opening/
+  // closing a new tab per page. One overlay reused by every tab that
+  // calls renderRelatedContent() (Timeline/Quotes/People/Places), opened
+  // via the delegated click listener further down since those tabs
+  // replace their whole innerHTML on every render.
+  const Lightbox = (function () {
+    const overlay = document.getElementById("photoLightbox");
+    const imgEl = document.getElementById("lightboxImg");
+    const counterEl = document.getElementById("lightboxCounter");
+    const titleEl = document.getElementById("lightboxTitle");
+    const prevBtn = document.getElementById("lightboxPrev");
+    const nextBtn = document.getElementById("lightboxNext");
+    let ids = [];
+    let index = 0;
+    let title = "";
+
+    function render() {
+      imgEl.src = "/api/file.php?fileId=" + encodeURIComponent(ids[index]);
+      imgEl.alt = title;
+      titleEl.textContent = title;
+      const multi = ids.length > 1;
+      counterEl.textContent = multi ? `${index + 1} / ${ids.length}` : "";
+      prevBtn.style.display = multi ? "" : "none";
+      nextBtn.style.display = multi ? "" : "none";
+    }
+    function open(newIds, startIndex, newTitle) {
+      if (!newIds || !newIds.length) return;
+      ids = newIds;
+      index = startIndex || 0;
+      title = newTitle || "";
+      render();
+      overlay.style.display = "flex";
+    }
+    function close() {
+      overlay.style.display = "none";
+    }
+    function step(delta) {
+      index = (index + delta + ids.length) % ids.length;
+      render();
+    }
+    prevBtn.addEventListener("click", () => step(-1));
+    nextBtn.addEventListener("click", () => step(1));
+    document.getElementById("lightboxClose").addEventListener("click", close);
+    overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+    document.addEventListener("keydown", e => {
+      if (overlay.style.display === "none") return;
+      if (e.key === "Escape") close();
+      if (e.key === "ArrowLeft") step(-1);
+      if (e.key === "ArrowRight") step(1);
+    });
+    return { open };
+  })();
+  document.getElementById("app").addEventListener("click", e => {
+    const btn = e.target.closest(".related-photo-thumb");
+    if (!btn) return;
+    Lightbox.open(btn.dataset.fileIds.split(","), Number(btn.dataset.index || 0), btn.dataset.title || "");
+  });
+
   // Shared by the Timeline/Quotes/People/Places cards — each entry's
   // relatedContent (see archive_content_links_public(), includes/
   // archive.php) is content an admin's AI analysis pass matched to that
@@ -116,8 +176,16 @@
         return `<a href="${url}" target="_blank" rel="noopener" class="pill related-content-link">&#9654; ${esc(c.title)}</a>`;
       }
       if (c.type === "photo") {
-        const url = "/api/file.php?fileId=" + encodeURIComponent(c.fileId);
-        return `<a href="${url}" target="_blank" rel="noopener" class="related-content-thumb" title="${esc(c.title)}"><img src="${url}" alt="${esc(c.title)}" loading="lazy"></a>`;
+        // fileIds covers every page of a multi-page item (a scanned
+        // document imported as a photo album) — one thumbnail per page,
+        // each opening the shared lightbox at that page so every page is
+        // reachable, not just the first.
+        const ids = (c.fileIds && c.fileIds.length ? c.fileIds : [c.fileId]).filter(Boolean);
+        return ids.map((fileId, i) => {
+          const url = "/api/file.php?fileId=" + encodeURIComponent(fileId);
+          const label = ids.length > 1 ? `${esc(c.title)} (${i + 1}/${ids.length})` : esc(c.title);
+          return `<button type="button" class="related-content-thumb related-photo-thumb" data-file-ids="${ids.join(",")}" data-index="${i}" data-title="${esc(c.title)}" title="${label}"><img src="${url}" alt="${esc(c.title)}" loading="lazy"></button>`;
+        }).join("");
       }
       if (c.type === "url" && c.sourceUrl) {
         // Link straight to the original page, not our locally-cached

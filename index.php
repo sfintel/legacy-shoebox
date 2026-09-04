@@ -68,6 +68,21 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
     </div>
   </div>
 
+  <div id="photoLightbox" class="modal-overlay lightbox-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <div class="modal-dialog lightbox-dialog">
+      <div class="modal-header">
+        <span id="lightboxTitle" class="meta" style="margin:0;"></span>
+        <button type="button" id="lightboxClose" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="lightbox-body">
+        <button type="button" id="lightboxPrev" class="lightbox-nav lightbox-prev" aria-label="Previous image">&#8592;</button>
+        <img id="lightboxImg" src="" alt="">
+        <button type="button" id="lightboxNext" class="lightbox-nav lightbox-next" aria-label="Next image">&#8594;</button>
+      </div>
+      <div id="lightboxCounter" class="meta lightbox-counter"></div>
+    </div>
+  </div>
+
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
     <button class="tab-btn active" data-tab="ask" id="tab-ask" role="tab" aria-selected="true" aria-controls="panel-ask">Ask</button>
     <button class="tab-btn" data-tab="timeline" id="tab-timeline" role="tab" aria-selected="false" aria-controls="panel-timeline">Timeline</button>

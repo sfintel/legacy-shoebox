@@ -1077,23 +1077,30 @@ function archive_content_links_clear_for_item(string $contentItemId): void
     db()->prepare('DELETE FROM content_links WHERE content_item_id = ?')->execute([$contentItemId]);
 }
 
-// Content items linked to a given archive entity, each with its first
-// file's id/mime type (for display — see archive_content_links_public()
-// below) so e.g. the Timeline tab can show a thumbnail/link without a
-// second round-trip.
+// Content items linked to a given archive entity, each with EVERY one of
+// its files' ids (for display — see archive_content_links_public() below)
+// so e.g. a linked multi-photo item (a scanned multi-page document
+// imported as a photo album) can show/page through every page, not just
+// its first file — a second round-trip per file isn't needed since
+// content_files_for_item() is already a cheap indexed lookup.
 function archive_content_links_for_entity(string $entityType, string $entityId): array
 {
     $stmt = db()->prepare(
-        "SELECT ci.id, ci.type, ci.title, ci.source_url,
-                (SELECT cf.id FROM content_files cf WHERE cf.content_item_id = ci.id ORDER BY cf.sort_order ASC LIMIT 1) AS file_id,
-                (SELECT cf.mime_type FROM content_files cf WHERE cf.content_item_id = ci.id ORDER BY cf.sort_order ASC LIMIT 1) AS mime_type
+        "SELECT ci.id, ci.type, ci.title, ci.source_url
          FROM content_links cl
          JOIN content_items ci ON ci.id = cl.content_item_id
          WHERE cl.entity_type = ? AND cl.entity_id = ?
          ORDER BY ci.created_at ASC"
     );
     $stmt->execute([$entityType, $entityId]);
-    return $stmt->fetchAll();
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$row) {
+        $files = content_files_for_item($row['id']);
+        $row['file_ids'] = array_column($files, 'id');
+        $row['mime_type'] = $files[0]['mime_type'] ?? null;
+    }
+    unset($row);
+    return $rows;
 }
 
 function archive_content_links_public(string $entityType, string $entityId): array
@@ -1102,7 +1109,11 @@ function archive_content_links_public(string $entityType, string $entityId): arr
         'id' => $row['id'],
         'type' => $row['type'],
         'title' => $row['title'],
-        'fileId' => $row['file_id'],
+        'fileId' => $row['file_ids'][0] ?? null,
+        // Only meaningfully more than one entry for a multi-photo item —
+        // js/app.js's renderRelatedContent() uses this to show/page
+        // through every page rather than just the first.
+        'fileIds' => $row['file_ids'],
         'sourceUrl' => $row['source_url'],
         'isVideo' => $row['mime_type'] !== null && str_starts_with((string) $row['mime_type'], 'video/'),
     ], archive_content_links_for_entity($entityType, $entityId));

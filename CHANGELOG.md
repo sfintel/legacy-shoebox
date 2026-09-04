@@ -14,6 +14,25 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.35.0] — 2026-09-04
+
+### Added
+
+- A photo lightbox for related-content links: on the Timeline/Quotes/
+  People/Places tabs, a linked multi-page scanned document (imported as
+  a photo album) previously showed and linked only its first page —
+  `archive_content_links_for_entity()` only ever fetched one file per
+  linked item. Now every page gets its own thumbnail, and clicking any
+  of them opens a shared lightbox to page through the whole document
+  (Prev/Next buttons, arrow keys, Escape or backdrop click to close)
+  instead of opening/closing a new browser tab per page. A single-photo
+  link now also opens in this lightbox rather than a new tab, for the
+  same reason.
+
+### Environment changes
+
+None.
+
 ## [1.34.3] — 2026-09-04
 
 ### Added

@@ -160,6 +160,20 @@ input[type=search]{min-width:180px;}
   text-decoration:none; color:var(--accent-2); border:1px solid var(--border);
 }
 .related-content-link.pill:hover{border-color:var(--accent-2);}
+.related-photo-thumb{background:transparent; border:none; padding:0; cursor:pointer; display:inline-block;}
+
+.lightbox-dialog{max-width:min(90vw, 900px);}
+.lightbox-body{position:relative; display:flex; align-items:center; justify-content:center; padding:0 18px 12px;}
+.lightbox-body img{max-width:100%; max-height:70vh; border-radius:6px; display:block;}
+.lightbox-nav{
+  background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+  font-size:1.3rem; line-height:1; padding:8px 12px; border-radius:8px; cursor:pointer;
+  position:absolute; top:50%; transform:translateY(-50%);
+}
+.lightbox-nav:hover{border-color:var(--accent-2);}
+.lightbox-prev{left:8px;}
+.lightbox-next{right:8px;}
+.lightbox-counter{text-align:center; padding:0 18px 14px;}
 
 .tag-filters{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;}
 .tag-chip{
