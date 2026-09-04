@@ -17,7 +17,17 @@ declare(strict_types=1);
 // ever meant as a human-readable hint, and the UUID primary key the
 // archive_*_create() functions generate is sufficient; skipping it avoids
 // ever needing to resolve a slug collision on this path.
-function kw_apply_suggestion(string $kind, array $fields): array
+//
+// $contentItemId — the content_suggestions row's own source item — gets
+// recorded via the existing content_links table (see sql/schema.sql's
+// comment on it) rather than a new column: same table narrative_analyze()'s
+// entity-linking already uses for "related content" on the Timeline/People/
+// Places/Quotes tabs, so the freshly-created row picks up a real clickable
+// source link for free, and content_links' own ON DELETE CASCADE on
+// content_item_id makes that link (and only that link) disappear on its own
+// if the source content item is later deleted — no dangling reference left
+// behind, and no per-table cleanup code needed.
+function kw_apply_suggestion(string $kind, array $fields, string $contentItemId): array
 {
     // sourceNote is PHP-attached at suggestion-creation time (see
     // narrative_suggest_additions()) so it accurately reflects what kind
@@ -60,6 +70,8 @@ function kw_apply_suggestion(string $kind, array $fields): array
         ]),
         default => throw new RuntimeException("Unknown suggestion kind: $kind"),
     };
+
+    archive_content_links_apply($contentItemId, [['type' => $kind, 'id' => $row['id']]]);
 
     return ['id' => $row['id']];
 }

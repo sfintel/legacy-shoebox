@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.34.2' => [
+            'description' => 'Fix an admin-approved AI suggestion (Timeline/People/Places/Quotes) never recording a real link back to its source content item — now inserts the same content_links row narrative_analyze()\'s "related content" already uses, so the new entry shows a clickable link to the source, and that link (and only that link) disappears on its own via content_links\' existing ON DELETE CASCADE if the source is later deleted. Forward-only: entries approved before this fix keep their old dangling plain-text citation and need a manual edit',
+            'db' => null,
+            'env' => [],
+        ],
         '1.34.1' => [
             'description' => 'Fix the Content table\'s "View" button on a Document with an attached scan/PDF always opening the pasted text instead of the actual attachment',
             'db' => null,

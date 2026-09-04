@@ -39,7 +39,7 @@ if ($method === 'POST') {
     if ($action === 'approve') {
         $fields = json_decode($suggestion['payload'], true);
         try {
-            $result['applied'] = kw_apply_suggestion($suggestion['kind'], $fields);
+            $result['applied'] = kw_apply_suggestion($suggestion['kind'], $fields, $suggestion['content_item_id']);
         } catch (RuntimeException $e) {
             json_response(['error' => $e->getMessage()], 400);
         }

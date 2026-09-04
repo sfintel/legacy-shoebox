@@ -14,6 +14,31 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.34.2] — 2026-09-04
+
+### Fixed
+
+- An admin-approved AI suggestion (a new Timeline/People/Places/Quotes
+  entry) never actually recorded a link back to the content item it was
+  suggested from — `kw_apply_suggestion()` only ever wrote the source's
+  title into the entry's plain-text `citation` field. Two visible
+  symptoms: the entry showed no clickable link to its source, and
+  deleting that source content item left the citation text dangling
+  with no way to notice it now pointed at nothing. Fixed by having
+  `kw_apply_suggestion()` insert the same `content_links` row
+  `narrative_analyze()`'s existing "related content" linking already
+  uses — the new entry now shows a real clickable link (or thumbnail,
+  for a photo) to its source on the Timeline/People/Places/Quotes tabs,
+  and `content_links`' existing `ON DELETE CASCADE` on the content item
+  makes that link disappear on its own if the source is later deleted,
+  with no per-table cleanup code needed. Forward-only — an entry
+  approved before this fix keeps its old dangling plain-text citation
+  and needs a manual edit to fix up by hand.
+
+### Environment changes
+
+None.
+
 ## [1.34.1] — 2026-09-04
 
 ### Fixed
