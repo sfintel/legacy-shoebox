@@ -23,6 +23,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.34.1' => [
+            'description' => 'Fix the Content table\'s "View" button on a Document with an attached scan/PDF always opening the pasted text instead of the actual attachment',
+            'db' => null,
+            'env' => [],
+        ],
         '1.34.0' => [
             'description' => 'PDF text extraction for Document (via poppler-utils pdftotext) and PDF-to-photos import for Photo (via pdftoppm, one photo per page) — both optional, degrading to a clear error (not a silent no-op, since these are explicit user actions) if poppler-utils isn\'t installed on the host',
             'db' => null,

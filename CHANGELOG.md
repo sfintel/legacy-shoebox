@@ -14,6 +14,23 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.34.1] — 2026-09-04
+
+### Fixed
+
+- The Content admin table's "View" button on a Document with an
+  attached scan/PDF always opened the pasted text instead of the actual
+  attachment. `content_create_document()` always stores the pasted text
+  as the item's first file and the optional attachment (if any) as its
+  second, but the table's compact "View" link only ever pointed at the
+  first file — for every other content type that's correct (they have
+  at most one file), but for a Document with an attachment it opened
+  the wrong one. It now opens the actual attachment when present.
+
+### Environment changes
+
+None.
+
 ## [1.34.0] — 2026-09-04
 
 ### Added

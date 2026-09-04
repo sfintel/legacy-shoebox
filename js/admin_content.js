@@ -167,11 +167,18 @@
   function renderActions(item) {
     const files = item.files || [];
     const isPhotoAlbum = item.type === "photo";
+    // A Document's files[0] is always the pasted text (a .md file — see
+    // content_create_document(), which inserts it at sort_order 0
+    // unconditionally); its OPTIONAL second file (sort_order 1, only
+    // present if a scan/PDF was attached) is the real original a "View"
+    // click should open. Every other non-photo type has at most one
+    // file, so files[0] is still correct for them.
+    const viewFile = item.type === "document" ? files[1] : files[0];
     const viewLinks = isPhotoAlbum
       ? files.map((f) => `<a href="${fileUrl(f.id)}" target="_blank" rel="noopener">
           <img src="${fileUrl(f.id)}" alt="${esc(f.originalName)}" style="max-height:48px; max-width:64px; object-fit:cover; border-radius:4px; vertical-align:middle;">
         </a>`).join(" ")
-      : (files[0] ? `<a href="${fileUrl(files[0].id)}" target="_blank" rel="noopener">View</a>` : "");
+      : (viewFile ? `<a href="${fileUrl(viewFile.id)}" target="_blank" rel="noopener">View</a>` : "");
     const suggestions = item.suggestions || [];
     const pending = suggestions.filter((s) => s.status === "pending").length;
     const suggestionsBtn = suggestions.length
