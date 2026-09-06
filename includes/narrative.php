@@ -405,6 +405,29 @@ function narrative_prompt_for_photo_suggestions(string $title, string $descripti
         . 'Propose new archive additions per the rules above.';
 }
 
+// One-sentence link-preview summary for a URL pasted into story text —
+// shown as a hover tooltip on the auto-linked URL (see
+// content_link_summaries() in includes/content.php and bodyParagraphs()
+// in js/app.js). Deliberately bypasses narrative_call_ai() (and the
+// knowledge_context() archive-context block it attaches): this describes
+// the linked page itself, not how it relates to the family archive, so
+// pulling in the whole knowledge base would only add cost with no
+// benefit. Returns null on any AI failure — same fail-quiet posture as
+// every other AI call in this file.
+function narrative_summarize_link(?string $title, string $text): ?string
+{
+    $prompt = ($title !== null && $title !== '' ? "Page title: $title\n\n" : '') . "Page text:\n$text";
+    $result = ai_chat(
+        ['Summarize the following web page in ONE short, plain sentence (no more than 25 words), '
+            . 'suitable as a link-hover tooltip. Respond with ONLY that sentence — no quotes, no '
+            . 'markdown, no preamble.'],
+        [['role' => 'user', 'content' => $prompt]],
+        100
+    );
+    $summary = $result['text'] ?? null;
+    return $summary !== null && $summary !== '' ? $summary : null;
+}
+
 // Returns a list of ['kind' => ..., 'fields' => [...]] ready for
 // content_suggestions_insert() — never throws; a missing API key, parse
 // failure, or malformed item just yields fewer (or zero) suggestions,

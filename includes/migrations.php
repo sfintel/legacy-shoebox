@@ -23,6 +23,19 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.36.0' => [
+            'description' => 'A URL typed into a Story\'s text is now auto-linked (opens in a new tab) and gets an AI-generated one-sentence tooltip describing the linked page, generated once at story-save time. content_items gains a link_summaries JSON column; Backfill AI analysis now also fills it in for any pre-existing story',
+            'db' => static function (PDO $pdo): void {
+                $exists = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'content_items' AND column_name = 'link_summaries'"
+                )->fetchColumn();
+                if ($exists === 0) {
+                    $pdo->exec("ALTER TABLE content_items ADD COLUMN link_summaries JSON NULL AFTER story_approved_at");
+                }
+            },
+            'env' => [],
+        ],
         '1.35.0' => [
             'description' => 'A Timeline/People/Places/Quotes entry\'s related-content link to a multi-page scanned document (imported as a photo album) now links every page, not just the first — and clicking any page opens a shared lightbox to page through all of them (arrow keys/buttons, Escape to close) instead of opening each page in a new tab',
             'db' => null,

@@ -721,14 +721,55 @@ function content_create_document(string $title, string $text, ?array $file, stri
     return content_find($itemId);
 }
 
+// Extracts URLs from free text, fetches each and asks the AI for a
+// one-sentence summary (narrative_summarize_link()) — used to power a
+// hover tooltip on auto-linked URLs in story text (see bodyParagraphs()
+// in js/app.js). Every step fails quiet per-URL: an unreachable/dead
+// link, or a page with no readable text, just gets no summary rather
+// than blocking the story save or the rest of the batch. Capped at 5
+// distinct URLs so a link-heavy story can't turn one save into a dozen
+// outbound fetches plus AI calls. Returns a plain array — json_encode()
+// of it always yields a JSON object (or "[]" when empty), never a JSON
+// array, since URL string keys are never a contiguous 0-based sequence.
+function content_link_summaries(string $text): array
+{
+    if (!preg_match_all('#https?://[^\s<>"]+#i', $text, $m)) {
+        return [];
+    }
+    $urls = array_slice(array_unique(array_map(
+        static fn (string $u): string => rtrim($u, '.,;:!?)]}\'"'),
+        $m[0]
+    )), 0, 5);
+
+    $summaries = [];
+    foreach ($urls as $url) {
+        try {
+            $fetched = content_fetch_url($url);
+        } catch (Throwable $e) {
+            continue;
+        }
+        $summary = narrative_summarize_link($fetched['title'], $fetched['text']);
+        if ($summary !== null) {
+            $summaries[$url] = $summary;
+        }
+    }
+    return $summaries;
+}
+
 // A family-recounted story — told about the subject, not by them (that's
 // what primary_testimony/transcripts are for). Treated as a level below
 // direct testimony: held back from the Stories tab and the AI's
 // knowledge base until an admin approves it (see content_approve_story()
 // below), unlike every other content type which is visible immediately.
-// No AI analysis runs at creation time — deliberately: computing
-// content_links here would let an unapproved story's title/connections
-// leak into other entries' relatedContent before anyone's reviewed it.
+// No narrative/suggestion AI analysis runs at creation time —
+// deliberately: computing content_links here would let an unapproved
+// story's title/connections leak into other entries' relatedContent
+// before anyone's reviewed it. Link summaries (content_link_summaries())
+// are the one exception: they only describe pages the story itself links
+// to and never touch content_links or any other entry, so there's
+// nothing to leak — computing them now (rather than waiting for
+// approval) means they're already in place by the time the story goes
+// live.
 function content_create_story(string $title, string $body, string $userId, array $tags = []): array
 {
     $title = trim($title);
@@ -745,12 +786,17 @@ function content_create_story(string $title, string $body, string $userId, array
     $dir = content_upload_dir('story');
     file_put_contents("$dir/$fileName", $body);
 
+    $linkSummaries = content_link_summaries($body);
+
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, story_approved_at, created_by)
-         VALUES (?, \'story\', ?, NULL, NULL, ?, NULL, ?)'
-    )->execute([$itemId, $title, json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
+        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, story_approved_at, link_summaries, created_by)
+         VALUES (?, \'story\', ?, NULL, NULL, ?, NULL, ?, ?)'
+    )->execute([
+        $itemId, $title, json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE),
+        json_encode($linkSummaries, JSON_UNESCAPED_UNICODE), $userId,
+    ]);
     content_insert_file($pdo, $itemId, [
         'fileId' => $fileId, 'fileName' => $fileName, 'originalName' => "$title.md",
         'mimeType' => 'text/markdown', 'size' => strlen($body), 'metadata' => null,
@@ -856,6 +902,11 @@ function content_story_public(array $item): array
         'body' => content_story_body($item),
         'tags' => json_decode((string) ($item['tags'] ?? '[]'), true) ?: [],
         'createdAt' => $item['created_at'],
+        // empty()-guarded (not just null-checked): also covers a webroot
+        // deployed before upgrade.sh adds the link_summaries column, same
+        // deploy-before-upgrade window as content_public()'s
+        // narrativeNoteReviewedAt.
+        'linkSummaries' => !empty($item['link_summaries']) ? (json_decode($item['link_summaries'], true) ?: []) : [],
     ];
 }
 
@@ -1624,7 +1675,7 @@ function content_suggest_additions_for_existing_item(array $item): array
     );
 }
 
-// Two independent sweeps over existing content, each safe to re-run:
+// Three independent sweeps over existing content, each safe to re-run:
 // (1) fills in narrative_note for every item that doesn't have one yet
 // (and (re-)applies its content_links) — unchanged from this function's
 // original narrative-notes-only behavior; (2) fills in suggestions
@@ -1636,6 +1687,11 @@ function content_suggest_additions_for_existing_item(array $item): array
 // Document instead. A pending (unapproved) story is excluded from both
 // sweeps — see content_create_story()'s comment for why nothing runs on
 // it before approval; content_approve_story() covers it once approved.
+// (3) fills in link_summaries (content_link_summaries()) for every story
+// that predates that feature — unlike (1)/(2) this runs regardless of
+// approval, matching content_create_story()'s own posture (see that
+// function's comment on why link summaries are the one exception to
+// "no AI before approval").
 function content_backfill_ai_analysis(): array
 {
     $noteItems = db()->query(
@@ -1648,6 +1704,9 @@ function content_backfill_ai_analysis(): array
                 OR (type = 'photo' AND description IS NOT NULL AND description != ''))
            AND id NOT IN (SELECT DISTINCT content_item_id FROM content_suggestions)
          ORDER BY created_at ASC"
+    )->fetchAll();
+    $linkSummaryItems = db()->query(
+        "SELECT * FROM content_items WHERE type = 'story' AND link_summaries IS NULL ORDER BY created_at ASC"
     )->fetchAll();
 
     $resultsById = [];
@@ -1682,6 +1741,13 @@ function content_backfill_ai_analysis(): array
         }
         $ensure($item);
         $resultsById[$item['id']]['suggestionsAdded'] = count($suggestions);
+    }
+
+    foreach ($linkSummaryItems as $item) {
+        $summaries = content_link_summaries(content_story_body($item));
+        db()->prepare('UPDATE content_items SET link_summaries = ? WHERE id = ?')
+            ->execute([json_encode($summaries, JSON_UNESCAPED_UNICODE), $item['id']]);
+        $ensure($item);
     }
 
     return array_values($resultsById);

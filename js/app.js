@@ -300,8 +300,42 @@
     storiesData = data;
     renderStories(storiesData);
   });
-  function bodyParagraphs(text) {
-    return (text || "").split(/\n{2,}/).map(p => `<p>${esc(p)}</p>`).join("");
+  // Auto-links bare URLs in free text, escaping everything else — must
+  // run on the raw (unescaped) text rather than escape-then-regex, since
+  // a URL's query string routinely contains "&", which esc() would
+  // already have turned into "&amp;" and broken the match. Trailing
+  // sentence punctuation ("...see http://x.com.") is peeled off the URL
+  // and re-appended outside the <a> so it doesn't get treated as part of
+  // the link. `linkSummaries` (content_link_summaries() in
+  // includes/content.php, AI-generated at story-save time) maps a URL to
+  // a one-sentence description of the page it points to, shown as a
+  // native hover tooltip via the anchor's title attribute — omitted
+  // entirely when no summary was generated (dead link, fetch failure).
+  function linkify(text, linkSummaries) {
+    const urlRe = /https?:\/\/[^\s<>"]+/g;
+    let out = "";
+    let lastIndex = 0;
+    let m;
+    while ((m = urlRe.exec(text)) !== null) {
+      let url = m[0];
+      let trailing = "";
+      const trimMatch = url.match(/^(.*?)([.,;:!?)\]}'"]+)$/);
+      if (trimMatch) {
+        url = trimMatch[1];
+        trailing = trimMatch[2];
+      }
+      out += esc(text.slice(lastIndex, m.index));
+      const summary = linkSummaries[url];
+      const titleAttr = summary ? ` title="${esc(summary)}"` : "";
+      out += `<a href="${esc(url)}" target="_blank" rel="noopener"${titleAttr}>${esc(url)}</a>${esc(trailing)}`;
+      lastIndex = m.index + m[0].length;
+    }
+    out += esc(text.slice(lastIndex));
+    return out;
+  }
+  function bodyParagraphs(text, linkSummaries) {
+    linkSummaries = linkSummaries || {};
+    return (text || "").split(/\n{2,}/).map(p => `<p>${linkify(p, linkSummaries)}</p>`).join("");
   }
   function renderStories(items) {
     const el = document.getElementById("storiesList");
@@ -309,7 +343,7 @@
       <div class="card">
         <h3>${esc(s.title)}</h3>
         <div class="meta">${(s.tags || []).map(t => `<span class="pill">${esc(t)}</span>`).join("")}</div>
-        <div class="body">${bodyParagraphs(s.body)}</div>
+        <div class="body">${bodyParagraphs(s.body, s.linkSummaries)}</div>
       </div>
     `).join("") || `<p class="meta">No results.</p>`;
   }

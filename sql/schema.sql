@@ -105,6 +105,16 @@ CREATE TABLE IF NOT EXISTS content_items (
   -- knowledge base yet. NULL for every other type (always immediately
   -- visible, same as before this column existed).
   story_approved_at DATETIME  NULL,
+  -- Only meaningful for type='story': a JSON object mapping each URL
+  -- found in the story's text to a one-sentence AI-generated summary of
+  -- that page, shown as a hover tooltip on the auto-linked URL (see
+  -- content_link_summaries() in includes/content.php and
+  -- bodyParagraphs() in js/app.js). NULL until content_create_story()
+  -- (or content_backfill_ai_analysis() for a pre-existing story) has run
+  -- once; an empty JSON object means it ran but the story had no URLs
+  -- (or none were fetchable) — both are treated the same by the reader,
+  -- but the distinction lets backfill skip rows it's already processed.
+  link_summaries JSON        NULL,
   -- Companion video<->transcript pairing (see includes/video_seek.php) —
   -- only ever set between a video item and a transcript item. Kept
   -- symmetric (both rows point at each other) entirely by

@@ -14,6 +14,29 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.36.0] — 2026-09-06
+
+### Added
+
+- A URL typed into a Story's text is now auto-linked on the Stories tab
+  (opens in a new tab, same as every other outbound link in the app) and
+  carries a hover tooltip with an AI-generated one-sentence summary of
+  the page it points to. The summary is generated once, at story-save
+  time (`content_link_summaries()` fetches each URL and asks the AI to
+  describe it), not on every page view — a dead or unreachable link just
+  gets no tooltip rather than blocking the save. Backfill AI analysis
+  also now covers any pre-existing story.
+
+### Database changes
+
+- `content_items` gains a `link_summaries` JSON column (nullable) — see
+  `sql/schema.sql`. Run `upgrade.php` (or `deploy.sh`, which calls it) to
+  apply.
+
+### Environment changes
+
+None.
+
 ## [1.35.0] — 2026-09-04
 
 ### Added
