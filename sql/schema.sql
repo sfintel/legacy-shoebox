@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS users (
   -- change, only an edit to that one function. Pre-selects the Ask tab's
   -- dropdown on login; the user can still change it per-session.
   default_audience_mode VARCHAR(32) NOT NULL DEFAULT 'adult',
+  -- Free-text "why are you requesting access?" from signup.php, shown
+  -- verbatim in the admin approval-request email and on /admin.php.
+  -- Optional; NULL if left blank.
+  signup_reason   TEXT          NULL,
   status          ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   approved_at     DATETIME      NULL,

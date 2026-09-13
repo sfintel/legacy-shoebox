@@ -23,6 +23,19 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '1.37.0' => [
+            'description' => 'signup.php now has an optional "Why are you requesting access?" text field — included verbatim (control characters stripped, HTML-escaped at render time) in the admin approval-request email and shown on /admin.php. users gains a signup_reason TEXT column',
+            'db' => static function (PDO $pdo): void {
+                $exists = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'signup_reason'"
+                )->fetchColumn();
+                if ($exists === 0) {
+                    $pdo->exec("ALTER TABLE users ADD COLUMN signup_reason TEXT NULL AFTER default_audience_mode");
+                }
+            },
+            'env' => [],
+        ],
         '1.36.0' => [
             'description' => 'A URL typed into a Story\'s text is now auto-linked (opens in a new tab) and gets an AI-generated one-sentence tooltip describing the linked page, generated once at story-save time. content_items gains a link_summaries JSON column; Backfill AI analysis now also fills it in for any pre-existing story',
             'db' => static function (PDO $pdo): void {

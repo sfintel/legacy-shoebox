@@ -14,6 +14,27 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [1.37.0] — 2026-09-13
+
+### Added
+
+- signup.php now has an optional "Why are you requesting access?" text
+  field. The text is stripped of control characters, capped at 1000
+  characters, and — HTML-escaped at render time, same as every other
+  user-supplied field — is included verbatim in the admin
+  approval-request email and shown on /admin.php (as a note under the
+  requester's name, full text on hover).
+
+### Database changes
+
+- `users` gains a `signup_reason` TEXT column (nullable) — see
+  `sql/schema.sql`. Run `upgrade.php` (or `deploy.sh`, which calls it) to
+  apply.
+
+### Environment changes
+
+None.
+
 ## [1.36.0] — 2026-09-06
 
 ### Added

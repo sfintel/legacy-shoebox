@@ -16,6 +16,7 @@ if ($method === 'GET') {
             'canAddContent' => user_can_add_content($u),
             'audienceMode' => $u['default_audience_mode'],
             'audienceModeLabel' => audience_mode_label($u['default_audience_mode']),
+            'signupReason' => $u['signup_reason'],
             'status' => $u['status'],
             'createdAt' => $u['created_at'],
             'approvedAt' => $u['approved_at'],

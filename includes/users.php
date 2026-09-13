@@ -61,7 +61,7 @@ function user_first_admin_email(): ?string
 // $audienceMode is validated against audience_mode_values() by the
 // caller (api/signup.php) — falls back to audience_mode_default() here
 // too, defensively, in case a future caller forgets to.
-function user_create_pending(string $name, string $email, string $password, ?string $audienceMode = null): array
+function user_create_pending(string $name, string $email, string $password, ?string $audienceMode = null, ?string $reason = null): array
 {
     $normalizedEmail = strtolower(trim($email));
     if (user_find_by_email($normalizedEmail)) {
@@ -70,10 +70,11 @@ function user_create_pending(string $name, string $email, string $password, ?str
     $mode = in_array($audienceMode, audience_mode_values(), true) ? $audienceMode : audience_mode_default();
     $id = make_uuid();
     $stmt = db()->prepare(
-        'INSERT INTO users (id, name, email, password_hash, role, status, default_audience_mode)
-         VALUES (?, ?, ?, ?, \'reader\', \'pending\', ?)'
+        'INSERT INTO users (id, name, email, password_hash, role, status, default_audience_mode, signup_reason)
+         VALUES (?, ?, ?, ?, \'reader\', \'pending\', ?, ?)'
     );
-    $stmt->execute([$id, trim($name), $normalizedEmail, password_hash($password, PASSWORD_DEFAULT), $mode]);
+    $reason = $reason !== null && trim($reason) !== '' ? trim($reason) : null;
+    $stmt->execute([$id, trim($name), $normalizedEmail, password_hash($password, PASSWORD_DEFAULT), $mode, $reason]);
     return user_find_by_id($id);
 }
 

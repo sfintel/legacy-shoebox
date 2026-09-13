@@ -18,8 +18,9 @@ require_once __DIR__ . '/config.php';
   h1{font-size:1.3rem;margin:0 0 4px;font-weight:600;}
   p.sub{color:var(--muted);margin:0 0 24px;font-size:.92rem;line-height:1.4;}
   label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px;}
-  input, select{width:100%;padding:11px 12px;border-radius:8px;border:1px solid #45413a;
+  input, select, textarea{width:100%;padding:11px 12px;border-radius:8px;border:1px solid #45413a;
     background:#171613;color:var(--text);font-size:1rem;margin-bottom:16px;}
+  textarea{font-family:inherit;resize:vertical;}
   button{width:100%;padding:12px;border:none;border-radius:8px;background:var(--accent);
     color:#1b1a17;font-weight:700;font-size:1rem;cursor:pointer;}
   button:hover{background:#c99a4e;}
@@ -49,6 +50,8 @@ require_once __DIR__ . '/config.php';
       <select id="audienceMode" name="audienceMode">
         <?= audience_mode_options(audience_mode_default()) ?>
       </select>
+      <label for="reason">Why are you requesting access? <span style="opacity:.7">(optional)</span></label>
+      <textarea id="reason" name="reason" rows="3" maxlength="<?= (int) SIGNUP_REASON_MAX_LENGTH ?>" placeholder="e.g. I'm a grandchild and would love to see the family history"></textarea>
       <button type="submit" id="submitBtn">Request access</button>
       <div class="err" id="err" role="alert"></div>
     </form>
@@ -67,6 +70,7 @@ require_once __DIR__ . '/config.php';
       password: document.getElementById('password').value,
       confirmPassword: document.getElementById('confirmPassword').value,
       audienceMode: document.getElementById('audienceMode').value,
+      reason: document.getElementById('reason').value,
     };
     submitBtn.disabled = true;
     submitBtn.textContent = 'Sending…';

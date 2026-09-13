@@ -59,8 +59,11 @@
         }
         if (u.isLockedOut) actions.push(`<button data-id="${u.id}" data-action="unlock">Unlock</button>`);
         if (u.role !== "admin") actions.push(`<button class="danger" data-id="${u.id}" data-action="delete">Delete</button>`);
+        const reasonNote = u.signupReason
+          ? `<div class="signup-reason" title="${esc(u.signupReason)}">${esc(u.signupReason)}</div>`
+          : "";
         return `<tr>
-          <td>${esc(u.name)}</td>
+          <td>${esc(u.name)}${reasonNote}</td>
           <td>${esc(u.email)}</td>
           <td>${esc(u.role)}</td>
           <td>${esc(u.audienceModeLabel || u.audienceMode || "—")}</td>
