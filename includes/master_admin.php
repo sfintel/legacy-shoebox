@@ -30,39 +30,40 @@ function master_admin_record_login(string $id): void
 }
 
 // Finds (or lazily creates) the users row backing this master admin's
-// access to $subjectId. Only ever treats an existing row as "theirs" if
-// it's already flagged is_master_admin_shadow=1 — if a genuine,
-// independent per-subject account happens to share the master admin's
-// email (a rare collision), this refuses to silently take it over,
-// returning null instead (the master admin simply can't access that one
-// subject under that email).
-function master_admin_ensure_shadow_user(array $master, string $subjectId): ?array
+// access to $subjectId. Any existing row for this email on this
+// subject — shadow-flagged or not — IS the master admin logging in:
+// only someone who already has server/CLI access can create a
+// master_admins row in the first place (see create_master_admin.php),
+// so there's no real privilege-escalation risk in treating a same-email
+// match as "this is them," and a real person's master-admin email very
+// commonly already matches their own pre-existing per-subject admin
+// account. Always resolves to full, active admin rights — promoting an
+// existing non-admin/non-approved row rather than refusing, since
+// logging in with the master credential should never be blocked by
+// whatever role/status that row happened to have before.
+function master_admin_ensure_shadow_user(array $master, string $subjectId): array
 {
     $email = strtolower(trim($master['email']));
-    $stmt = db()->prepare('SELECT * FROM users WHERE subject_id = ? AND email = ? AND is_master_admin_shadow = 1');
+    $stmt = db()->prepare('SELECT * FROM users WHERE subject_id = ? AND email = ?');
     $stmt->execute([$subjectId, $email]);
     $existing = $stmt->fetch();
     if ($existing) {
+        if ($existing['role'] !== 'admin' || $existing['status'] !== 'approved') {
+            db()->prepare("UPDATE users SET role = 'admin', status = 'approved', approved_at = COALESCE(approved_at, NOW()) WHERE id = ?")
+                ->execute([$existing['id']]);
+            return user_find_by_id($existing['id']);
+        }
         return $existing;
     }
 
     $id = make_uuid();
-    try {
-        $stmt = db()->prepare(
-            "INSERT INTO users (id, subject_id, name, email, password_hash, role, status, approved_at, is_master_admin_shadow)
-             VALUES (?, ?, ?, ?, ?, 'admin', 'approved', NOW(), 1)"
-        );
-        // Random, never-used password hash — this row is never logged
-        // into directly; access always goes through the master_admins
-        // credential check in api/login.php.
-        $stmt->execute([$id, $subjectId, $master['name'], $email, password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT)]);
-    } catch (PDOException $e) {
-        // uniq_subject_email collision — a genuine independent account
-        // already owns this email on this subject (see doc comment).
-        if ((int) $e->getCode() === 23000 || str_contains($e->getMessage(), 'Duplicate entry')) {
-            return null;
-        }
-        throw $e;
-    }
+    $stmt = db()->prepare(
+        "INSERT INTO users (id, subject_id, name, email, password_hash, role, status, approved_at, is_master_admin_shadow)
+         VALUES (?, ?, ?, ?, ?, 'admin', 'approved', NOW(), 1)"
+    );
+    // Random, never-used password hash — this row is never logged into
+    // directly; access always goes through the master_admins credential
+    // check in api/login.php.
+    $stmt->execute([$id, $subjectId, $master['name'], $email, password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT)]);
     return user_find_by_id($id);
 }

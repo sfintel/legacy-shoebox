@@ -12,6 +12,25 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [2.0.1] — 2026-09-14
+
+### Fixed
+
+- Master admin login appeared to succeed, then immediately bounced back
+  to the login page whenever the master admin's email already matched
+  an existing real admin account on that subject (a very common case —
+  the site owner's own email tends to be both). `master_admin_ensure_shadow_user()`
+  was deliberately refusing to touch that existing (non-shadow) row to
+  avoid "hijacking" someone else's account, silently returning null
+  instead — but only someone with server/CLI access can create a
+  `master_admins` row at all (`create_master_admin.php` is CLI-only),
+  so there's no real privilege-escalation risk in treating a same-email
+  match as "this is them." Now resolves to that existing row directly
+  (promoting it to an active admin if it wasn't already, rather than
+  refusing), instead of only ever accepting a row it created itself.
+
 ### Added
 
 - `add_subject_host.sh` — scripts the repeatable part of adding a new
