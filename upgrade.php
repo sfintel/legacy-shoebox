@@ -73,7 +73,7 @@ if ($targetVersion === '') {
 }
 
 $pdo = db();
-upgrade_ensure_tracking_column($pdo);
+upgrade_ensure_schema_meta_table($pdo);
 $currentVersion = upgrade_current_version($pdo);
 
 echo "Currently at: $currentVersion\n";
