@@ -31,6 +31,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.0.4' => [
+            'description' => 'create_master_admin.php now also refuses an email already used by a regular per-subject account (not just an existing master admin) — prompted by two accidentally-overlapping master admins created on production after the 2.0.1 login bug made the first one look like it hadn\'t worked',
+            'db' => null,
+            'env' => [],
+        ],
         '2.0.3' => [
             'description' => 'Backfill missing tracking entries for 2.0.1 and 2.0.2 — both shipped with no migrations.php entry at all (no DB change, so it seemed unnecessary), but every entry in this file — even a no-op \'db\' => null one — is what actually advances the tracked schema_version; skipping it left the tracker permanently stuck reporting "2.0.0" through both releases',
             'db' => null,

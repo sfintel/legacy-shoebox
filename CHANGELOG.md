@@ -14,6 +14,20 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.0.4] — 2026-09-14
+
+### Added
+
+- `create_master_admin.php` now also refuses an email already used by a
+  regular per-subject account (not just an existing master admin),
+  naming which subject(s) already use it. Prompted by two accidentally-
+  overlapping master admin accounts on production: the first
+  (`sfintel@fintelfamily.com`, matching an existing regular admin) was
+  created successfully, but the 2.0.1 login bug made it *look* like the
+  whole process had failed, so a second one (`sfintel@gmail.com`) was
+  created instead of just re-trying the same email — leaving two valid
+  master admins where only one was intended.
+
 ## [2.0.3] — 2026-09-14
 
 ### Fixed

@@ -36,6 +36,12 @@ if (master_admin_find_by_email($email)) {
     fwrite(STDERR, "A master admin with that email already exists.\n");
     exit(1);
 }
+$existingUsers = user_find_all_by_email_across_subjects($email);
+if ($existingUsers) {
+    $subjects = implode(', ', array_column($existingUsers, 'slug'));
+    fwrite(STDERR, "That email is already used by a regular account on: $subjects. Master admin emails must be distinct from every subject's own accounts — pick a different email.\n");
+    exit(1);
+}
 
 $password = prompt('Password (min 8 characters): ');
 if (strlen($password) < 8) {

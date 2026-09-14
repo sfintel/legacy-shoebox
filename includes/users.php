@@ -99,6 +99,23 @@ function user_create_pending(string $name, string $email, string $password, ?str
     return user_find_by_id($id);
 }
 
+// Cross-subject, deliberately unscoped — used only by
+// create_master_admin.php, which is inherently an install-wide
+// operation (a master admin's email must be distinct from every
+// subject's own accounts, not just the current one). Every other
+// caller of user_find_by_email() in this app stays properly
+// subject-scoped; this is the one deliberate exception.
+function user_find_all_by_email_across_subjects(string $email): array
+{
+    $stmt = db()->prepare(
+        'SELECT u.id, u.email, s.slug, s.hostname
+         FROM users u JOIN subjects s ON s.id = u.subject_id
+         WHERE u.email = ?'
+    );
+    $stmt->execute([strtolower(trim($email))]);
+    return $stmt->fetchAll();
+}
+
 // Called from auth_login() (includes/auth.php) — the single choke point
 // every successful login already goes through, password or otherwise —
 // so every login method records this the same way with no extra
