@@ -31,6 +31,21 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.0.3' => [
+            'description' => 'Backfill missing tracking entries for 2.0.1 and 2.0.2 — both shipped with no migrations.php entry at all (no DB change, so it seemed unnecessary), but every entry in this file — even a no-op \'db\' => null one — is what actually advances the tracked schema_version; skipping it left the tracker permanently stuck reporting "2.0.0" through both releases',
+            'db' => null,
+            'env' => [],
+        ],
+        '2.0.2' => [
+            'description' => 'A logged-in master admin now sees a "Master admin" link in the main app\'s Admin dropdown and every admin_*.php page\'s nav bar; /admin.php labels a row "master admin" by live email match, not just the is_master_admin_shadow flag',
+            'db' => null,
+            'env' => [],
+        ],
+        '2.0.1' => [
+            'description' => 'Fix master admin login bouncing back to login.php whenever the master admin\'s email already matched an existing real admin account on that subject — master_admin_ensure_shadow_user() now resolves to that row directly (promoting it to an active admin if needed) instead of refusing to touch it',
+            'db' => null,
+            'env' => [],
+        ],
         '2.0.0' => [
             'description' => 'Multi-subject support: one installation/database can now host several independent subjects (e.g. one family archive per relative), each resolved by hostname, with its own logins, testimony, upload directory (ARCHIVE_ROOT_BASE/{slug}), and optional AI connection. New subjects/schema_meta/master_admins tables; every per-subject table gains a subject_id column; users/redacted_names/audience_modes/people/places/keywords unique keys become subject-scoped; site_settings/primary_testimony/discrepancy_notes convert from a fixed id=1 singleton to one row per subject. This install\'s existing single-tenant data becomes "subject #1" automatically — zero data loss, zero re-entry — but see the environment notes below for two manual steps this migration cannot safely do for you.',
             'db' => static function (PDO $pdo): void {

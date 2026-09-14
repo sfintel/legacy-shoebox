@@ -14,6 +14,20 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.0.3] — 2026-09-14
+
+### Fixed
+
+- Backfilled missing `includes/migrations.php` tracking entries for
+  2.0.1 and 2.0.2 — both shipped with no entry at all (no DB change, so
+  it seemed unnecessary), but every entry in that file, even a no-op
+  `'db' => null` one, is what actually advances `upgrade.php`'s tracked
+  schema version. Skipping it left the tracker permanently stuck
+  reporting "2.0.0" through both releases (harmless so far — nothing
+  was actually missed, since neither release had a real migration — but
+  would have caused real confusion, and risked masking a genuinely
+  skipped step, on a future release that does).
+
 ## [2.0.2] — 2026-09-14
 
 ### Added
