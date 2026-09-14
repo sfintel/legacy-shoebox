@@ -13,4 +13,5 @@ json_response([
     'role' => $user['role'],
     'canAddContent' => user_can_add_content($user),
     'audienceMode' => $user['default_audience_mode'],
+    'isMasterAdmin' => is_master_admin_session(),
 ]);

@@ -124,6 +124,16 @@ function require_admin_api(): array
     return $user;
 }
 
+// True when the CURRENT session is logged in as a master admin —
+// independent of current_user()'s per-subject shadow-user resolution,
+// for UI code (nav links) that needs to know "is this person a master
+// admin," not just "what subject-scoped identity do they have here."
+function is_master_admin_session(): bool
+{
+    auth_start_session();
+    return !empty($_SESSION['master_admin_id']);
+}
+
 // For master_admin.php only — independent of current_subject(), since
 // the cross-subject dashboard itself needs no resolved subject to list
 // every subject that exists.

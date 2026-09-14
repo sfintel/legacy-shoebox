@@ -62,10 +62,13 @@
         const reasonNote = u.signupReason
           ? `<div class="signup-reason" title="${esc(u.signupReason)}">${esc(u.signupReason)}</div>`
           : "";
+        const masterNote = u.isMasterAdmin
+          ? '<div class="signup-reason" style="font-style:normal;">master admin</div>'
+          : "";
         return `<tr>
           <td>${esc(u.name)}${reasonNote}</td>
           <td>${esc(u.email)}</td>
-          <td>${esc(u.role)}</td>
+          <td>${esc(u.role)}${masterNote}</td>
           <td>${esc(u.audienceModeLabel || u.audienceMode || "—")}</td>
           <td><span class="status-badge status-${esc(u.status)}">${esc(u.status)}</span>${u.isLockedOut ? ' <span class="status-badge status-rejected">locked out</span>' : ""}</td>
           <td>${esc(fmtDate(u.createdAt))}</td>

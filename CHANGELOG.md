@@ -14,6 +14,19 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.0.2] — 2026-09-14
+
+### Added
+
+- A logged-in master admin now sees a "Master admin" link in both the
+  main app's Admin dropdown and every `admin_*.php` page's nav bar
+  (previously reachable only by typing `/master_admin.php` directly).
+- `/admin.php`'s user list now labels a row "master admin" whenever
+  that row's email matches a master admin — whether it's a
+  freshly-provisioned shadow account or (the common case) a
+  pre-existing real admin account that happens to share the master
+  admin's email.
+
 ## [2.0.1] — 2026-09-14
 
 ### Fixed

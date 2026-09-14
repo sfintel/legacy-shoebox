@@ -7,12 +7,14 @@ $admin = require_admin_api();
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
-    $users = array_map(static function (array $u): array {
+    $masterAdminEmails = master_admin_emails();
+    $users = array_map(static function (array $u) use ($masterAdminEmails): array {
         return [
             'id' => $u['id'],
             'name' => $u['name'],
             'email' => $u['email'],
             'role' => $u['role'],
+            'isMasterAdmin' => in_array(strtolower($u['email']), $masterAdminEmails, true),
             'canAddContent' => user_can_add_content($u),
             'audienceMode' => $u['default_audience_mode'],
             'audienceModeLabel' => audience_mode_label($u['default_audience_mode']),

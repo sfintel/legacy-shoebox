@@ -29,6 +29,21 @@ function master_admin_record_login(string $id): void
     db()->prepare('UPDATE master_admins SET last_login_at = NOW() WHERE id = ?')->execute([$id]);
 }
 
+// Lowercased set of every master admin's email — used to label a
+// users row as "master admin" in the admin UI by live email match
+// (not just the is_master_admin_shadow flag, which is only set on a
+// freshly-created row — a master admin's login just as often resolves
+// to a pre-existing real admin account that happens to share their
+// email, and that should be labeled too).
+function master_admin_emails(): array
+{
+    static $emails = null;
+    if ($emails === null) {
+        $emails = array_map('strtolower', db()->query('SELECT email FROM master_admins')->fetchAll(PDO::FETCH_COLUMN));
+    }
+    return $emails;
+}
+
 // Finds (or lazily creates) the users row backing this master admin's
 // access to $subjectId. Any existing row for this email on this
 // subject — shadow-flagged or not — IS the master admin logging in:

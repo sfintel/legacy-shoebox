@@ -11,6 +11,10 @@
       const menu = document.getElementById("adminMenu");
       if (menu) menu.style.display = "";
     }
+    if (d.isMasterAdmin) {
+      const masterAdminLink = document.getElementById("masterAdminLink");
+      if (masterAdminLink) masterAdminLink.style.display = "";
+    }
     if (d.role === "admin" || d.canAddContent) {
       const contentLink = document.getElementById("contentLink");
       if (contentLink) contentLink.style.display = "inline-block";

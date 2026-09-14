@@ -43,6 +43,7 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
             <a role="menuitem" href="/admin_settings.php">Settings</a>
             <a role="menuitem" href="/admin_redactions.php">Redactions</a>
             <a role="menuitem" href="/admin_backup.php">Backup</a>
+            <a role="menuitem" href="/master_admin.php" id="masterAdminLink" style="display:none;">Master admin</a>
           </div>
         </div>
       </div>

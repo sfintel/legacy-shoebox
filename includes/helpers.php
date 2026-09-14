@@ -217,6 +217,9 @@ function admin_nav_html(string $current): string
         $id = $key !== 'content' ? ' id="' . $key . 'Link"' : '';
         $out .= '<a' . $id . ' class="' . $class . '" href="' . h($href) . '" style="text-decoration:none; display:inline-block;"' . $aria . '>' . h($label) . "</a>\n";
     }
+    if (is_master_admin_session()) {
+        $out .= '<a class="ghost-btn" href="/master_admin.php" style="text-decoration:none; display:inline-block;">Master admin</a>' . "\n";
+    }
     $out .= '<a class="ghost-btn" href="/" style="text-decoration:none; display:inline-block;">Back to app</a>' . "\n";
     $out .= '<button id="logoutBtn" class="ghost-btn">Sign out</button>' . "\n";
     $out .= '</div>';
