@@ -12,7 +12,14 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- `add_subject_host.sh` — scripts the repeatable part of adding a new
+  subject's hostname to a multi-subject install (symlink-mirroring a
+  cPanel-created docroot onto an existing webroot, since cPanel refuses
+  to let a new subdomain reuse an existing document root). Prints the
+  manual cPanel/DNS steps it can't do for you, and the next-steps once
+  it's done. See the script's own header comment for full usage.
 
 ## [2.0.0] — 2026-09-14
 
