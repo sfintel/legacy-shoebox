@@ -20,9 +20,184 @@ declare(strict_types=1);
 // can't safely rewrite .env itself (it holds real secrets and the
 // script has no way to know what value belongs on a new line), so it
 // just prints these at the end for the admin to apply by hand.
+//
+// Multi-subject note (added at 2.0.0, see that step below): every table
+// added there gains a subject_id column. A future migration step's data
+// backfill (e.g. reassigning sort_order for rows still at its column
+// default) MUST partition its logic by subject_id — blending every
+// subject's rows into one global ordering/computation would visibly
+// scramble every subject except the one the migration's author happened
+// to be looking at while writing it.
 function migrations_steps(): array
 {
     return [
+        '2.0.0' => [
+            'description' => 'Multi-subject support: one installation/database can now host several independent subjects (e.g. one family archive per relative), each resolved by hostname, with its own logins, testimony, upload directory (ARCHIVE_ROOT_BASE/{slug}), and optional AI connection. New subjects/schema_meta/master_admins tables; every per-subject table gains a subject_id column; users/redacted_names/audience_modes/people/places/keywords unique keys become subject-scoped; site_settings/primary_testimony/discrepancy_notes convert from a fixed id=1 singleton to one row per subject. This install\'s existing single-tenant data becomes "subject #1" automatically — zero data loss, zero re-entry — but see the environment notes below for two manual steps this migration cannot safely do for you.',
+            'db' => static function (PDO $pdo): void {
+                // --- New tables ---
+                $pdo->exec("CREATE TABLE IF NOT EXISTS subjects (
+                    id             CHAR(36)     NOT NULL PRIMARY KEY,
+                    slug           VARCHAR(64)  NOT NULL,
+                    hostname       VARCHAR(255) NOT NULL,
+                    display_name   VARCHAR(255) NOT NULL DEFAULT '',
+                    status         ENUM('active','disabled') NOT NULL DEFAULT 'active',
+                    ai_provider    VARCHAR(20)  NULL,
+                    ai_api_key     VARCHAR(255) NULL,
+                    ai_base_url    VARCHAR(255) NULL,
+                    ai_model       VARCHAR(100) NULL,
+                    ai_temperature VARCHAR(10)  NULL,
+                    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_hostname (hostname),
+                    UNIQUE KEY uniq_slug (slug)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+                $pdo->exec("CREATE TABLE IF NOT EXISTS master_admins (
+                    id            CHAR(36)     NOT NULL PRIMARY KEY,
+                    name          VARCHAR(255) NOT NULL,
+                    email         VARCHAR(255) NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    last_login_at DATETIME     NULL,
+                    UNIQUE KEY uniq_email (email)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+                // --- Backfill exactly one subjects row from this install's
+                // existing single-tenant data, if none exists yet ---
+                $subjectId = $pdo->query('SELECT id FROM subjects ORDER BY created_at ASC LIMIT 1')->fetchColumn();
+                if ($subjectId === false) {
+                    $appUrl = (string) env('APP_URL', '');
+                    $host = strtolower((string) (parse_url($appUrl, PHP_URL_HOST) ?: 'localhost'));
+                    $slugBase = strtolower((string) preg_replace('/[^a-z0-9]+/i', '-', explode('.', $host)[0] ?? $host));
+                    $slugBase = trim($slugBase, '-') ?: 'default';
+                    $slug = $slugBase;
+                    $suffix = 1;
+                    $slugCheck = $pdo->prepare('SELECT COUNT(*) FROM subjects WHERE slug = ?');
+                    $slugCheck->execute([$slug]);
+                    while ((int) $slugCheck->fetchColumn() > 0) {
+                        $suffix++;
+                        $slug = $slugBase . '-' . $suffix;
+                        $slugCheck->execute([$slug]);
+                    }
+                    $subjectId = make_uuid();
+                    $pdo->prepare('INSERT INTO subjects (id, slug, hostname, display_name) VALUES (?, ?, ?, ?)')
+                        ->execute([$subjectId, $slug, $host, $host]);
+                }
+
+                // --- subject_id on every per-subject content/account table ---
+                $subjectScopedTables = [
+                    'content_items', 'content_files', 'content_suggestions', 'content_links',
+                    'redacted_names', 'sources', 'audience_modes', 'people', 'places',
+                    'timeline_entries', 'quotes', 'keywords', 'users',
+                ];
+                foreach ($subjectScopedTables as $table) {
+                    $hasCol = (int) $pdo->query(
+                        "SELECT COUNT(*) FROM information_schema.columns
+                         WHERE table_schema = DATABASE() AND table_name = '$table' AND column_name = 'subject_id'"
+                    )->fetchColumn();
+                    if ($hasCol === 0) {
+                        $pdo->exec("ALTER TABLE $table ADD COLUMN subject_id CHAR(36) NULL AFTER id");
+                        $pdo->prepare("UPDATE $table SET subject_id = ? WHERE subject_id IS NULL")->execute([$subjectId]);
+                        $pdo->exec("ALTER TABLE $table MODIFY COLUMN subject_id CHAR(36) NOT NULL");
+                    }
+                    $hasIndex = (int) $pdo->query(
+                        "SELECT COUNT(*) FROM information_schema.statistics
+                         WHERE table_schema = DATABASE() AND table_name = '$table' AND index_name = 'idx_subject'"
+                    )->fetchColumn();
+                    if ($hasIndex === 0) {
+                        $pdo->exec("ALTER TABLE $table ADD KEY idx_subject (subject_id)");
+                    }
+                    $hasFk = (int) $pdo->query(
+                        "SELECT COUNT(*) FROM information_schema.table_constraints
+                         WHERE table_schema = DATABASE() AND table_name = '$table' AND constraint_name = 'fk_{$table}_subject'"
+                    )->fetchColumn();
+                    if ($hasFk === 0) {
+                        $pdo->exec("ALTER TABLE $table ADD CONSTRAINT fk_{$table}_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE");
+                    }
+                }
+
+                // users gains the master-admin shadow-account marker (see
+                // includes/master_admin.php) alongside its subject_id above.
+                $hasShadowCol = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'is_master_admin_shadow'"
+                )->fetchColumn();
+                if ($hasShadowCol === 0) {
+                    $pdo->exec("ALTER TABLE users ADD COLUMN is_master_admin_shadow TINYINT(1) NOT NULL DEFAULT 0 AFTER signup_reason");
+                }
+
+                // --- Unique keys that must become subject-scoped ---
+                $uniqueKeyRenames = [
+                    'users' => ['uniq_email', 'uniq_subject_email', 'email'],
+                    'redacted_names' => ['uniq_name', 'uniq_subject_name', 'name'],
+                    'audience_modes' => ['uniq_slug', 'uniq_subject_slug', 'slug'],
+                    'people' => ['uniq_slug', 'uniq_subject_slug', 'slug'],
+                    'places' => ['uniq_slug', 'uniq_subject_slug', 'slug'],
+                    'keywords' => ['uniq_label', 'uniq_subject_label', 'label'],
+                ];
+                foreach ($uniqueKeyRenames as $table => [$oldKey, $newKey, $column]) {
+                    $hasOld = (int) $pdo->query(
+                        "SELECT COUNT(*) FROM information_schema.statistics
+                         WHERE table_schema = DATABASE() AND table_name = '$table' AND index_name = '$oldKey'"
+                    )->fetchColumn();
+                    if ($hasOld > 0) {
+                        $pdo->exec("ALTER TABLE $table DROP INDEX $oldKey");
+                    }
+                    $hasNew = (int) $pdo->query(
+                        "SELECT COUNT(*) FROM information_schema.statistics
+                         WHERE table_schema = DATABASE() AND table_name = '$table' AND index_name = '$newKey'"
+                    )->fetchColumn();
+                    if ($hasNew === 0) {
+                        $pdo->exec("ALTER TABLE $table ADD UNIQUE KEY $newKey (subject_id, $column)");
+                    }
+                }
+
+                // --- Singleton tables: id=1 -> one row per subject (subject_id as PK) ---
+                foreach (['site_settings', 'primary_testimony', 'discrepancy_notes'] as $table) {
+                    $hasSubjectCol = (int) $pdo->query(
+                        "SELECT COUNT(*) FROM information_schema.columns
+                         WHERE table_schema = DATABASE() AND table_name = '$table' AND column_name = 'subject_id'"
+                    )->fetchColumn();
+                    if ($hasSubjectCol === 0) {
+                        $pdo->exec("ALTER TABLE $table ADD COLUMN subject_id CHAR(36) NULL AFTER id");
+                        $pdo->prepare("UPDATE $table SET subject_id = ? WHERE id = 1")->execute([$subjectId]);
+                    }
+                    $hasIdCol = (int) $pdo->query(
+                        "SELECT COUNT(*) FROM information_schema.columns
+                         WHERE table_schema = DATABASE() AND table_name = '$table' AND column_name = 'id'"
+                    )->fetchColumn();
+                    if ($hasIdCol > 0) {
+                        $pdo->exec("ALTER TABLE $table MODIFY COLUMN subject_id CHAR(36) NOT NULL");
+                        $pdo->exec("ALTER TABLE $table DROP PRIMARY KEY, ADD PRIMARY KEY (subject_id)");
+                        $pdo->exec("ALTER TABLE $table DROP COLUMN id");
+                    }
+                    $hasFk = (int) $pdo->query(
+                        "SELECT COUNT(*) FROM information_schema.table_constraints
+                         WHERE table_schema = DATABASE() AND table_name = '$table' AND constraint_name = 'fk_{$table}_subject'"
+                    )->fetchColumn();
+                    if ($hasFk === 0) {
+                        $pdo->exec("ALTER TABLE $table ADD CONSTRAINT fk_{$table}_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE");
+                    }
+                }
+
+                // site_settings.schema_version is now redundant — version
+                // tracking moved to its own install-wide schema_meta table
+                // (see upgrade.php's upgrade_ensure_schema_meta_table(),
+                // which already carried this column's value over before
+                // this step ever runs).
+                $hasSchemaVersionCol = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'site_settings' AND column_name = 'schema_version'"
+                )->fetchColumn();
+                if ($hasSchemaVersionCol > 0) {
+                    $pdo->exec('ALTER TABLE site_settings DROP COLUMN schema_version');
+                }
+            },
+            'env' => [
+                'ARCHIVE_ROOT replaced by ARCHIVE_ROOT_BASE — the parent directory holding EVERY subject\'s uploads/backups; each subject\'s own root is now computed automatically as ARCHIVE_ROOT_BASE/{slug}. Your existing uploads must be MOVED by hand: find your new subject\'s slug (SELECT slug FROM subjects), then move your current ARCHIVE_ROOT\'s contents into <ARCHIVE_ROOT_BASE>/<slug>/, add ARCHIVE_ROOT_BASE=<parent dir> to .env, and remove the old ARCHIVE_ROOT line. Do this before anyone uses the site again — until you do, uploaded files will appear missing.',
+                'SUBJECT_SETUP_SECRET is required before a second subject can be added on a new hostname (a brand-new install\'s wizard generates this automatically; an install upgrading from an earlier version must add it by hand — e.g. `openssl rand -hex 24`).',
+                'Verify the auto-derived hostname/slug for your existing subject (SELECT hostname, slug FROM subjects) matches this site\'s real public hostname — a wrong guess makes the site unreachable at its real hostname until corrected by direct SQL (UPDATE subjects SET hostname = \'your-real-hostname\' WHERE id = \'...\').',
+            ],
+        ],
         '1.37.0' => [
             'description' => 'signup.php now has an optional "Why are you requesting access?" text field — included verbatim (control characters stripped, HTML-escaped at render time) in the admin approval-request email and shown on /admin.php. users gains a signup_reason TEXT column',
             'db' => static function (PDO $pdo): void {

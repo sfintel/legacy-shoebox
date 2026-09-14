@@ -22,8 +22,9 @@ declare(strict_types=1);
 
 function keywords_all(): array
 {
-    $rows = db()->query('SELECT id, label FROM keywords ORDER BY label ASC')->fetchAll();
-    return array_map(static fn (array $r) => ['id' => $r['id'], 'label' => $r['label']], $rows);
+    $stmt = db()->prepare('SELECT id, label FROM keywords WHERE subject_id = ? ORDER BY label ASC');
+    $stmt->execute([current_subject_id()]);
+    return array_map(static fn (array $r) => ['id' => $r['id'], 'label' => $r['label']], $stmt->fetchAll());
 }
 
 // Adds any of $labels not already in the master list. Silently ignores
@@ -39,9 +40,10 @@ function keywords_ensure(array $labels): void
     if (!$labels) {
         return;
     }
-    $stmt = db()->prepare('INSERT IGNORE INTO keywords (id, label) VALUES (?, ?)');
+    $subjectId = current_subject_id();
+    $stmt = db()->prepare('INSERT IGNORE INTO keywords (id, subject_id, label) VALUES (?, ?, ?)');
     foreach ($labels as $label) {
-        $stmt->execute([make_uuid(), $label]);
+        $stmt->execute([make_uuid(), $subjectId, $label]);
     }
 }
 
@@ -51,12 +53,13 @@ function keywords_create(string $label): array
     if ($label === '') {
         throw new RuntimeException('Keyword text is required.');
     }
-    $existing = db()->prepare('SELECT id FROM keywords WHERE label = ?');
-    $existing->execute([$label]);
+    $subjectId = current_subject_id();
+    $existing = db()->prepare('SELECT id FROM keywords WHERE subject_id = ? AND label = ?');
+    $existing->execute([$subjectId, $label]);
     $id = $existing->fetchColumn();
     if (!$id) {
         $id = make_uuid();
-        db()->prepare('INSERT INTO keywords (id, label) VALUES (?, ?)')->execute([$id, $label]);
+        db()->prepare('INSERT INTO keywords (id, subject_id, label) VALUES (?, ?, ?)')->execute([$id, $subjectId, $label]);
     }
     return ['id' => $id, 'label' => $label];
 }
@@ -66,13 +69,17 @@ function keywords_create(string $label): array
 // rather than a MySQL JSON_* function — this codebase treats JSON
 // columns as opaque to SQL everywhere else (see e.g. content_public()),
 // which also sidesteps any doubt about JSON function availability
-// across MySQL/MariaDB versions on shared hosting.
+// across MySQL/MariaDB versions on shared hosting. Scoped to the
+// current subject — an unscoped sweep here would rewrite every OTHER
+// subject's tags too.
 function keywords_cascade_rename(string $oldLabel, string $newLabel): void
 {
+    $subjectId = current_subject_id();
     foreach (['content_items', 'quotes'] as $table) {
-        $rows = db()->query("SELECT id, tags FROM $table WHERE tags IS NOT NULL AND tags != '[]'")->fetchAll();
-        $stmt = db()->prepare("UPDATE $table SET tags = ? WHERE id = ?");
-        foreach ($rows as $row) {
+        $rows = db()->prepare("SELECT id, tags FROM $table WHERE subject_id = ? AND tags IS NOT NULL AND tags != '[]'");
+        $rows->execute([$subjectId]);
+        $stmt = db()->prepare("UPDATE $table SET tags = ? WHERE id = ? AND subject_id = ?");
+        foreach ($rows->fetchAll() as $row) {
             $tags = json_decode((string) $row['tags'], true) ?: [];
             if (!in_array($oldLabel, $tags, true)) {
                 continue;
@@ -81,7 +88,7 @@ function keywords_cascade_rename(string $oldLabel, string $newLabel): void
                 static fn ($t) => $t === $oldLabel ? $newLabel : $t,
                 $tags
             )));
-            $stmt->execute([json_encode($tags, JSON_UNESCAPED_UNICODE), $row['id']]);
+            $stmt->execute([json_encode($tags, JSON_UNESCAPED_UNICODE), $row['id'], $subjectId]);
         }
     }
 }
@@ -97,8 +104,9 @@ function keywords_rename(string $id, string $newLabel): array
     if ($newLabel === '') {
         throw new RuntimeException('Keyword text is required.');
     }
-    $stmt = db()->prepare('SELECT id, label FROM keywords WHERE id = ?');
-    $stmt->execute([$id]);
+    $subjectId = current_subject_id();
+    $stmt = db()->prepare('SELECT id, label FROM keywords WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, $subjectId]);
     $current = $stmt->fetch();
     if (!$current) {
         throw new RuntimeException('Keyword not found.');
@@ -113,18 +121,18 @@ function keywords_rename(string $id, string $newLabel): array
     // cascade to that row's own actual label, not the freshly typed
     // string, so the surviving keyword's casing doesn't silently change
     // as a side effect of how this particular rename happened to be typed.
-    $collision = db()->prepare('SELECT id, label FROM keywords WHERE label = ? AND id != ?');
-    $collision->execute([$newLabel, $id]);
+    $collision = db()->prepare('SELECT id, label FROM keywords WHERE subject_id = ? AND label = ? AND id != ?');
+    $collision->execute([$subjectId, $newLabel, $id]);
     $collisionRow = $collision->fetch();
     $targetLabel = $collisionRow ? $collisionRow['label'] : $newLabel;
 
     keywords_cascade_rename($current['label'], $targetLabel);
 
     if ($collisionRow) {
-        db()->prepare('DELETE FROM keywords WHERE id = ?')->execute([$id]);
+        db()->prepare('DELETE FROM keywords WHERE id = ? AND subject_id = ?')->execute([$id, $subjectId]);
         return ['id' => (string) $collisionRow['id'], 'label' => $targetLabel];
     }
-    db()->prepare('UPDATE keywords SET label = ? WHERE id = ?')->execute([$newLabel, $id]);
+    db()->prepare('UPDATE keywords SET label = ? WHERE id = ? AND subject_id = ?')->execute([$newLabel, $id, $subjectId]);
     return ['id' => $id, 'label' => $newLabel];
 }
 
@@ -134,7 +142,7 @@ function keywords_rename(string $id, string $newLabel): array
 // elsewhere in this app). It just stops being suggested going forward.
 function keywords_delete(string $id): bool
 {
-    $stmt = db()->prepare('DELETE FROM keywords WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('DELETE FROM keywords WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     return $stmt->rowCount() > 0;
 }

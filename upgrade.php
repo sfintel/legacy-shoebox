@@ -13,35 +13,57 @@ if (PHP_SAPI !== 'cli') {
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/includes/migrations.php';
 
-// The tracking column has to exist before ANY version can be recorded
-// as applied — including versions before the one that nominally "adds"
-// it in migrations.php (e.g. 1.1.0 needs to be markable as done before
-// the runner ever reaches the 1.2.0 step that owns that column in the
+// The tracking table has to exist before ANY version can be recorded as
+// applied — including versions before the one that nominally "adds" it
+// in migrations.php (e.g. 1.1.0 needs to be markable as done before the
+// runner ever reaches the 2.0.0 step that owns this table in the
 // changelog). So the runner bootstraps it unconditionally up front,
 // rather than treating it as just another step in the loop below.
-function upgrade_ensure_tracking_column(PDO $pdo): void
+//
+// Before 2.0.0, the version lived on site_settings.schema_version — a
+// single row, back when site_settings itself was a single-row table.
+// Once site_settings became one row PER SUBJECT (multi-subject support,
+// see sql/schema.sql), there's no longer one row to hold an install-
+// wide version, so tracking moved to its own dedicated schema_meta
+// table. This one-time carry-over copies whatever version was already
+// recorded there (if any) so an existing install's upgrade history
+// isn't lost.
+function upgrade_ensure_schema_meta_table(PDO $pdo): void
 {
-    $exists = $pdo->query(
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS schema_meta (
+            id TINYINT UNSIGNED NOT NULL PRIMARY KEY DEFAULT 1,
+            schema_version VARCHAR(20) NOT NULL DEFAULT '1.0.0'
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+    $hasRow = (int) $pdo->query('SELECT COUNT(*) FROM schema_meta')->fetchColumn();
+    if ($hasRow > 0) {
+        return;
+    }
+    $carriedOver = null;
+    $hasOldColumn = (int) $pdo->query(
         "SELECT COUNT(*) FROM information_schema.columns
          WHERE table_schema = DATABASE() AND table_name = 'site_settings' AND column_name = 'schema_version'"
     )->fetchColumn();
-    if ((int) $exists === 0) {
-        // DEFAULT '1.0.0' backfills the existing row automatically —
-        // any database reaching this line predates version tracking
-        // entirely, i.e. it's genuinely at the 1.0.0 baseline.
-        $pdo->exec("ALTER TABLE site_settings ADD COLUMN schema_version VARCHAR(20) NOT NULL DEFAULT '1.0.0' AFTER setup_completed_at");
+    if ($hasOldColumn > 0) {
+        // Pre-2.0.0 site_settings was still a single row (id = 1) at
+        // this point — the 2.0.0 step itself is what later converts it
+        // to one-row-per-subject and drops this column.
+        $carriedOver = $pdo->query('SELECT schema_version FROM site_settings WHERE id = 1')->fetchColumn() ?: null;
     }
+    $pdo->prepare('INSERT INTO schema_meta (id, schema_version) VALUES (1, ?)')
+        ->execute([$carriedOver ?? '1.0.0']);
 }
 
 function upgrade_current_version(PDO $pdo): string
 {
-    $version = $pdo->query('SELECT schema_version FROM site_settings WHERE id = 1')->fetchColumn();
+    $version = $pdo->query('SELECT schema_version FROM schema_meta WHERE id = 1')->fetchColumn();
     return $version !== false && $version !== null ? (string) $version : '1.0.0';
 }
 
 function upgrade_set_version(PDO $pdo, string $version): void
 {
-    $pdo->prepare('UPDATE site_settings SET schema_version = ? WHERE id = 1')->execute([$version]);
+    $pdo->prepare('UPDATE schema_meta SET schema_version = ? WHERE id = 1')->execute([$version]);
 }
 
 $targetVersion = trim((string) file_get_contents(__DIR__ . '/VERSION'));

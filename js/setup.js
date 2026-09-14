@@ -33,6 +33,10 @@
     });
   }
 
+  wireForm("newSubjectForm", "newSubjectError", "newSubjectSubmitBtn", () => ({
+    secret: document.getElementById("subjectSecret").value,
+  }), "/api/setup/authorize_subject.php");
+
   wireForm("dbForm", "dbError", "dbSubmitBtn", () => ({
     db_host: document.getElementById("dbHost").value,
     db_port: document.getElementById("dbPort").value,
@@ -100,7 +104,6 @@
     ai_api_key: document.getElementById("aiApiKey").value,
     ai_base_url: document.getElementById("aiBaseUrl").value,
     ai_model: document.getElementById("aiModel").value,
-    archive_root: document.getElementById("archiveRootInput").value,
   }), "/api/setup/admin.php");
 
   wireForm("advancedForm", "advancedError", "advancedSubmitBtn", () => ({

@@ -20,16 +20,35 @@ function auth_start_session(): void
 
 // Returns the current approved user's row, or null. Re-checks status on
 // every call (not just at login) so a revoked account is locked out on
-// its very next request, not just its next login.
+// its very next request, not just its next login. A logged-in master
+// admin (see includes/master_admin.php) resolves here to a real,
+// ordinary per-subject users row for whichever subject the current
+// request belongs to — every caller of current_user() needs no
+// awareness that master admins exist at all.
 function current_user(): ?array
 {
     auth_start_session();
+    if (!empty($_SESSION['master_admin_id'])) {
+        $master = master_admin_find_by_id($_SESSION['master_admin_id']);
+        $subjectId = current_subject_id();
+        if (!$master || $subjectId === null) {
+            return null;
+        }
+        return master_admin_ensure_shadow_user($master, $subjectId);
+    }
     $id = $_SESSION['user_id'] ?? null;
     if (!$id) {
         return null;
     }
     $user = user_find_by_id($id);
     if (!$user || $user['status'] !== 'approved') {
+        return null;
+    }
+    // Defense-in-depth: subdomain-scoped session cookies already
+    // prevent a session from one subject being presented on another's
+    // hostname in practice, but this makes it impossible regardless of
+    // cookie-scope misconfiguration.
+    if ($user['subject_id'] !== current_subject_id()) {
         return null;
     }
     return $user;
@@ -39,8 +58,18 @@ function auth_login(array $user): void
 {
     auth_start_session();
     session_regenerate_id(true);
+    unset($_SESSION['master_admin_id']);
     $_SESSION['user_id'] = $user['id'];
     user_record_login($user['id']);
+}
+
+function auth_login_master(array $master): void
+{
+    auth_start_session();
+    session_regenerate_id(true);
+    unset($_SESSION['user_id']);
+    $_SESSION['master_admin_id'] = $master['id'];
+    master_admin_record_login($master['id']);
 }
 
 function auth_logout(): void
@@ -93,6 +122,21 @@ function require_admin_api(): array
         json_response(['error' => 'Admins only'], 403);
     }
     return $user;
+}
+
+// For master_admin.php only — independent of current_subject(), since
+// the cross-subject dashboard itself needs no resolved subject to list
+// every subject that exists.
+function require_master_admin_page(): array
+{
+    auth_start_session();
+    $id = $_SESSION['master_admin_id'] ?? null;
+    $master = $id ? master_admin_find_by_id($id) : null;
+    if (!$master) {
+        header('Location: /login.php');
+        exit;
+    }
+    return $master;
 }
 
 // admin and author can both add content; reader cannot. See the `role`

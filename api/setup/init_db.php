@@ -35,6 +35,10 @@ setup_write_env([
     'DB_USER' => $user,
     'DB_PASS' => $pass,
     'SESSION_SECRET' => bin2hex(random_bytes(32)),
+    // Not needed for this, the install's very first subject (see
+    // setup_new_subject_authorized()) — generated now so it's already
+    // in place, unedited, the moment a second subject is ever added.
+    'SUBJECT_SETUP_SECRET' => bin2hex(random_bytes(24)),
 ]);
 
 try {

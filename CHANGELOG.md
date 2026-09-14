@@ -14,6 +14,65 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.0.0] — 2026-09-14
+
+### Added
+
+- **Multi-subject support.** One installation (one codebase, one
+  database) can now host several independent subjects — e.g. one
+  family archive per relative — each resolved by hostname
+  (`slava.fintelfamily.com`, `dad.fintelfamily.com`, ...), with its own
+  logins, testimony/content, upload directory
+  (`ARCHIVE_ROOT_BASE/{slug}`), and optional AI provider/connection
+  (falls back to the install-wide `.env` default when unset). Creating
+  a new subject on an unrecognized hostname requires
+  `SUBJECT_SETUP_SECRET` (generated automatically for a fresh install;
+  the very first subject on an install is exempt, matching today's
+  first-run trust model).
+- **Master admin.** A separate, install-wide trusted-operator account
+  (`create_master_admin.php`, CLI-only — no HTTP-reachable way to
+  create one) can log into any subject's site with full admin rights
+  there via the same login page, and gets a cross-subject dashboard
+  (`/master_admin.php`) listing every subject. Bypasses
+  `SUBJECT_SETUP_SECRET` when creating a new subject.
+- Existing single-tenant installs upgrade seamlessly into "subject #1"
+  with zero data loss and zero required re-entry.
+
+### Database changes
+
+- New `subjects`, `schema_meta`, and `master_admins` tables.
+- `subject_id` added to every per-subject table (`content_items`,
+  `content_files`, `content_suggestions`, `content_links`,
+  `redacted_names`, `sources`, `audience_modes`, `people`, `places`,
+  `timeline_entries`, `quotes`, `keywords`, `users`), each with an FK
+  to `subjects` (`ON DELETE CASCADE`).
+- `users.uniq_email` → `uniq_subject_email (subject_id, email)`
+  (same email can now be an independent account on two different
+  subjects); equivalent subject-scoping fix for
+  `redacted_names`/`audience_modes`/`people`/`places`/`keywords`'
+  unique keys.
+- `site_settings`/`primary_testimony`/`discrepancy_notes` convert from
+  a fixed `id = 1` singleton to one row per subject
+  (`subject_id` as the primary key); `site_settings.schema_version`
+  removed (tracking moved to the new install-wide `schema_meta` table).
+- `users` gains `is_master_admin_shadow` (marks a row
+  auto-provisioned to back a master admin's access to that subject).
+- Run `upgrade.php` (or `deploy.sh`, which calls it) to apply — see
+  UPGRADE.md, this one takes an automatic safety backup first like
+  every migration, but also requires **two manual follow-up steps**
+  (moving your existing uploads to the new per-subject path, and
+  verifying the auto-derived hostname) printed at the end of the run.
+
+### Environment changes
+
+- `ARCHIVE_ROOT` replaced by `ARCHIVE_ROOT_BASE` (the parent directory
+  holding every subject's uploads/backups — each subject's own root is
+  now computed automatically as `ARCHIVE_ROOT_BASE/{slug}`). Existing
+  uploads must be moved by hand into the new location — see the
+  migration's printed instructions.
+- New `SUBJECT_SETUP_SECRET` (required before a second subject can be
+  added on a new hostname).
+
 ## [1.37.0] — 2026-09-13
 
 ### Added

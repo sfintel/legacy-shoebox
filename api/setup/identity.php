@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 if (!setup_schema_ready()) {
     json_response(['error' => 'The database is not set up yet.'], 400);
 }
+require_current_subject(); // dies if somehow reached with no subject resolved
 
 $body = read_json_body();
 

@@ -21,7 +21,7 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title><?= h(site_name()) ?></title>
 <meta name="theme-color" content="#1b1a17">
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="<?= h(manifest_url()) ?>">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <link rel="stylesheet" href="/css/style.css">
 </head>

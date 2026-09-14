@@ -11,20 +11,34 @@ declare(strict_types=1);
 // null on any problem), matching narrative.php's existing "missing key
 // / network error just means no AI feature runs" posture.
 
+// Every accessor below checks the current subject's own override column
+// first (see sql/schema.sql's subjects.ai_* comment), falling back to
+// the install-wide .env AI_* default when the subject hasn't set one —
+// lets each subject use its own provider/connection without shell
+// access to the server (editable post-setup via admin_settings.php),
+// while a subject that never touches AI settings just inherits the
+// install default unchanged.
+function ai_subject_override(string $column): ?string
+{
+    $value = current_subject()[$column] ?? null;
+    return $value !== null && $value !== '' ? $value : null;
+}
+
 function ai_provider(): string
 {
-    return strtolower(trim((string) env('AI_PROVIDER', 'anthropic'))) === 'openai' ? 'openai' : 'anthropic';
+    $raw = ai_subject_override('ai_provider') ?? (string) env('AI_PROVIDER', 'anthropic');
+    return strtolower(trim($raw)) === 'openai' ? 'openai' : 'anthropic';
 }
 
 function ai_api_key(): ?string
 {
-    $key = env('AI_API_KEY');
+    $key = ai_subject_override('ai_api_key') ?? env('AI_API_KEY');
     return $key !== null && $key !== '' ? $key : null;
 }
 
 function ai_model(): string
 {
-    $model = (string) env('AI_MODEL', '');
+    $model = ai_subject_override('ai_model') ?? (string) env('AI_MODEL', '');
     if ($model !== '') {
         return $model;
     }
@@ -33,7 +47,7 @@ function ai_model(): string
 
 function ai_base_url(): string
 {
-    $url = trim((string) env('AI_BASE_URL', ''));
+    $url = trim(ai_subject_override('ai_base_url') ?? (string) env('AI_BASE_URL', ''));
     return $url !== '' ? rtrim($url, '/') : 'https://api.openai.com/v1';
 }
 
@@ -41,12 +55,13 @@ function ai_base_url(): string
 // tasks (Ask tab, narrative analysis, suggestion extraction), not
 // creative composition, so a low default sharply cuts paraphrase drift
 // and quote invention. Returns null (= let the provider use its own
-// default) when AI_TEMPERATURE is explicitly set to the literal string
-// "default" — an escape hatch for OpenAI-shaped backends and reasoning
-// models that 400 on any temperature other than their fixed one.
+// default) when AI_TEMPERATURE (or this subject's ai_temperature
+// override) is explicitly set to the literal string "default" — an
+// escape hatch for OpenAI-shaped backends and reasoning models that 400
+// on any temperature other than their fixed one.
 function ai_temperature(): ?float
 {
-    $raw = trim((string) env('AI_TEMPERATURE', '0.2'));
+    $raw = trim(ai_subject_override('ai_temperature') ?? (string) env('AI_TEMPERATURE', '0.2'));
     if (strtolower($raw) === 'default') {
         return null;
     }

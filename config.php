@@ -48,9 +48,6 @@ function load_env_file(string $path): void
 
 load_env_file(__DIR__ . '/.env');
 
-define('APP_URL', rtrim((string) env('APP_URL', 'http://localhost'), '/'));
-$archiveRoot = (string) env('ARCHIVE_ROOT', '..');
-define('ARCHIVE_ROOT', rtrim(str_starts_with($archiveRoot, '/') ? $archiveRoot : __DIR__ . '/' . $archiveRoot, '/'));
 define('CHAT_RATE_LIMIT', (int) env('CHAT_RATE_LIMIT', '60'));
 define('SIGNUP_RATE_LIMIT', (int) env('SIGNUP_RATE_LIMIT', '10'));
 define('LOGIN_ATTEMPT_LIMIT', (int) env('LOGIN_ATTEMPT_LIMIT', '5'));
@@ -58,10 +55,66 @@ define('LOGIN_LOCKOUT_SECONDS', (int) env('LOGIN_LOCKOUT_SECONDS', '900'));
 define('FORGOT_PASSWORD_RATE_LIMIT', (int) env('FORGOT_PASSWORD_RATE_LIMIT', '5'));
 define('SIGNUP_REASON_MAX_LENGTH', 1000);
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/subjects.php';
+
+// --- Subject resolution ---
+// One request = one subject (see includes/subjects.php for the full
+// rationale). An HTTP request resolves it from the Host header; a CLI
+// invocation has no Host header at all, so it instead accepts an
+// explicit --subject=<id> argument (used by cron_backup.php's
+// per-subject dispatcher — see that file). Neither path is guaranteed
+// to resolve anything (unconfigured DB, pre-migration schema, an
+// unrecognized host, or a CLI script not passed --subject) — every
+// consumer of current_subject()/ARCHIVE_ROOT/APP_URL below must treat
+// "unresolved" as a normal, expected state, not an error, until
+// setup_is_complete() says otherwise.
+if (PHP_SAPI === 'cli') {
+    foreach ($argv ?? [] as $arg) {
+        if (str_starts_with($arg, '--subject=')) {
+            $cliSubject = subject_find_by_id(substr($arg, strlen('--subject=')));
+            if ($cliSubject !== null) {
+                set_current_subject($cliSubject);
+            }
+            break;
+        }
+    }
+} else {
+    $resolvedSubject = subject_resolve_from_request();
+    if ($resolvedSubject !== null) {
+        set_current_subject($resolvedSubject);
+    }
+}
+
+// APP_URL is derived per-subject from its own hostname (with an https
+// scheme) rather than a single flat .env value — every subject has its
+// own hostname, and outbound email (approve/reject links, "log in now
+// at ..." links) must point at the subject the recipient actually
+// belongs to, never at whichever hostname happened to be in .env. Falls
+// back to the .env value only when no subject is resolved (CLI
+// contexts without --subject, or mid-setup on an unrecognized host).
+$resolvedHostname = current_subject()['hostname'] ?? null;
+define('APP_URL', $resolvedHostname !== null
+    ? 'https://' . $resolvedHostname
+    : rtrim((string) env('APP_URL', 'http://localhost'), '/'));
+
+// ARCHIVE_ROOT_BASE is the parent directory holding every subject's
+// upload/backup data; ARCHIVE_ROOT itself resolves to that subject's
+// own subdirectory (ARCHIVE_ROOT_BASE/{slug}) — includes/content.php
+// and includes/backup.php consume the ARCHIVE_ROOT constant exactly as
+// before multi-subject support, unaware anything changed. No subject
+// resolved yet means nothing should be touching ARCHIVE_ROOT this
+// request (setup's earliest stages, or an unrecognized host) — the
+// placeholder value below exists only so the constant is always
+// defined, never so it's ever actually written to.
+$archiveRootBase = (string) env('ARCHIVE_ROOT_BASE', '..');
+$archiveRootBase = rtrim(str_starts_with($archiveRootBase, '/') ? $archiveRootBase : __DIR__ . '/' . $archiveRootBase, '/');
+define('ARCHIVE_ROOT', $archiveRootBase . '/' . (current_subject()['slug'] ?? '_unresolved'));
+
 require_once __DIR__ . '/includes/ai_provider.php';
 require_once __DIR__ . '/includes/helpers.php';
 require_once __DIR__ . '/includes/tokens.php';
 require_once __DIR__ . '/includes/users.php';
+require_once __DIR__ . '/includes/master_admin.php';
 require_once __DIR__ . '/includes/content.php';
 require_once __DIR__ . '/includes/redaction.php';
 require_once __DIR__ . '/includes/mailer.php';

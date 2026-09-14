@@ -13,23 +13,39 @@ declare(strict_types=1);
 
 // --- Completeness / stage detection ---
 
-// The authoritative "has setup finished" check. Does its OWN lightweight
-// PDO connection attempt rather than calling db() (includes/db.php),
-// which deliberately dies on connection failure for an already-
-// configured deployment — that's the wrong behavior here, where "can't
-// connect yet" just means "still on an earlier stage," not a fatal error.
+// The authoritative "has setup finished" check — for THIS hostname's
+// subject specifically, not the install as a whole (a multi-subject
+// install is never simply "done"; each subject finishes its own wizard
+// independently). Does its OWN lightweight PDO connection attempt
+// rather than calling db() (includes/db.php), which deliberately dies
+// on connection failure for an already-configured deployment — that's
+// the wrong behavior here, where "can't connect yet" just means "still
+// on an earlier stage," not a fatal error.
 function setup_is_complete(): bool
 {
     if (!env('DB_HOST') || !env('DB_NAME') || !env('DB_USER')) {
         return false;
     }
+    if (!setup_schema_ready()) {
+        return false;
+    }
+    $subject = current_subject();
+    if ($subject === null) {
+        return false;
+    }
+    return setup_subject_completed($subject['id']);
+}
+
+function setup_subject_completed(string $subjectId): bool
+{
     try {
         $pdo = setup_try_connect();
         if (!$pdo) {
             return false;
         }
-        $stmt = $pdo->query("SELECT setup_completed_at FROM site_settings WHERE id = 1");
-        $row = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : false;
+        $stmt = $pdo->prepare('SELECT setup_completed_at FROM site_settings WHERE subject_id = ?');
+        $stmt->execute([$subjectId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return (bool) ($row && $row['setup_completed_at'] !== null);
     } catch (Throwable $e) {
         return false;
@@ -80,33 +96,112 @@ function setup_schema_ready(): bool
     }
 }
 
-function setup_identity_ready(): bool
+function setup_identity_ready(string $subjectId): bool
 {
     $pdo = setup_try_connect();
     if (!$pdo) {
         return false;
     }
     try {
-        $stmt = $pdo->query("SELECT site_name FROM site_settings WHERE id = 1");
-        $row = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : false;
+        $stmt = $pdo->prepare('SELECT site_name FROM site_settings WHERE subject_id = ?');
+        $stmt->execute([$subjectId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return (bool) ($row && trim((string) $row['site_name']) !== '');
     } catch (Throwable $e) {
         return false;
     }
 }
 
-function setup_admin_ready(): bool
+function setup_admin_ready(string $subjectId): bool
 {
     $pdo = setup_try_connect();
     if (!$pdo) {
         return false;
     }
     try {
-        $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'");
-        return $stmt && (int) $stmt->fetchColumn() > 0;
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = 'admin' AND subject_id = ?");
+        $stmt->execute([$subjectId]);
+        return (int) $stmt->fetchColumn() > 0;
     } catch (Throwable $e) {
         return false;
     }
+}
+
+// True when the current request is allowed to create a brand-new
+// subject for its (unrecognized) hostname: either this is the
+// install's very first subject ever (no SUBJECT_SETUP_SECRET needed —
+// matches today's ungated first-run UX, since an unconfigured install
+// with no DB credentials is already its own gate), a logged-in master
+// admin is asking (already a trusted install-wide operator — see
+// includes/master_admin.php), or the submitted secret matches
+// SUBJECT_SETUP_SECRET.
+function setup_new_subject_authorized(?string $submittedSecret): bool
+{
+    $pdo = setup_try_connect();
+    if (!$pdo) {
+        return false;
+    }
+    try {
+        $subjectCount = (int) $pdo->query('SELECT COUNT(*) FROM subjects')->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+    if ($subjectCount === 0) {
+        return true;
+    }
+    auth_start_session();
+    if (!empty($_SESSION['master_admin_id']) && master_admin_find_by_id($_SESSION['master_admin_id'])) {
+        return true;
+    }
+    $expected = (string) env('SUBJECT_SETUP_SECRET', '');
+    return $expected !== '' && $submittedSecret !== null && hash_equals($expected, $submittedSecret);
+}
+
+// Derives a short, URL/filesystem-safe slug from a hostname's first
+// label (e.g. "dad.fintelfamily.com" -> "dad") for use in
+// ARCHIVE_ROOT_BASE/{slug} — appends a numeric suffix on collision so
+// two similarly-named hostnames never fight over the same directory.
+function setup_unique_slug_for_host(PDO $pdo, string $host): string
+{
+    $label = explode('.', $host)[0] ?? $host;
+    $base = strtolower(trim((string) preg_replace('/[^a-z0-9]+/i', '-', $label), '-'));
+    $base = $base !== '' ? substr($base, 0, 60) : 'subject';
+
+    $slug = $base;
+    $suffix = 1;
+    while (true) {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM subjects WHERE slug = ?');
+        $stmt->execute([$slug]);
+        if ((int) $stmt->fetchColumn() === 0) {
+            return $slug;
+        }
+        $suffix++;
+        $slug = $base . '-' . $suffix;
+    }
+}
+
+// Creates (or, idempotently, returns) the subjects row for $host and
+// makes it the current request's subject — called once authorization
+// (setup_new_subject_authorized()) has already been confirmed. Every
+// later request to this same hostname resolves the subject normally via
+// subject_resolve_from_request(), so no session state is needed beyond
+// this one request.
+function setup_create_subject_for_host(string $host): array
+{
+    $host = subject_normalize_host($host);
+    $pdo = db();
+    $existing = subject_find_by_hostname($host);
+    if ($existing !== null) {
+        set_current_subject($existing);
+        return $existing;
+    }
+    $id = make_uuid();
+    $slug = setup_unique_slug_for_host($pdo, $host);
+    $stmt = $pdo->prepare('INSERT INTO subjects (id, slug, hostname, display_name) VALUES (?, ?, ?, ?)');
+    $stmt->execute([$id, $slug, $host, $host]);
+    $subject = subject_find_by_id($id);
+    set_current_subject($subject);
+    return $subject;
 }
 
 // Drives which stage setup.php shows — re-derived from actual state on
@@ -117,10 +212,14 @@ function setup_current_stage(): string
     if (!setup_schema_ready()) {
         return 'db';
     }
-    if (!setup_identity_ready()) {
+    $subject = current_subject();
+    if ($subject === null) {
+        return 'new_subject_gate';
+    }
+    if (!setup_identity_ready($subject['id'])) {
         return 'identity';
     }
-    if (!setup_admin_ready()) {
+    if (!setup_admin_ready($subject['id'])) {
         return 'admin';
     }
     return 'advanced';
@@ -200,7 +299,18 @@ function setup_write_env(array $newValues): void
         '# --- Site ---',
         'APP_URL=' . $get('APP_URL'),
         'NOTIFY_EMAIL=' . $get('NOTIFY_EMAIL'),
-        'ARCHIVE_ROOT=' . $get('ARCHIVE_ROOT', '..'),
+        // Parent directory holding every subject's uploads/backups —
+        // each subject's own ARCHIVE_ROOT is computed automatically as
+        // ARCHIVE_ROOT_BASE/{slug} (see config.php), never configured
+        // per-subject.
+        'ARCHIVE_ROOT_BASE=' . $get('ARCHIVE_ROOT_BASE', '..'),
+        '',
+        '# --- Multi-subject ---',
+        // Required before a second (or later) subject can be added on a
+        // new hostname — see api/setup/authorize_subject.php. Generated
+        // automatically at install time; a logged-in master admin can
+        // bypass this prompt entirely (see includes/master_admin.php).
+        'SUBJECT_SETUP_SECRET=' . $get('SUBJECT_SETUP_SECRET'),
         '',
         '# --- Outgoing email (optional — leave SMTP_HOST blank to skip) ---',
         'SMTP_HOST=' . $get('SMTP_HOST'),
@@ -362,8 +472,9 @@ function setup_load_demo_archive(): void
 // Distinct from includes/users.php's user_create_pending() (which
 // creates a 'pending' signup) — the wizard's own admin is trusted and
 // approved immediately, since whoever completes setup is by definition
-// the site's owner. Guards against ever running once any account
-// exists, mirroring the retired env-var bootstrap's same posture.
+// this subject's owner. Guards against ever running once any account
+// exists FOR THIS SUBJECT — a different subject already having an admin
+// is expected and irrelevant here.
 function setup_create_admin(string $name, string $email, string $password): array
 {
     $name = trim($name);
@@ -377,16 +488,18 @@ function setup_create_admin(string $name, string $email, string $password): arra
     if (strlen($password) < 8) {
         throw new RuntimeException('Password must be at least 8 characters.');
     }
+    $subjectId = require_current_subject()['id'];
     $pdo = db();
-    $count = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
-    if ($count > 0) {
-        throw new RuntimeException('An account already exists — setup has already run.');
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE subject_id = ?');
+    $stmt->execute([$subjectId]);
+    if ((int) $stmt->fetchColumn() > 0) {
+        throw new RuntimeException('An account already exists for this subject — setup has already run for it.');
     }
     $id = make_uuid();
     $stmt = $pdo->prepare(
-        "INSERT INTO users (id, name, email, password_hash, role, status, approved_at) VALUES (?, ?, ?, ?, 'admin', 'approved', NOW())"
+        "INSERT INTO users (id, subject_id, name, email, password_hash, role, status, approved_at) VALUES (?, ?, ?, ?, ?, 'admin', 'approved', NOW())"
     );
-    $stmt->execute([$id, $name, $email, password_hash($password, PASSWORD_DEFAULT)]);
+    $stmt->execute([$id, $subjectId, $name, $email, password_hash($password, PASSWORD_DEFAULT)]);
     return user_find_by_id($id);
 }
 

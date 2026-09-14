@@ -123,24 +123,26 @@ function content_stream_file(string $path, string $mimeType, string $originalNam
 function content_all(?string $ownerId = null): array
 {
     if ($ownerId !== null) {
-        $stmt = db()->prepare('SELECT * FROM content_items WHERE created_by = ? ORDER BY created_at DESC');
-        $stmt->execute([$ownerId]);
+        $stmt = db()->prepare('SELECT * FROM content_items WHERE subject_id = ? AND created_by = ? ORDER BY created_at DESC');
+        $stmt->execute([current_subject_id(), $ownerId]);
         return $stmt->fetchAll();
     }
-    return db()->query('SELECT * FROM content_items ORDER BY created_at DESC')->fetchAll();
+    $stmt = db()->prepare('SELECT * FROM content_items WHERE subject_id = ? ORDER BY created_at DESC');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetchAll();
 }
 
 function content_files_for_item(string $itemId): array
 {
-    $stmt = db()->prepare('SELECT * FROM content_files WHERE content_item_id = ? ORDER BY sort_order ASC');
-    $stmt->execute([$itemId]);
+    $stmt = db()->prepare('SELECT * FROM content_files WHERE content_item_id = ? AND subject_id = ? ORDER BY sort_order ASC');
+    $stmt->execute([$itemId, current_subject_id()]);
     return $stmt->fetchAll();
 }
 
 function content_file_find(string $fileId): ?array
 {
-    $stmt = db()->prepare('SELECT * FROM content_files WHERE id = ?');
-    $stmt->execute([$fileId]);
+    $stmt = db()->prepare('SELECT * FROM content_files WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$fileId, current_subject_id()]);
     $row = $stmt->fetch();
     return $row ?: null;
 }
@@ -299,8 +301,8 @@ function content_format_metadata_summary(array $metadata): string
 
 function content_find(string $id): ?array
 {
-    $stmt = db()->prepare('SELECT * FROM content_items WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('SELECT * FROM content_items WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     $row = $stmt->fetch();
     return $row ?: null;
 }
@@ -515,10 +517,10 @@ function content_download_media_from_url(string $type, string $url, int $maxRedi
 function content_insert_file(PDO $pdo, string $itemId, array $stored, int $sortOrder): void
 {
     $pdo->prepare(
-        'INSERT INTO content_files (id, content_item_id, file_name, original_name, mime_type, file_size, metadata, sort_order)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO content_files (id, subject_id, content_item_id, file_name, original_name, mime_type, file_size, metadata, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )->execute([
-        $stored['fileId'], $itemId, $stored['fileName'], $stored['originalName'], $stored['mimeType'],
+        $stored['fileId'], current_subject_id(), $itemId, $stored['fileName'], $stored['originalName'], $stored['mimeType'],
         $stored['size'], $stored['metadata'] ? json_encode($stored['metadata']) : null, $sortOrder,
     ]);
 }
@@ -645,9 +647,9 @@ function content_create_transcript(string $title, string $text, string $userId, 
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, created_by)
-         VALUES (?, \'transcript\', ?, NULL, ?, ?, ?)'
-    )->execute([$itemId, $title, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
+        'INSERT INTO content_items (id, subject_id, type, title, description, narrative_note, tags, created_by)
+         VALUES (?, ?, \'transcript\', ?, NULL, ?, ?, ?)'
+    )->execute([$itemId, current_subject_id(), $title, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
     content_insert_file($pdo, $itemId, [
         'fileId' => $fileId, 'fileName' => $fileName, 'originalName' => "$title.md",
         'mimeType' => 'text/markdown', 'size' => strlen($text), 'metadata' => null,
@@ -699,9 +701,9 @@ function content_create_document(string $title, string $text, ?array $file, stri
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, created_by)
-         VALUES (?, \'document\', ?, NULL, ?, ?, ?)'
-    )->execute([$itemId, $title, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
+        'INSERT INTO content_items (id, subject_id, type, title, description, narrative_note, tags, created_by)
+         VALUES (?, ?, \'document\', ?, NULL, ?, ?, ?)'
+    )->execute([$itemId, current_subject_id(), $title, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
     content_insert_file($pdo, $itemId, [
         'fileId' => $textFileId, 'fileName' => $textFileName, 'originalName' => "$title.md",
         'mimeType' => 'text/markdown', 'size' => strlen($text), 'metadata' => null,
@@ -791,10 +793,10 @@ function content_create_story(string $title, string $body, string $userId, array
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, story_approved_at, link_summaries, created_by)
-         VALUES (?, \'story\', ?, NULL, NULL, ?, NULL, ?, ?)'
+        'INSERT INTO content_items (id, subject_id, type, title, description, narrative_note, tags, story_approved_at, link_summaries, created_by)
+         VALUES (?, ?, \'story\', ?, NULL, NULL, ?, NULL, ?, ?)'
     )->execute([
-        $itemId, $title, json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE),
+        $itemId, current_subject_id(), $title, json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE),
         json_encode($linkSummaries, JSON_UNESCAPED_UNICODE), $userId,
     ]);
     content_insert_file($pdo, $itemId, [
@@ -883,7 +885,9 @@ function content_approve_story(string $itemId): array
 
 function content_stories_pending(): array
 {
-    return db()->query("SELECT * FROM content_items WHERE type = 'story' AND story_approved_at IS NULL ORDER BY created_at ASC")->fetchAll();
+    $stmt = db()->prepare("SELECT * FROM content_items WHERE subject_id = ? AND type = 'story' AND story_approved_at IS NULL ORDER BY created_at ASC");
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetchAll();
 }
 
 // Oldest-first, matching content_context()'s own reasoning for why
@@ -891,7 +895,9 @@ function content_stories_pending(): array
 // context, not because recency matters here more than there).
 function content_stories_approved(): array
 {
-    return db()->query("SELECT * FROM content_items WHERE type = 'story' AND story_approved_at IS NOT NULL ORDER BY created_at ASC")->fetchAll();
+    $stmt = db()->prepare("SELECT * FROM content_items WHERE subject_id = ? AND type = 'story' AND story_approved_at IS NOT NULL ORDER BY created_at ASC");
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetchAll();
 }
 
 function content_story_public(array $item): array
@@ -938,9 +944,9 @@ function content_create_url(string $title, string $url, string $userId, array $t
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, source_url, narrative_note, tags, created_by)
-         VALUES (?, \'url\', ?, NULL, ?, ?, ?, ?)'
-    )->execute([$itemId, $title, $url, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
+        'INSERT INTO content_items (id, subject_id, type, title, description, source_url, narrative_note, tags, created_by)
+         VALUES (?, ?, \'url\', ?, NULL, ?, ?, ?, ?)'
+    )->execute([$itemId, current_subject_id(), $title, $url, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
     content_insert_file($pdo, $itemId, [
         'fileId' => $fileId, 'fileName' => $fileName, 'originalName' => "$title.md",
         'mimeType' => 'text/markdown', 'size' => strlen($fetched['text']), 'metadata' => null,
@@ -965,17 +971,17 @@ function content_suggestions_insert(string $itemId, array $suggestions): void
         return;
     }
     $stmt = db()->prepare(
-        'INSERT INTO content_suggestions (id, content_item_id, kind, payload) VALUES (?, ?, ?, ?)'
+        'INSERT INTO content_suggestions (id, subject_id, content_item_id, kind, payload) VALUES (?, ?, ?, ?, ?)'
     );
     foreach ($suggestions as $s) {
-        $stmt->execute([make_uuid(), $itemId, $s['kind'], json_encode($s['fields'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)]);
+        $stmt->execute([make_uuid(), current_subject_id(), $itemId, $s['kind'], json_encode($s['fields'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)]);
     }
 }
 
 function content_suggestions_for_item(string $itemId): array
 {
-    $stmt = db()->prepare('SELECT * FROM content_suggestions WHERE content_item_id = ? ORDER BY created_at ASC');
-    $stmt->execute([$itemId]);
+    $stmt = db()->prepare('SELECT * FROM content_suggestions WHERE content_item_id = ? AND subject_id = ? ORDER BY created_at ASC');
+    $stmt->execute([$itemId, current_subject_id()]);
     return array_map('content_suggestion_public', $stmt->fetchAll());
 }
 
@@ -992,16 +998,16 @@ function content_suggestion_public(array $row): array
 
 function content_suggestion_find(string $id): ?array
 {
-    $stmt = db()->prepare('SELECT * FROM content_suggestions WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('SELECT * FROM content_suggestions WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     $row = $stmt->fetch();
     return $row ?: null;
 }
 
 function content_suggestion_set_status(string $id, string $status, string $deciderId): void
 {
-    $stmt = db()->prepare('UPDATE content_suggestions SET status = ?, decided_at = NOW(), decided_by = ? WHERE id = ?');
-    $stmt->execute([$status, $deciderId, $id]);
+    $stmt = db()->prepare('UPDATE content_suggestions SET status = ?, decided_at = NOW(), decided_by = ? WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$status, $deciderId, $id, current_subject_id()]);
 }
 
 // Exactly one of $file (a normalized upload array) or $sourceUrl must be
@@ -1030,9 +1036,9 @@ function content_create_video(string $title, ?string $description, ?array $file,
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, created_by)
-         VALUES (?, \'video\', ?, ?, ?, ?, ?)'
-    )->execute([$itemId, $title, $description !== '' ? $description : null, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
+        'INSERT INTO content_items (id, subject_id, type, title, description, narrative_note, tags, created_by)
+         VALUES (?, ?, \'video\', ?, ?, ?, ?, ?)'
+    )->execute([$itemId, current_subject_id(), $title, $description !== '' ? $description : null, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
     content_insert_file($pdo, $itemId, $stored, 0);
     archive_content_links_apply($itemId, $analysis['links']);
     content_auto_link_attempt($itemId);
@@ -1073,9 +1079,9 @@ function content_create_audio(string $title, ?string $description, ?array $file,
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, created_by)
-         VALUES (?, \'audio\', ?, ?, ?, ?, ?)'
-    )->execute([$itemId, $title, $description !== '' ? $description : null, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
+        'INSERT INTO content_items (id, subject_id, type, title, description, narrative_note, tags, created_by)
+         VALUES (?, ?, \'audio\', ?, ?, ?, ?, ?)'
+    )->execute([$itemId, current_subject_id(), $title, $description !== '' ? $description : null, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
     content_insert_file($pdo, $itemId, $stored, 0);
     archive_content_links_apply($itemId, $analysis['links']);
     content_auto_link_attempt($itemId);
@@ -1239,9 +1245,9 @@ function content_create_photo_album(string $title, ?string $description, array $
     $itemId = make_uuid();
     $pdo = db();
     $pdo->prepare(
-        'INSERT INTO content_items (id, type, title, description, narrative_note, tags, created_by)
-         VALUES (?, \'photo\', ?, ?, ?, ?, ?)'
-    )->execute([$itemId, $title, $description !== '' ? $description : null, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
+        'INSERT INTO content_items (id, subject_id, type, title, description, narrative_note, tags, created_by)
+         VALUES (?, ?, \'photo\', ?, ?, ?, ?, ?)'
+    )->execute([$itemId, current_subject_id(), $title, $description !== '' ? $description : null, $analysis['note'], json_encode(content_normalize_tags($tags), JSON_UNESCAPED_UNICODE), $userId]);
     foreach ($stored as $i => $s) {
         content_insert_file($pdo, $itemId, $s, $i);
     }
@@ -1284,8 +1290,8 @@ function content_delete(string $id, ?string $ownerId = null): bool
     }
     // Deleting the parent row cascades the content_files rows in the DB
     // via fk_content_files_item's ON DELETE CASCADE.
-    $stmt = db()->prepare('DELETE FROM content_items WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('DELETE FROM content_items WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     return true;
 }
 
@@ -1491,10 +1497,10 @@ function content_auto_link_match(array $item): ?array
     $placeholders = implode(',', array_fill(0, count($complementaryTypes), '?'));
     $stmt = db()->prepare(
         "SELECT * FROM content_items
-         WHERE type IN ($placeholders) AND linked_item_id IS NULL AND id != ? AND LOWER(TRIM(title)) = LOWER(TRIM(?))
+         WHERE subject_id = ? AND type IN ($placeholders) AND linked_item_id IS NULL AND id != ? AND LOWER(TRIM(title)) = LOWER(TRIM(?))
          ORDER BY created_at ASC LIMIT 1"
     );
-    $stmt->execute([...$complementaryTypes, $item['id'], $item['title']]);
+    $stmt->execute([current_subject_id(), ...$complementaryTypes, $item['id'], $item['title']]);
     $match = $stmt->fetch();
     return $match ?: null;
 }
@@ -1524,9 +1530,11 @@ function content_auto_link_attempt(string $itemId): void
 // admin action.
 function content_backfill_auto_links(): array
 {
-    $unlinked = db()->query(
-        "SELECT * FROM content_items WHERE type IN ('video','audio','transcript') AND linked_item_id IS NULL ORDER BY created_at ASC"
-    )->fetchAll();
+    $stmt = db()->prepare(
+        "SELECT * FROM content_items WHERE subject_id = ? AND type IN ('video','audio','transcript') AND linked_item_id IS NULL ORDER BY created_at ASC"
+    );
+    $stmt->execute([current_subject_id()]);
+    $unlinked = $stmt->fetchAll();
 
     $linked = [];
     foreach ($unlinked as $item) {
@@ -1694,20 +1702,30 @@ function content_suggest_additions_for_existing_item(array $item): array
 // "no AI before approval").
 function content_backfill_ai_analysis(): array
 {
-    $noteItems = db()->query(
-        "SELECT * FROM content_items WHERE narrative_note IS NULL AND type != 'story' ORDER BY created_at ASC"
-    )->fetchAll();
-    $suggestionItems = db()->query(
+    $subjectId = current_subject_id();
+    $stmt = db()->prepare(
+        "SELECT * FROM content_items WHERE subject_id = ? AND narrative_note IS NULL AND type != 'story' ORDER BY created_at ASC"
+    );
+    $stmt->execute([$subjectId]);
+    $noteItems = $stmt->fetchAll();
+
+    $stmt = db()->prepare(
         "SELECT * FROM content_items
-         WHERE (type IN ('transcript', 'document')
+         WHERE subject_id = ?
+           AND (type IN ('transcript', 'document')
                 OR (type = 'story' AND story_approved_at IS NOT NULL)
                 OR (type = 'photo' AND description IS NOT NULL AND description != ''))
-           AND id NOT IN (SELECT DISTINCT content_item_id FROM content_suggestions)
+           AND id NOT IN (SELECT DISTINCT content_item_id FROM content_suggestions WHERE subject_id = ?)
          ORDER BY created_at ASC"
-    )->fetchAll();
-    $linkSummaryItems = db()->query(
-        "SELECT * FROM content_items WHERE type = 'story' AND link_summaries IS NULL ORDER BY created_at ASC"
-    )->fetchAll();
+    );
+    $stmt->execute([$subjectId, $subjectId]);
+    $suggestionItems = $stmt->fetchAll();
+
+    $stmt = db()->prepare(
+        "SELECT * FROM content_items WHERE subject_id = ? AND type = 'story' AND link_summaries IS NULL ORDER BY created_at ASC"
+    );
+    $stmt->execute([$subjectId]);
+    $linkSummaryItems = $stmt->fetchAll();
 
     $resultsById = [];
     $ensure = static function (array $item) use (&$resultsById): void {

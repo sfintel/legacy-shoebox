@@ -16,40 +16,54 @@ declare(strict_types=1);
 // they were added.
 function archive_people(): array
 {
-    return db()->query('SELECT * FROM people ORDER BY sort_order ASC, created_at ASC')->fetchAll();
+    $stmt = db()->prepare('SELECT * FROM people WHERE subject_id = ? ORDER BY sort_order ASC, created_at ASC');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetchAll();
 }
 
 function archive_places(): array
 {
-    return db()->query('SELECT * FROM places ORDER BY sort_order ASC, created_at ASC')->fetchAll();
+    $stmt = db()->prepare('SELECT * FROM places WHERE subject_id = ? ORDER BY sort_order ASC, created_at ASC');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetchAll();
 }
 
 function archive_timeline(): array
 {
-    return db()->query('SELECT * FROM timeline_entries ORDER BY sort_order ASC, created_at ASC')->fetchAll();
+    $stmt = db()->prepare('SELECT * FROM timeline_entries WHERE subject_id = ? ORDER BY sort_order ASC, created_at ASC');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetchAll();
 }
 
 function archive_quotes(): array
 {
-    return db()->query('SELECT * FROM quotes ORDER BY sort_order ASC, created_at ASC')->fetchAll();
+    $stmt = db()->prepare('SELECT * FROM quotes WHERE subject_id = ? ORDER BY sort_order ASC, created_at ASC');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetchAll();
 }
 
+// primary_testimony/discrepancy_notes/site_settings are one row PER
+// SUBJECT (subject_id is their primary key — see sql/schema.sql), not a
+// fixed id=1 singleton as before multi-subject support.
 function archive_primary_testimony(): ?array
 {
-    $row = db()->query('SELECT * FROM primary_testimony WHERE id = 1')->fetch();
-    return $row ?: null;
+    $stmt = db()->prepare('SELECT * FROM primary_testimony WHERE subject_id = ?');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetch() ?: null;
 }
 
 function archive_discrepancy_notes(): ?array
 {
-    $row = db()->query('SELECT * FROM discrepancy_notes WHERE id = 1')->fetch();
-    return $row ?: null;
+    $stmt = db()->prepare('SELECT * FROM discrepancy_notes WHERE subject_id = ?');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetch() ?: null;
 }
 
 function archive_site_settings(): ?array
 {
-    $row = db()->query('SELECT * FROM site_settings WHERE id = 1')->fetch();
-    return $row ?: null;
+    $stmt = db()->prepare('SELECT * FROM site_settings WHERE subject_id = ?');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetch() ?: null;
 }
 
 // Cached, default-filled version of archive_site_settings() — used
@@ -93,12 +107,16 @@ function subject_name(): string
     return $s['subject_name'] !== '' && $s['subject_name'] !== null ? $s['subject_name'] : 'this family member';
 }
 
-// Regenerates the static manifest.json file on disk from site_settings —
-// called whenever site identity changes (admin_settings.php's save
-// handler, and the setup wizard's finalize step in Phase 4). Written to
-// disk rather than served dynamically so the app's "no mod_rewrite"
-// design principle stays intact — <link rel="manifest" href="/manifest.json">
-// in index.php never needs to change.
+// Regenerates this subject's static manifest-{slug}.json file on disk
+// from site_settings — called whenever site identity changes
+// (admin_settings.php's save handler, and the setup wizard's finalize
+// step). Per-subject filename (rather than a single shared
+// manifest.json) since multiple subjects share one webroot — a fixed
+// filename would have the last subject to save overwrite every other
+// subject's manifest. Still written to disk rather than served
+// dynamically, keeping the app's "no mod_rewrite" design principle
+// intact — index.php's <link rel="manifest"> just needs a per-subject
+// href, computed the same way any other per-request value already is.
 function manifest_regenerate(): void
 {
     $name = site_name();
@@ -118,9 +136,17 @@ function manifest_regenerate(): void
         ],
     ];
     file_put_contents(
-        __DIR__ . '/../manifest.json',
+        __DIR__ . '/../manifest-' . current_subject()['slug'] . '.json',
         json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
     );
+}
+
+// The URL index.php's <link rel="manifest"> points at — a small helper
+// so every caller (just index.php today) computes the same filename
+// manifest_regenerate() actually writes to.
+function manifest_url(): string
+{
+    return '/manifest-' . current_subject()['slug'] . '.json';
 }
 
 // PWA home-screen labels read best short — truncates at the last word
@@ -157,21 +183,23 @@ function archive_site_settings_update(array $fields, bool $markSetupComplete = f
     };
 
     // A plain UPDATE, not REPLACE INTO — REPLACE deletes and reinserts
-    // the row, so any column not in its explicit list (schema_version,
-    // or any future column this function's author forgets to add here)
-    // silently reverts to its schema DEFAULT. Found via testing:
-    // schema_version was getting reset to '1.0.0' on every settings
-    // save. INSERT IGNORE first guarantees the id=1 row exists (a
-    // brand-new install, before setup, has no row yet) without
-    // clobbering it if it already does.
-    db()->exec('INSERT IGNORE INTO site_settings (id) VALUES (1)');
+    // the row, so any column not in its explicit list (or any future
+    // column this function's author forgets to add here) silently
+    // reverts to its schema DEFAULT. Found via testing (back when this
+    // table still had a schema_version column): it was getting reset to
+    // '1.0.0' on every settings save. INSERT IGNORE first guarantees
+    // this subject's row exists (a brand-new subject, before its
+    // identity stage, has no row yet) without clobbering it if it
+    // already does.
+    $subjectId = current_subject_id();
+    db()->prepare('INSERT IGNORE INTO site_settings (subject_id) VALUES (?)')->execute([$subjectId]);
     $stmt = db()->prepare(
         'UPDATE site_settings SET
           site_name = ?, subject_name = ?, subject_pronoun_subject = ?, subject_pronoun_object = ?,
           subject_pronoun_possessive = ?, subject_birth_date = ?, subject_birthplace = ?,
           subject_death_date = ?, subject_short_bio = ?, closing_quote = ?,
           closing_quote_attribution = ?, ask_placeholder_text = ?, setup_completed_at = ?
-         WHERE id = 1'
+         WHERE subject_id = ?'
     );
     $stmt->execute([
         archive_trim_or_null($pick('site_name')) ?? '',
@@ -187,6 +215,7 @@ function archive_site_settings_update(array $fields, bool $markSetupComplete = f
         archive_trim_or_null($pick('closing_quote_attribution')),
         archive_trim_or_null($pick('ask_placeholder_text')),
         $setupCompletedAt,
+        $subjectId,
     ]);
 
     // Site identity's death date and the subject-role person's own
@@ -217,7 +246,9 @@ function archive_site_settings_update(array $fields, bool $markSetupComplete = f
 // archive_site_settings_update()).
 function archive_sync_subject_death_date(string $deathDate): void
 {
-    $subject = db()->query("SELECT * FROM people WHERE role = 'subject' LIMIT 1")->fetch();
+    $stmt = db()->prepare("SELECT * FROM people WHERE subject_id = ? AND role = 'subject' LIMIT 1");
+    $stmt->execute([current_subject_id()]);
+    $subject = $stmt->fetch();
     if (!$subject) {
         return;
     }
@@ -237,13 +268,15 @@ function archive_sync_subject_death_date(string $deathDate): void
 
 function archive_sources(): array
 {
-    return db()->query('SELECT * FROM sources ORDER BY sort_order ASC, created_at ASC')->fetchAll();
+    $stmt = db()->prepare('SELECT * FROM sources WHERE subject_id = ? ORDER BY sort_order ASC, created_at ASC');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetchAll();
 }
 
 function archive_source_find(string $id): ?array
 {
-    $stmt = db()->prepare('SELECT * FROM sources WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('SELECT * FROM sources WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     $row = $stmt->fetch();
     return $row ?: null;
 }
@@ -254,13 +287,17 @@ function archive_source_create(array $fields): array
     if ($label === null) {
         throw new RuntimeException('A label is required.');
     }
-    $maxOrder = (int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM sources')->fetchColumn();
+    $subjectId = current_subject_id();
+    $stmt = db()->prepare('SELECT COALESCE(MAX(sort_order), 0) FROM sources WHERE subject_id = ?');
+    $stmt->execute([$subjectId]);
+    $maxOrder = (int) $stmt->fetchColumn();
     $id = make_uuid();
     $stmt = db()->prepare(
-        'INSERT INTO sources (id, label, details, is_dramatization, permission_note, sort_order) VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO sources (id, subject_id, label, details, is_dramatization, permission_note, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $id,
+        $subjectId,
         $label,
         archive_trim_or_null($fields['details'] ?? null),
         !empty($fields['is_dramatization']) ? 1 : 0,
@@ -279,21 +316,22 @@ function archive_source_update(string $id, array $fields): array
     if ($label === null) {
         throw new RuntimeException('A label is required.');
     }
-    $stmt = db()->prepare('UPDATE sources SET label=?, details=?, is_dramatization=?, permission_note=? WHERE id=?');
+    $stmt = db()->prepare('UPDATE sources SET label=?, details=?, is_dramatization=?, permission_note=? WHERE id=? AND subject_id=?');
     $stmt->execute([
         $label,
         archive_trim_or_null($fields['details'] ?? null),
         !empty($fields['is_dramatization']) ? 1 : 0,
         archive_trim_or_null($fields['permission_note'] ?? null),
         $id,
+        current_subject_id(),
     ]);
     return archive_source_find($id);
 }
 
 function archive_source_delete(string $id): bool
 {
-    $stmt = db()->prepare('DELETE FROM sources WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('DELETE FROM sources WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     return $stmt->rowCount() > 0;
 }
 
@@ -325,20 +363,22 @@ function archive_source_move(string $id, string $direction): void
     $a = $rows[$index];
     $b = $rows[$swapWith];
     $pdo = db();
-    $stmt = $pdo->prepare('UPDATE sources SET sort_order = ? WHERE id = ?');
-    $stmt->execute([$b['sort_order'], $a['id']]);
-    $stmt->execute([$a['sort_order'], $b['id']]);
+    $stmt = $pdo->prepare('UPDATE sources SET sort_order = ? WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$b['sort_order'], $a['id'], current_subject_id()]);
+    $stmt->execute([$a['sort_order'], $b['id'], current_subject_id()]);
 }
 
 function archive_audience_modes_rows(): array
 {
-    return db()->query('SELECT * FROM audience_modes ORDER BY sort_order ASC, created_at ASC')->fetchAll();
+    $stmt = db()->prepare('SELECT * FROM audience_modes WHERE subject_id = ? ORDER BY sort_order ASC, created_at ASC');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetchAll();
 }
 
 function archive_audience_mode_find(string $id): ?array
 {
-    $stmt = db()->prepare('SELECT * FROM audience_modes WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('SELECT * FROM audience_modes WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     $row = $stmt->fetch();
     return $row ?: null;
 }
@@ -367,20 +407,25 @@ function archive_audience_mode_create(array $fields): array
     if ($label === null || $guidance === null) {
         throw new RuntimeException('Label and AI guidance are required.');
     }
+    $subjectId = current_subject_id();
     $slug = archive_slugify_mode(archive_trim_or_null($fields['slug'] ?? null) ?? $label);
-    $exists = db()->prepare('SELECT id FROM audience_modes WHERE slug = ?');
-    $exists->execute([$slug]);
+    $exists = db()->prepare('SELECT id FROM audience_modes WHERE subject_id = ? AND slug = ?');
+    $exists->execute([$subjectId, $slug]);
     if ($exists->fetch()) {
         throw new RuntimeException('A category with that identifier already exists — try a different label.');
     }
 
-    $maxOrder = (int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM audience_modes')->fetchColumn();
-    $isFirst = (int) db()->query('SELECT COUNT(*) FROM audience_modes')->fetchColumn() === 0;
+    $stmt = db()->prepare('SELECT COALESCE(MAX(sort_order), 0) FROM audience_modes WHERE subject_id = ?');
+    $stmt->execute([$subjectId]);
+    $maxOrder = (int) $stmt->fetchColumn();
+    $stmt = db()->prepare('SELECT COUNT(*) FROM audience_modes WHERE subject_id = ?');
+    $stmt->execute([$subjectId]);
+    $isFirst = (int) $stmt->fetchColumn() === 0;
     $id = make_uuid();
     $stmt = db()->prepare(
-        'INSERT INTO audience_modes (id, slug, label, ai_guidance, sort_order, is_default) VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO audience_modes (id, subject_id, slug, label, ai_guidance, sort_order, is_default) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
-    $stmt->execute([$id, $slug, $label, $guidance, $maxOrder + 1, $isFirst ? 1 : 0]);
+    $stmt->execute([$id, $subjectId, $slug, $label, $guidance, $maxOrder + 1, $isFirst ? 1 : 0]);
     return archive_audience_mode_find($id);
 }
 
@@ -395,8 +440,8 @@ function archive_audience_mode_update(string $id, array $fields): array
     if ($label === null || $guidance === null) {
         throw new RuntimeException('Label and AI guidance are required.');
     }
-    $stmt = db()->prepare('UPDATE audience_modes SET label = ?, ai_guidance = ? WHERE id = ?');
-    $stmt->execute([$label, $guidance, $id]);
+    $stmt = db()->prepare('UPDATE audience_modes SET label = ?, ai_guidance = ? WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$label, $guidance, $id, current_subject_id()]);
     return archive_audience_mode_find($id);
 }
 
@@ -405,20 +450,24 @@ function archive_audience_mode_update(string $id, array $fields): array
 // current default promotes the next one rather than leaving none set.
 function archive_audience_mode_delete(string $id): bool
 {
-    $count = (int) db()->query('SELECT COUNT(*) FROM audience_modes')->fetchColumn();
-    if ($count <= 1) {
+    $subjectId = current_subject_id();
+    $stmt = db()->prepare('SELECT COUNT(*) FROM audience_modes WHERE subject_id = ?');
+    $stmt->execute([$subjectId]);
+    if ((int) $stmt->fetchColumn() <= 1) {
         throw new RuntimeException('At least one audience category must remain.');
     }
     $row = archive_audience_mode_find($id);
     if (!$row) {
         return false;
     }
-    $stmt = db()->prepare('DELETE FROM audience_modes WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('DELETE FROM audience_modes WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, $subjectId]);
     if ((int) $row['is_default'] === 1) {
-        $next = db()->query('SELECT id FROM audience_modes ORDER BY sort_order ASC, created_at ASC LIMIT 1')->fetchColumn();
+        $stmt = db()->prepare('SELECT id FROM audience_modes WHERE subject_id = ? ORDER BY sort_order ASC, created_at ASC LIMIT 1');
+        $stmt->execute([$subjectId]);
+        $next = $stmt->fetchColumn();
         if ($next) {
-            db()->prepare('UPDATE audience_modes SET is_default = 1 WHERE id = ?')->execute([$next]);
+            db()->prepare('UPDATE audience_modes SET is_default = 1 WHERE id = ? AND subject_id = ?')->execute([$next, $subjectId]);
         }
     }
     return true;
@@ -447,9 +496,9 @@ function archive_audience_mode_move(string $id, string $direction): void
     $a = $rows[$index];
     $b = $rows[$swapWith];
     $pdo = db();
-    $stmt = $pdo->prepare('UPDATE audience_modes SET sort_order = ? WHERE id = ?');
-    $stmt->execute([$b['sort_order'], $a['id']]);
-    $stmt->execute([$a['sort_order'], $b['id']]);
+    $stmt = $pdo->prepare('UPDATE audience_modes SET sort_order = ? WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$b['sort_order'], $a['id'], current_subject_id()]);
+    $stmt->execute([$a['sort_order'], $b['id'], current_subject_id()]);
 }
 
 function archive_audience_mode_set_default(string $id): void
@@ -457,9 +506,12 @@ function archive_audience_mode_set_default(string $id): void
     if (!archive_audience_mode_find($id)) {
         throw new RuntimeException('Audience category not found.');
     }
+    $subjectId = current_subject_id();
     $pdo = db();
-    $pdo->exec('UPDATE audience_modes SET is_default = 0');
-    $pdo->prepare('UPDATE audience_modes SET is_default = 1 WHERE id = ?')->execute([$id]);
+    // Scoped to this subject only — an unscoped reset here would have
+    // cleared every OTHER subject's default flag too.
+    $pdo->prepare('UPDATE audience_modes SET is_default = 0 WHERE subject_id = ?')->execute([$subjectId]);
+    $pdo->prepare('UPDATE audience_modes SET is_default = 1 WHERE id = ? AND subject_id = ?')->execute([$id, $subjectId]);
 }
 
 // --- JSON-ready shapes for api/data.php (Browse tab) ---
@@ -550,7 +602,9 @@ function archive_quote_video_link(array $row): ?array
 
     static $videos = null;
     if ($videos === null) {
-        $videos = db()->query("SELECT * FROM content_items WHERE type = 'video' ORDER BY created_at ASC")->fetchAll();
+        $stmt = db()->prepare("SELECT * FROM content_items WHERE subject_id = ? AND type = 'video' ORDER BY created_at ASC");
+        $stmt->execute([current_subject_id()]);
+        $videos = $stmt->fetchAll();
     }
 
     $video = null;
@@ -665,8 +719,8 @@ function archive_slug_or_null($value): ?string
 
 function archive_person_find(string $id): ?array
 {
-    $stmt = db()->prepare('SELECT * FROM people WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('SELECT * FROM people WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     $row = $stmt->fetch();
     return $row ?: null;
 }
@@ -677,14 +731,18 @@ function archive_person_create(array $fields): array
     if (!$names) {
         throw new RuntimeException('At least one name is required.');
     }
-    $maxOrder = (int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM people')->fetchColumn();
+    $subjectId = current_subject_id();
+    $stmt = db()->prepare('SELECT COALESCE(MAX(sort_order), 0) FROM people WHERE subject_id = ?');
+    $stmt->execute([$subjectId]);
+    $maxOrder = (int) $stmt->fetchColumn();
     $id = make_uuid();
     $stmt = db()->prepare(
-        'INSERT INTO people (id, slug, sort_order, names, role, fate, notes, name_note, source_note, citation)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO people (id, subject_id, slug, sort_order, names, role, fate, notes, name_note, source_note, citation)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $id,
+        $subjectId,
         archive_slug_or_null($fields['slug'] ?? null),
         $maxOrder + 1,
         json_encode($names, JSON_UNESCAPED_UNICODE),
@@ -725,8 +783,8 @@ function archive_person_update(string $id, array $fields): array
 
 function archive_person_delete(string $id): bool
 {
-    $stmt = db()->prepare('DELETE FROM people WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('DELETE FROM people WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     return $stmt->rowCount() > 0;
 }
 
@@ -741,8 +799,8 @@ function archive_person_move(string $id, string $direction): void
 
 function archive_place_find(string $id): ?array
 {
-    $stmt = db()->prepare('SELECT * FROM places WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('SELECT * FROM places WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     $row = $stmt->fetch();
     return $row ?: null;
 }
@@ -753,14 +811,18 @@ function archive_place_create(array $fields): array
     if (!$names) {
         throw new RuntimeException('At least one name is required.');
     }
-    $maxOrder = (int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM places')->fetchColumn();
+    $subjectId = current_subject_id();
+    $stmt = db()->prepare('SELECT COALESCE(MAX(sort_order), 0) FROM places WHERE subject_id = ?');
+    $stmt->execute([$subjectId]);
+    $maxOrder = (int) $stmt->fetchColumn();
     $id = make_uuid();
     $stmt = db()->prepare(
-        'INSERT INTO places (id, slug, sort_order, names, wartime_country, modern_country, approx_coords, role, notes, source_note, citation)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO places (id, subject_id, slug, sort_order, names, wartime_country, modern_country, approx_coords, role, notes, source_note, citation)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $id,
+        $subjectId,
         archive_slug_or_null($fields['slug'] ?? null),
         $maxOrder + 1,
         json_encode($names, JSON_UNESCAPED_UNICODE),
@@ -803,8 +865,8 @@ function archive_place_update(string $id, array $fields): array
 
 function archive_place_delete(string $id): bool
 {
-    $stmt = db()->prepare('DELETE FROM places WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('DELETE FROM places WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     return $stmt->rowCount() > 0;
 }
 
@@ -819,8 +881,8 @@ function archive_place_move(string $id, string $direction): void
 
 function archive_timeline_find(string $id): ?array
 {
-    $stmt = db()->prepare('SELECT * FROM timeline_entries WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('SELECT * FROM timeline_entries WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     $row = $stmt->fetch();
     return $row ?: null;
 }
@@ -836,14 +898,18 @@ function archive_timeline_create(array $fields): array
     if ($confidence !== null && !in_array($confidence, ['high', 'medium', 'low'], true)) {
         throw new RuntimeException('Confidence must be high, medium, or low.');
     }
-    $maxOrder = (int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM timeline_entries')->fetchColumn();
+    $subjectId = current_subject_id();
+    $stmt = db()->prepare('SELECT COALESCE(MAX(sort_order), 0) FROM timeline_entries WHERE subject_id = ?');
+    $stmt->execute([$subjectId]);
+    $maxOrder = (int) $stmt->fetchColumn();
     $id = make_uuid();
     $stmt = db()->prepare(
-        'INSERT INTO timeline_entries (id, sort_order, date_label, event, source_note, confidence, note, historical_date, historical_source, citation)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO timeline_entries (id, subject_id, sort_order, date_label, event, source_note, confidence, note, historical_date, historical_source, citation)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $id,
+        $subjectId,
         $maxOrder + 1,
         $dateLabel,
         $event,
@@ -890,8 +956,8 @@ function archive_timeline_update(string $id, array $fields): array
 
 function archive_timeline_delete(string $id): bool
 {
-    $stmt = db()->prepare('DELETE FROM timeline_entries WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('DELETE FROM timeline_entries WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     return $stmt->rowCount() > 0;
 }
 
@@ -926,9 +992,9 @@ function archive_move_row(string $table, array $rows, string $id, string $direct
     }
     $a = $rows[$index];
     $b = $rows[$swapWith];
-    $stmt = db()->prepare("UPDATE $table SET sort_order = ? WHERE id = ?");
-    $stmt->execute([$b['sort_order'], $a['id']]);
-    $stmt->execute([$a['sort_order'], $b['id']]);
+    $stmt = db()->prepare("UPDATE $table SET sort_order = ? WHERE id = ? AND subject_id = ?");
+    $stmt->execute([$b['sort_order'], $a['id'], current_subject_id()]);
+    $stmt->execute([$a['sort_order'], $b['id'], current_subject_id()]);
 }
 
 function archive_timeline_move(string $id, string $direction): void
@@ -940,8 +1006,8 @@ function archive_timeline_move(string $id, string $direction): void
 
 function archive_quote_find(string $id): ?array
 {
-    $stmt = db()->prepare('SELECT * FROM quotes WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('SELECT * FROM quotes WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     $row = $stmt->fetch();
     return $row ?: null;
 }
@@ -953,15 +1019,19 @@ function archive_quote_create(array $fields): array
     if ($speaker === null || $quoteText === null) {
         throw new RuntimeException('Speaker and quote text are required.');
     }
-    $maxOrder = (int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM quotes')->fetchColumn();
+    $subjectId = current_subject_id();
+    $stmt = db()->prepare('SELECT COALESCE(MAX(sort_order), 0) FROM quotes WHERE subject_id = ?');
+    $stmt->execute([$subjectId]);
+    $maxOrder = (int) $stmt->fetchColumn();
     $id = make_uuid();
     $tags = archive_normalize_tags($fields['tags'] ?? []);
     keywords_ensure($tags); // joins the app-wide master list — see includes/keywords.php
     $stmt = db()->prepare(
-        'INSERT INTO quotes (id, sort_order, speaker, source_note, tags, quote_text, citation) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO quotes (id, subject_id, sort_order, speaker, source_note, tags, quote_text, citation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $id,
+        $subjectId,
         $maxOrder + 1,
         $speaker,
         archive_trim_or_null($fields['source_note'] ?? null),
@@ -1000,8 +1070,8 @@ function archive_quote_update(string $id, array $fields): array
 
 function archive_quote_delete(string $id): bool
 {
-    $stmt = db()->prepare('DELETE FROM quotes WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('DELETE FROM quotes WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     return $stmt->rowCount() > 0;
 }
 
@@ -1018,10 +1088,11 @@ function archive_quote_move(string $id, string $direction): void
 function archive_primary_testimony_update(array $fields): array
 {
     $stmt = db()->prepare(
-        'REPLACE INTO primary_testimony (id, interview_label, interview_date, location, interviewer, videographer, length_label, raw_markdown)
-         VALUES (1, ?, ?, ?, ?, ?, ?, ?)'
+        'REPLACE INTO primary_testimony (subject_id, interview_label, interview_date, location, interviewer, videographer, length_label, raw_markdown)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
+        current_subject_id(),
         archive_trim_or_null($fields['interview_label'] ?? null),
         archive_trim_or_null($fields['interview_date'] ?? null),
         archive_trim_or_null($fields['location'] ?? null),
@@ -1035,8 +1106,8 @@ function archive_primary_testimony_update(array $fields): array
 
 function archive_discrepancy_notes_update(array $fields): array
 {
-    $stmt = db()->prepare('REPLACE INTO discrepancy_notes (id, content_markdown) VALUES (1, ?)');
-    $stmt->execute([archive_trim_or_null($fields['content_markdown'] ?? null)]);
+    $stmt = db()->prepare('REPLACE INTO discrepancy_notes (subject_id, content_markdown) VALUES (?, ?)');
+    $stmt->execute([current_subject_id(), archive_trim_or_null($fields['content_markdown'] ?? null)]);
     return archive_discrepancy_notes();
 }
 
@@ -1064,9 +1135,9 @@ function archive_content_links_apply(string $contentItemId, array $links): void
             continue;
         }
         $stmt = db()->prepare(
-            'INSERT IGNORE INTO content_links (id, content_item_id, entity_type, entity_id) VALUES (?, ?, ?, ?)'
+            'INSERT IGNORE INTO content_links (id, subject_id, content_item_id, entity_type, entity_id) VALUES (?, ?, ?, ?, ?)'
         );
-        $stmt->execute([make_uuid(), $contentItemId, $type, $id]);
+        $stmt->execute([make_uuid(), current_subject_id(), $contentItemId, $type, $id]);
     }
 }
 
@@ -1074,7 +1145,8 @@ function archive_content_links_apply(string $contentItemId, array $links): void
 // this item's links rather than accumulate duplicates across runs.
 function archive_content_links_clear_for_item(string $contentItemId): void
 {
-    db()->prepare('DELETE FROM content_links WHERE content_item_id = ?')->execute([$contentItemId]);
+    $stmt = db()->prepare('DELETE FROM content_links WHERE content_item_id = ? AND subject_id = ?');
+    $stmt->execute([$contentItemId, current_subject_id()]);
 }
 
 // Content items linked to a given archive entity, each with EVERY one of
@@ -1089,10 +1161,10 @@ function archive_content_links_for_entity(string $entityType, string $entityId):
         "SELECT ci.id, ci.type, ci.title, ci.source_url
          FROM content_links cl
          JOIN content_items ci ON ci.id = cl.content_item_id
-         WHERE cl.entity_type = ? AND cl.entity_id = ?
+         WHERE cl.entity_type = ? AND cl.entity_id = ? AND cl.subject_id = ?
          ORDER BY ci.created_at ASC"
     );
-    $stmt->execute([$entityType, $entityId]);
+    $stmt->execute([$entityType, $entityId, current_subject_id()]);
     $rows = $stmt->fetchAll();
     foreach ($rows as &$row) {
         $files = content_files_for_item($row['id']);

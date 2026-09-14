@@ -7,14 +7,13 @@ $admin = require_admin_api();
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
-    $stmt = db()->query('SELECT id, name, created_at FROM redacted_names ORDER BY created_at ASC');
     $names = array_map(static function (array $row): array {
         return [
             'id' => $row['id'],
             'name' => $row['name'],
             'createdAt' => $row['created_at'],
         ];
-    }, $stmt->fetchAll());
+    }, redacted_names_admin_list());
     json_response(['names' => $names]);
 }
 

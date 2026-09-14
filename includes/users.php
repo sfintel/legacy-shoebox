@@ -5,33 +5,49 @@ declare(strict_types=1);
 // lib/users.js, but backed by a real table instead of a JSON file since
 // that's what a LAMP stack gives us for free.
 
+// Only ever called for the install's very first subject during setup —
+// retained for any script/test that still calls it directly, but
+// includes/setup.php's setup_create_admin() (subject-scoped) is the
+// real path every wizard run uses.
 function user_seed_admin(string $name, string $email, string $password): void
 {
+    $subjectId = require_current_subject()['id'];
     $pdo = db();
-    $count = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
-    if ($count > 0) {
-        return; // already have users — never overwrite
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE subject_id = ?');
+    $stmt->execute([$subjectId]);
+    if ((int) $stmt->fetchColumn() > 0) {
+        return; // this subject already has users — never overwrite
     }
     $stmt = $pdo->prepare(
-        'INSERT INTO users (id, name, email, password_hash, role, status, approved_at)
-         VALUES (?, ?, ?, ?, \'admin\', \'approved\', NOW())'
+        'INSERT INTO users (id, subject_id, name, email, password_hash, role, status, approved_at)
+         VALUES (?, ?, ?, ?, ?, \'admin\', \'approved\', NOW())'
     );
     $stmt->execute([
         make_uuid(),
+        $subjectId,
         $name,
         strtolower(trim($email)),
         password_hash($password, PASSWORD_DEFAULT),
     ]);
 }
 
+// Scoped to the current request's subject — the same email can be a
+// separate, independent account on a different subject (see
+// sql/schema.sql's users.uniq_subject_email).
 function user_find_by_email(string $email): ?array
 {
-    $stmt = db()->prepare('SELECT * FROM users WHERE email = ?');
-    $stmt->execute([strtolower(trim($email))]);
+    $stmt = db()->prepare('SELECT * FROM users WHERE subject_id = ? AND email = ?');
+    $stmt->execute([current_subject_id(), strtolower(trim($email))]);
     $row = $stmt->fetch();
     return $row ?: null;
 }
 
+// Deliberately NOT subject-scoped — this is the session-lookup
+// primitive (current_user() in includes/auth.php), which already
+// double-checks the returned row's subject_id against
+// current_subject_id() itself as defense-in-depth. A user id is a
+// globally unique UUID regardless of subject, so no ambiguity exists
+// either way.
 function user_find_by_id(string $id): ?array
 {
     $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
@@ -42,25 +58,30 @@ function user_find_by_id(string $id): ?array
 
 function user_all(): array
 {
-    return db()->query('SELECT * FROM users ORDER BY created_at DESC')->fetchAll();
+    $stmt = db()->prepare('SELECT * FROM users WHERE subject_id = ? ORDER BY created_at DESC');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetchAll();
 }
 
 // Default signup-notification target when NOTIFY_EMAIL isn't set —
 // replaces the retired ADMIN_EMAIL env var, since the wizard creates the
 // admin account directly in the database rather than via .env (see
-// includes/setup.php).
+// includes/setup.php). Scoped to the current subject, same as
+// user_all() above.
 function user_first_admin_email(): ?string
 {
-    $stmt = db()->query("SELECT email FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1");
-    $email = $stmt ? $stmt->fetchColumn() : false;
+    $stmt = db()->prepare("SELECT email FROM users WHERE subject_id = ? AND role = 'admin' ORDER BY created_at ASC LIMIT 1");
+    $stmt->execute([current_subject_id()]);
+    $email = $stmt->fetchColumn();
     return $email !== false ? (string) $email : null;
 }
 
 // Throws a RuntimeException with a user-facing message if the email is
-// already taken (matches the Node version's createPending() behaviour).
-// $audienceMode is validated against audience_mode_values() by the
-// caller (api/signup.php) — falls back to audience_mode_default() here
-// too, defensively, in case a future caller forgets to.
+// already taken on this subject (matches the Node version's
+// createPending() behaviour). $audienceMode is validated against
+// audience_mode_values() by the caller (api/signup.php) — falls back to
+// audience_mode_default() here too, defensively, in case a future
+// caller forgets to.
 function user_create_pending(string $name, string $email, string $password, ?string $audienceMode = null, ?string $reason = null): array
 {
     $normalizedEmail = strtolower(trim($email));
@@ -70,11 +91,11 @@ function user_create_pending(string $name, string $email, string $password, ?str
     $mode = in_array($audienceMode, audience_mode_values(), true) ? $audienceMode : audience_mode_default();
     $id = make_uuid();
     $stmt = db()->prepare(
-        'INSERT INTO users (id, name, email, password_hash, role, status, default_audience_mode, signup_reason)
-         VALUES (?, ?, ?, ?, \'reader\', \'pending\', ?, ?)'
+        'INSERT INTO users (id, subject_id, name, email, password_hash, role, status, default_audience_mode, signup_reason)
+         VALUES (?, ?, ?, ?, ?, \'reader\', \'pending\', ?, ?)'
     );
     $reason = $reason !== null && trim($reason) !== '' ? trim($reason) : null;
-    $stmt->execute([$id, trim($name), $normalizedEmail, password_hash($password, PASSWORD_DEFAULT), $mode, $reason]);
+    $stmt->execute([$id, current_subject_id(), trim($name), $normalizedEmail, password_hash($password, PASSWORD_DEFAULT), $mode, $reason]);
     return user_find_by_id($id);
 }
 

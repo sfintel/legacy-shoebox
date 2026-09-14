@@ -15,7 +15,10 @@ if (setup_is_complete()) {
 $stage = setup_current_stage();
 $stageNames = ['db' => 'Database', 'identity' => 'Site identity', 'admin' => 'Admin account', 'advanced' => 'Finish up'];
 $stageOrder = array_keys($stageNames);
-$stepNumber = array_search($stage, $stageOrder, true) + 1;
+// 'new_subject_gate' precedes this subject's own step sequence (it's
+// about claiming this hostname at all, not a step within one subject's
+// wizard) — no step tracker for it.
+$stepNumber = $stage !== 'new_subject_gate' ? array_search($stage, $stageOrder, true) + 1 : null;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -62,14 +65,28 @@ $stepNumber = array_search($stage, $stageOrder, true) + 1;
 <body>
   <div class="card">
     <h1>Set up your archive</h1>
-    <p class="sub">Step <?= $stepNumber ?> of <?= count($stageOrder) ?> — <?= h($stageNames[$stage]) ?></p>
-    <div class="steps">
-      <?php foreach ($stageOrder as $i => $s): ?>
-        <span class="<?= $i < $stepNumber - 1 ? 'done' : ($s === $stage ? 'active' : '') ?>"></span>
-      <?php endforeach; ?>
-    </div>
+    <?php if ($stage === 'new_subject_gate'): ?>
+      <p class="sub">This hostname doesn't have an archive yet.</p>
+    <?php else: ?>
+      <p class="sub">Step <?= $stepNumber ?> of <?= count($stageOrder) ?> — <?= h($stageNames[$stage]) ?></p>
+      <div class="steps">
+        <?php foreach ($stageOrder as $i => $s): ?>
+          <span class="<?= $i < $stepNumber - 1 ? 'done' : ($s === $stage ? 'active' : '') ?>"></span>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
 
-    <?php if ($stage === 'db'): ?>
+    <?php if ($stage === 'new_subject_gate'): ?>
+      <h2>Add a new archive here</h2>
+      <p class="hint">This install already hosts at least one archive elsewhere. Creating another one on this hostname needs the setup secret from your <code>.env</code> file (<code>SUBJECT_SETUP_SECRET</code>) — or just log in first if you're a master admin.</p>
+      <form id="newSubjectForm">
+        <label for="subjectSecret">Setup secret</label>
+        <input type="text" id="subjectSecret" placeholder="Leave blank if you're already logged in as a master admin">
+        <p class="err" id="newSubjectError" role="alert"></p>
+        <button type="submit" id="newSubjectSubmitBtn">Continue</button>
+      </form>
+
+    <?php elseif ($stage === 'db'): ?>
       <h2>Connect your database</h2>
       <p class="hint">Create this via your host's cPanel &rarr; MySQL Databases first, then enter the details it gave you.</p>
       <form id="dbForm">
@@ -157,8 +174,6 @@ $stepNumber = array_search($stage, $stageOrder, true) + 1;
         </div>
         <label for="aiModel">Model (optional — a sensible default is used if left blank)</label>
         <input type="text" id="aiModel" placeholder="e.g. claude-sonnet-5">
-        <label for="archiveRootInput">Upload storage location (optional — advanced)</label>
-        <input type="text" id="archiveRootInput" placeholder="Default: .. (one level above this folder)">
         <p class="err" id="adminError" role="alert"></p>
         <button type="submit" id="adminSubmitBtn">Create account &amp; continue</button>
       </form>

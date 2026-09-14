@@ -19,6 +19,17 @@ if (rate_limit_exceeded($emailKey, LOGIN_ATTEMPT_LIMIT, LOGIN_LOCKOUT_SECONDS)
     json_response(['ok' => false, 'error' => 'Too many failed login attempts. Try again later.'], 429);
 }
 
+// Checked before the per-subject users table — a master admin (see
+// includes/master_admin.php) uses the same login page/credential on
+// every subject's hostname, so this must win first if it matches.
+$master = $email ? master_admin_find_by_email($email) : null;
+if ($master && $password && user_verify_password($password, $master['password_hash'])) {
+    rate_limit_reset($emailKey);
+    rate_limit_reset($ipKey);
+    auth_login_master($master);
+    json_response(['ok' => true]);
+}
+
 $user = $email ? user_find_by_email($email) : null;
 $passwordOk = $user && $password && user_verify_password($password, $user['password_hash']);
 

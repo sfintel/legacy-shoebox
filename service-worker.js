@@ -1,10 +1,13 @@
-const CACHE_NAME = "app-lamp-v5";
+const CACHE_NAME = "app-lamp-v6";
 const APP_SHELL = [
   "/",
   "/login.php",
   "/css/style.css",
   "/js/app.js",
-  "/manifest.json",
+  // No manifest.json here — each subject now has its own
+  // manifest-{slug}.json (see manifest_url() in includes/archive.php),
+  // and this one static service worker file is shared across every
+  // subject's origin, so no single path fits all of them.
   "/icons/icon-192.png",
   "/icons/icon-512.png",
 ];

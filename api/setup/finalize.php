@@ -6,7 +6,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_response(['error' => 'Method not allowed'], 405);
 }
 
-if (!setup_admin_ready()) {
+if (!setup_admin_ready(require_current_subject()['id'])) {
     json_response(['error' => 'The admin account is not set up yet.'], 400);
 }
 if (setup_is_complete()) {

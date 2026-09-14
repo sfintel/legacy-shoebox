@@ -9,8 +9,18 @@ declare(strict_types=1);
 
 function redacted_names(): array
 {
-    $stmt = db()->query('SELECT name FROM redacted_names ORDER BY created_at ASC');
+    $stmt = db()->prepare('SELECT name FROM redacted_names WHERE subject_id = ? ORDER BY created_at ASC');
+    $stmt->execute([current_subject_id()]);
     return array_column($stmt->fetchAll(), 'name');
+}
+
+// Full rows (id/name/created_at), for the admin redactions list —
+// api/admin/redactions.php.
+function redacted_names_admin_list(): array
+{
+    $stmt = db()->prepare('SELECT id, name, created_at FROM redacted_names WHERE subject_id = ? ORDER BY created_at ASC');
+    $stmt->execute([current_subject_id()]);
+    return $stmt->fetchAll();
 }
 
 // Case-insensitive, word-boundary-aware replace, so redacting "Dan"
@@ -39,15 +49,16 @@ function redact_add(string $name, string $userId): array
     if ($name === '') {
         throw new RuntimeException('A name is required.');
     }
-    $stmt = db()->prepare('SELECT id FROM redacted_names WHERE name = ?');
-    $stmt->execute([$name]);
+    $subjectId = current_subject_id();
+    $stmt = db()->prepare('SELECT id FROM redacted_names WHERE subject_id = ? AND name = ?');
+    $stmt->execute([$subjectId, $name]);
     if ($stmt->fetch()) {
         throw new RuntimeException('That name is already on the redaction list.');
     }
 
     $id = make_uuid();
-    $stmt = db()->prepare('INSERT INTO redacted_names (id, name, created_by) VALUES (?, ?, ?)');
-    $stmt->execute([$id, $name, $userId]);
+    $stmt = db()->prepare('INSERT INTO redacted_names (id, subject_id, name, created_by) VALUES (?, ?, ?, ?)');
+    $stmt->execute([$id, $subjectId, $name, $userId]);
 
     $stmt = db()->prepare('SELECT id, name, created_at FROM redacted_names WHERE id = ?');
     $stmt->execute([$id]);
@@ -56,7 +67,7 @@ function redact_add(string $name, string $userId): array
 
 function redact_remove(string $id): bool
 {
-    $stmt = db()->prepare('DELETE FROM redacted_names WHERE id = ?');
-    $stmt->execute([$id]);
+    $stmt = db()->prepare('DELETE FROM redacted_names WHERE id = ? AND subject_id = ?');
+    $stmt->execute([$id, current_subject_id()]);
     return $stmt->rowCount() > 0;
 }
