@@ -50,14 +50,16 @@ Then import the schema — either cPanel's *phpMyAdmin* (Import tab, pick
 mysql -u YOUR_DB_USER -p YOUR_DB_NAME < sql/schema.sql
 ```
 
-This creates the full set of tables the app needs — accounts and
-permissions (`users`, `consumed_tokens`, `rate_limits`), the core archive
-(`site_settings`, `audience_modes`, `people`, `places`, `timeline_entries`,
-`quotes`, `primary_testimony`, `discrepancy_notes`), family-contributed
-material (`content_items`, `content_files`, `content_suggestions`), the
-app-wide keyword list (`keywords`), and the name-redaction registry
-(`redacted_names`). See `sql/schema.sql` itself for
-what each one is for — every table has a comment explaining its role.
+This creates the full set of tables the app needs — install-wide
+tables (`subjects`, `schema_meta`, `master_admins`, `rate_limits` — see
+"Multiple subjects" below), accounts and permissions (`users`,
+`consumed_tokens`), the core archive (`site_settings`, `audience_modes`,
+`people`, `places`, `timeline_entries`, `quotes`, `primary_testimony`,
+`discrepancy_notes`), family-contributed material (`content_items`,
+`content_files`, `content_suggestions`), the app-wide keyword list
+(`keywords`), and the name-redaction registry (`redacted_names`). See
+`sql/schema.sql` itself for what each one is for — every table has a
+comment explaining its role.
 
 ## 2. Upload the files
 
@@ -112,6 +114,97 @@ tab manages the Ask tab's "Telling for:" options — add, edit, reorder,
 delete, or change the default. Each category needs a short note telling
 the AI how to adjust its answers for that audience; that can't be inferred
 automatically, so writing it is part of adding a category.
+
+## Multiple subjects
+
+One installation — one codebase, one database — can host several
+independent **subjects**: separate family archives, each with its own
+logins, testimony/content, uploaded files, and (optionally) its own AI
+connection. A subject is resolved from the hostname a visitor uses
+(`slava.example.com` vs. `dad.example.com`), so each one looks and
+behaves like a completely separate site even though it's the exact same
+install underneath. You don't need to do anything to get this — every
+install has exactly one subject from the moment the setup wizard
+finishes, and stays that way unless you deliberately add another.
+
+### Adding another subject
+
+1. **DNS**: point a new hostname at the same server your existing
+   subject already uses (an A/CNAME record, wherever you manage DNS for
+   your domain).
+2. **cPanel**: create that hostname as a subdomain or addon domain.
+   cPanel will refuse to let it share an existing document root, so let
+   it create its own (different) one — you'll need that path in the
+   next step.
+3. **Run `./add_subject_host.sh /path/to/existing/webroot
+   /path/to/new/cpanel-docroot`** from inside your git clone (or copy it
+   into a webroot and run it from there). It symlinks every file from
+   your existing webroot into the new one — including `.env`, since
+   install-wide config (database credentials, `SUBJECT_SETUP_SECRET`,
+   `ARCHIVE_ROOT_BASE`, AI defaults) is meant to be shared — so the new
+   hostname serves the exact same codebase. See the script's own header
+   comment for the full walkthrough; it refuses to run until the two
+   steps above are done, and refuses to touch a directory that already
+   looks like a real, separate site.
+4. Wait for cPanel's AutoSSL to issue the new hostname a certificate (or
+   trigger it manually in cPanel > SSL/TLS Status), then visit
+   `https://<new-hostname>/setup.php`. Since this install already has a
+   subject, it'll ask for the setup secret — find it with
+   `grep SUBJECT_SETUP_SECRET .env`, or skip the prompt entirely by
+   logging in first as a master admin (see below). This secret isn't
+   needed for your very first subject; it exists so a stray subdomain
+   pointed at your server by someone else can't spin up an unauthorized
+   subject once you're already running one.
+5. Complete the wizard exactly like the first time — its own identity,
+   its own admin account (with its own optional AI provider/key,
+   independent of every other subject's — editable later from
+   `/admin_settings.php`). Its uploads automatically live under a new
+   `ARCHIVE_ROOT_BASE/{slug}/` directory, fully separate from every
+   other subject.
+
+### What's shared vs. per-subject
+
+Shared, install-wide, in `.env`: database credentials, `SESSION_SECRET`,
+`SUBJECT_SETUP_SECRET`, `ARCHIVE_ROOT_BASE`, SMTP credentials, rate
+limits, backup scheduling, and the AI provider/key a subject falls back
+to if it hasn't set its own. Per-subject, living in the database or
+under `ARCHIVE_ROOT_BASE/{slug}/`: everything else — logins, archive
+content, uploaded files, site identity, keywords, redaction list, and
+an optional AI override. The same email address can be a completely
+independent account on two different subjects; there's no cross-subject
+role and no subject can see another's content, Ask-tab knowledge base,
+or uploads.
+
+### Master admin
+
+A **master admin** is a separate, install-wide trusted-operator account
+— distinct from any one subject's own admin — that can log into *any*
+subject with full admin rights there, via the same login page every
+subject already has. Create one from the server (never over HTTP, since
+this is the single most powerful account in the system):
+
+```bash
+php create_master_admin.php
+```
+
+Logging in with that email/password on any subject's `/login.php`
+transparently gets you a real admin account on whichever subject you're
+currently on — visible in that subject's own `/admin.php` user list
+(never a hidden backdoor), and already protected by the same
+"admin accounts can't be deleted/demoted here" rule every admin has.
+`/master_admin.php` (reachable from any subject's hostname once logged
+in as a master admin) lists every subject on the install with a link
+into each one's admin area.
+
+### A current limitation: backup/restore is still whole-install
+
+`/admin_backup.php` (below) backs up and restores **every subject at
+once** — there's no way yet to back up or restore just one. If you're
+running more than one subject, restoring a backup replaces all of
+them, not just the one you meant to fix. Per-subject backup/restore is
+planned but not built yet; until it is, treat any restore on a
+multi-subject install as an all-or-nothing operation and double-check
+that's really what you want before typing the confirmation phrase.
 
 ## Building out the archive
 
@@ -428,20 +521,22 @@ archive.
 ## Backup & Restore
 
 `/admin_backup.php` (admin-only) creates a single downloadable .zip
-containing a full database dump and every file under `ARCHIVE_ROOT/
-uploads/`. Backups are pure PHP (PDO for the dump, the `ZipArchive`
-extension for packaging) — no `mysqldump` or `shell_exec` dependency, so
-it works on hosts that don't allow either. Backups are stored under
-`ARCHIVE_ROOT/backups/`, outside the webroot like `uploads/` already is,
-and are only ever served through an authenticated download endpoint —
-never a direct URL.
+containing a full database dump and every file under every subject's
+`ARCHIVE_ROOT_BASE/{slug}/uploads/` — **the whole install, every
+subject at once**; see "A current limitation" under "Multiple subjects"
+above if you're running more than one. Backups are pure PHP (PDO for
+the dump, the `ZipArchive` extension for packaging) — no `mysqldump` or
+`shell_exec` dependency, so it works on hosts that don't allow either.
+Backups are stored under `ARCHIVE_ROOT_BASE/{slug}/backups/`, outside
+the webroot like `uploads/` already is, and are only ever served
+through an authenticated download endpoint — never a direct URL.
 
-Restoring from a backup **replaces the entire database and uploads
-directory** with what's in that .zip — it's a full point-in-time
-restore, not a merge, and requires typing a confirmation phrase before
-the button becomes clickable. Use it to undo a bad upgrade or other
-mistake, not as a way to apply a single schema change (see
-[UPGRADE.md](UPGRADE.md) for why).
+Restoring from a backup **replaces the entire database and every
+subject's uploads directory** with what's in that .zip — it's a full
+point-in-time restore, not a merge, and requires typing a confirmation
+phrase before the button becomes clickable. Use it to undo a bad
+upgrade or other mistake, not as a way to apply a single schema change
+(see [UPGRADE.md](UPGRADE.md) for why).
 
 ### Retention, scheduling, and storage location
 
@@ -477,10 +572,10 @@ archive content:
     it creates backups and touches disk, so it's never a publicly
     reachable no-auth endpoint by default.
 - **`BACKUP_DIR`** (optional) — where backup .zip files are stored.
-  Defaults to `ARCHIVE_ROOT/backups`, outside the webroot like `uploads/`
-  already is; only set this if you specifically want backups on a
-  different disk/mount (e.g. more free space than `ARCHIVE_ROOT`'s
-  volume has), and keep it outside the webroot the same way.
+  Defaults to `ARCHIVE_ROOT_BASE/{slug}/backups`, outside the webroot
+  like `uploads/` already is; only set this if you specifically want
+  backups on a different disk/mount (e.g. more free space), and keep it
+  outside the webroot the same way.
 
 ### Moving to a new host
 
@@ -522,9 +617,13 @@ new host regardless of how the database migration goes.
 - Use HTTPS. Most hosts offer a free Let's Encrypt certificate through
   cPanel (*SSL/TLS Status* → *Run AutoSSL*) — turn it on before sending
   anyone a login link.
-- This was built for a small trusted family group, not as a hardened
-  multi-tenant auth system — the login/approval flow keeps casual visitors
-  out and gives you an audit trail of who has access, nothing more.
+- This was built for a small trusted family group, or a handful of such
+  groups sharing one install (see "Multiple subjects" above) — not as a
+  hardened SaaS-grade multi-tenant platform. The login/approval flow
+  keeps casual visitors out and gives you an audit trail of who has
+  access; subject isolation keeps one family's archive out of
+  another's; neither is meant to withstand a determined, sophisticated
+  attacker.
 
 ## A note on how changes get verified
 
