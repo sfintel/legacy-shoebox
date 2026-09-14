@@ -172,9 +172,19 @@ function backup_create(): string
 
     $zip->addFromString('database.sql', backup_dump_sql(db()));
     backup_zip_add_directory($zip, ARCHIVE_ROOT . '/uploads', 'uploads');
+    // site_name() can fail here specifically during upgrade.php's own
+    // pre-migration safety backup, taken before a schema change (e.g.
+    // 2.0.0's site_settings.subject_id) exists yet — this is purely
+    // decorative manifest metadata, so a lookup failure must never abort
+    // an otherwise-successful backup.
+    try {
+        $siteNameForManifest = site_name();
+    } catch (Throwable $e) {
+        $siteNameForManifest = null;
+    }
     $zip->addFromString('manifest.json', json_encode([
         'created_at' => date('c'),
-        'site_name' => site_name(),
+        'site_name' => $siteNameForManifest,
         'app' => 'family-legacy-archive',
     ], JSON_PRETTY_PRINT));
 

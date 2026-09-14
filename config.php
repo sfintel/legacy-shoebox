@@ -101,14 +101,25 @@ define('APP_URL', $resolvedHostname !== null
 // upload/backup data; ARCHIVE_ROOT itself resolves to that subject's
 // own subdirectory (ARCHIVE_ROOT_BASE/{slug}) — includes/content.php
 // and includes/backup.php consume the ARCHIVE_ROOT constant exactly as
-// before multi-subject support, unaware anything changed. No subject
-// resolved yet means nothing should be touching ARCHIVE_ROOT this
-// request (setup's earliest stages, or an unrecognized host) — the
-// placeholder value below exists only so the constant is always
-// defined, never so it's ever actually written to.
-$archiveRootBase = (string) env('ARCHIVE_ROOT_BASE', '..');
-$archiveRootBase = rtrim(str_starts_with($archiveRootBase, '/') ? $archiveRootBase : __DIR__ . '/' . $archiveRootBase, '/');
-define('ARCHIVE_ROOT', $archiveRootBase . '/' . (current_subject()['slug'] ?? '_unresolved'));
+// before multi-subject support, unaware anything changed.
+//
+// When no subject is resolved, fall back to the pre-multi-subject
+// behavior (env('ARCHIVE_ROOT', '..')) rather than inventing a
+// per-request placeholder path — this matters for real, not just
+// defensively: upgrade.php's own pre-migration safety backup runs as
+// CLI with no --subject (there's no subject to pass yet — the
+// `subjects` table itself doesn't exist before the 2.0.0 migration
+// creates it), and it must find this install's actual, existing
+// uploads/backups directory under the OLD single-tenant ARCHIVE_ROOT
+// value, not a nonexistent ARCHIVE_ROOT_BASE/{placeholder} path.
+if (current_subject() !== null) {
+    $archiveRootBase = (string) env('ARCHIVE_ROOT_BASE', '..');
+    $archiveRootBase = rtrim(str_starts_with($archiveRootBase, '/') ? $archiveRootBase : __DIR__ . '/' . $archiveRootBase, '/');
+    define('ARCHIVE_ROOT', $archiveRootBase . '/' . current_subject()['slug']);
+} else {
+    $legacyArchiveRoot = (string) env('ARCHIVE_ROOT', '..');
+    define('ARCHIVE_ROOT', rtrim(str_starts_with($legacyArchiveRoot, '/') ? $legacyArchiveRoot : __DIR__ . '/' . $legacyArchiveRoot, '/'));
+}
 
 require_once __DIR__ . '/includes/ai_provider.php';
 require_once __DIR__ . '/includes/helpers.php';
