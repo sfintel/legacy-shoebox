@@ -31,6 +31,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.2.2' => [
+            'description' => 'Fix the Ask tab failing on every subject with "The AI backend failed to respond" — Anthropic started rejecting the `temperature` param on this app\'s default model (claude-sonnet-5) with "temperature is deprecated for this model"; ai_chat_anthropic() now detects that specific error and transparently retries once without it. No schema change',
+            'db' => null,
+            'env' => [],
+        ],
         '2.2.1' => [
             'description' => 'Removed BACKUP_DIR from the setup wizard\'s "advanced" stage — it wrote to the shared install-wide .env, so filling it in during any subject\'s setup silently redirected every other subject\'s backup location too (found live on production after a second subject\'s setup orphaned the first subject\'s existing backups). BACKUP_DIR remains a valid hand-edit-only .env setting. No schema change',
             'db' => null,

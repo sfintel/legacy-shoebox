@@ -130,11 +130,25 @@ function ai_chat_anthropic(string $apiKey, array $systemParts, array $messages, 
         $payload['temperature'] = $temperature;
     }
 
-    $response = ai_http_post(
-        'https://api.anthropic.com/v1/messages',
-        ['Content-Type: application/json', 'x-api-key: ' . $apiKey, 'anthropic-version: 2023-06-01'],
-        $payload
-    );
+    $url = 'https://api.anthropic.com/v1/messages';
+    $headers = ['Content-Type: application/json', 'x-api-key: ' . $apiKey, 'anthropic-version: 2023-06-01'];
+    $response = ai_http_post($url, $headers, $payload, $errorBody);
+
+    // Some model snapshots have started rejecting a `temperature`
+    // param outright (confirmed on production 2026-09-15: newer
+    // claude-sonnet-5 snapshots 400 with "`temperature` is deprecated
+    // for this model" the instant any subject sets one, including the
+    // app's own 0.2 default — not a one-off, every request with this
+    // param now fails the same way). Rather than require every install
+    // to notice this and manually set AI_TEMPERATURE=default (the
+    // escape hatch ai_temperature() already supports), detect this
+    // specific error and transparently retry once without the param —
+    // exactly what setting "default" would have done anyway.
+    if ($response === null && isset($payload['temperature']) && $errorBody !== null
+        && str_contains($errorBody, 'temperature') && str_contains($errorBody, 'deprecated')) {
+        unset($payload['temperature']);
+        $response = ai_http_post($url, $headers, $payload);
+    }
     if ($response === null) {
         return null;
     }
@@ -234,9 +248,14 @@ function ai_openai_content($content)
 // Shared cURL POST — returns the decoded JSON response body, or null on
 // any transport/HTTP/parse failure (always error_log()'d so it's
 // diagnosable server-side without surfacing provider details to the
-// client).
-function ai_http_post(string $url, array $headers, array $payload): ?array
+// client). $errorBody (by reference, optional) receives the raw
+// response body on an HTTP-level failure, for a caller that needs to
+// distinguish specific provider error messages (e.g. ai_chat_anthropic
+// retrying once without `temperature` — see its own comment); left
+// null on a transport-level failure (no response body exists at all).
+function ai_http_post(string $url, array $headers, array $payload, ?string &$errorBody = null): ?array
 {
+    $errorBody = null;
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -257,6 +276,9 @@ function ai_http_post(string $url, array $headers, array $payload): ?array
 
     if ($body === false || $httpCode >= 400) {
         error_log("ai_http_post: AI provider error (HTTP $httpCode) for $url: " . ($curlError ?: $body));
+        if ($body !== false) {
+            $errorBody = (string) $body;
+        }
         return null;
     }
     $data = json_decode((string) $body, true);

@@ -14,6 +14,31 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.2.2] — 2026-09-15
+
+### Fixed
+
+- **The Ask tab was failing on every subject** ("Something went wrong.
+  The AI backend failed to respond.") — Anthropic has started rejecting
+  the `temperature` parameter outright on the model this app defaults
+  to (`claude-sonnet-5`, used whenever `AI_MODEL`/a subject's AI
+  override is left blank), returning `` `temperature` is deprecated for
+  this model ``. Every request that didn't explicitly set
+  `AI_TEMPERATURE=default` was affected — in practice, every install
+  that hadn't manually discovered and set that escape hatch, i.e.
+  effectively everyone. `ai_chat_anthropic()` now detects this specific
+  error and transparently retries once without `temperature`, so this
+  self-heals with no config change needed.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None required — this fixes the problem at the code level rather than
+requiring `AI_TEMPERATURE=default` in `.env`.
+
 ## [2.2.1] — 2026-09-15
 
 ### Fixed
