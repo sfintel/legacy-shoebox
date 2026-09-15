@@ -106,6 +106,36 @@
     ai_model: document.getElementById("aiModel").value,
   }), "/api/setup/admin.php");
 
+  const smtpTestBtn = document.getElementById("smtpTestBtn");
+  if (smtpTestBtn) {
+    const smtpTestStatus = document.getElementById("smtpTestStatus");
+    smtpTestBtn.addEventListener("click", async () => {
+      smtpTestStatus.textContent = "Sending…";
+      smtpTestBtn.disabled = true;
+      try {
+        const res = await fetch("/api/setup/test_smtp.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            smtp_host: document.getElementById("smtpHost").value,
+            smtp_port: document.getElementById("smtpPort").value,
+            smtp_secure: document.getElementById("smtpSecure").value,
+            smtp_user: document.getElementById("smtpUser").value,
+            smtp_pass: document.getElementById("smtpPass").value,
+            mail_from: document.getElementById("mailFrom").value,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Test failed.");
+        smtpTestStatus.textContent = `Sent to ${data.sentTo} — check your inbox.`;
+      } catch (err) {
+        smtpTestStatus.textContent = err.message;
+      } finally {
+        smtpTestBtn.disabled = false;
+      }
+    });
+  }
+
   wireForm("advancedForm", "advancedError", "advancedSubmitBtn", () => ({
     APP_URL: document.getElementById("appUrl").value,
     NOTIFY_EMAIL: document.getElementById("notifyEmail").value,

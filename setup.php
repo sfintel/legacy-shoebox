@@ -206,6 +206,8 @@ $stepNumber = $stage !== 'new_subject_gate' ? array_search($stage, $stageOrder, 
           <input type="password" id="smtpPass">
           <label for="mailFrom">"From" address</label>
           <input type="text" id="mailFrom" placeholder="Family Archive <no-reply@example.com>">
+          <button type="button" class="secondary" id="smtpTestBtn">Send test email to yourself</button>
+          <p class="hint" id="smtpTestStatus" role="status"></p>
         </fieldset>
         <fieldset>
           <legend>Backups (optional — see README's "Backup & Restore" for details)</legend>

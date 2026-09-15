@@ -37,12 +37,37 @@ function send_mail(string $to, string $subject, string $text, string $html): arr
         return ['skipped' => true];
     }
 
-    $host = env('SMTP_HOST');
-    $port = (int) env('SMTP_PORT', '587');
-    $secure = strtolower((string) env('SMTP_SECURE', 'false')) === 'true';
-    $user = env('SMTP_USER');
-    $pass = env('SMTP_PASS');
-    $from = (string) env('MAIL_FROM', $user ?: 'no-reply@localhost');
+    smtp_send_with_config([
+        'host' => env('SMTP_HOST'),
+        'port' => (int) env('SMTP_PORT', '587'),
+        'secure' => strtolower((string) env('SMTP_SECURE', 'false')) === 'true',
+        'user' => env('SMTP_USER'),
+        'pass' => env('SMTP_PASS'),
+        'from' => (string) env('MAIL_FROM', env('SMTP_USER') ?: 'no-reply@localhost'),
+    ], $to, $subject, $text, $html);
+
+    return ['skipped' => false];
+}
+
+/**
+ * The actual SMTP conversation, parameterized rather than reading
+ * `.env` directly — split out of send_mail() so the setup wizard's
+ * "Send test email" button can try connection values the admin has
+ * only typed so far, before they're saved to `.env` at all (see
+ * api/setup/test_smtp.php). Throws SmtpException on any failure;
+ * send_mail() is the only caller that should treat "not configured" as
+ * a silent no-op — this function always either sends or throws.
+ *
+ * @param array{host: ?string, port: int, secure: bool, user: ?string, pass: ?string, from: string} $config
+ */
+function smtp_send_with_config(array $config, string $to, string $subject, string $text, string $html): void
+{
+    $host = $config['host'];
+    $port = $config['port'];
+    $secure = $config['secure'];
+    $user = $config['user'];
+    $pass = $config['pass'];
+    $from = $config['from'];
 
     $transport = $secure ? "tls://$host:$port" : "tcp://$host:$port";
     $stream = @stream_socket_client($transport, $errno, $errstr, 15, STREAM_CLIENT_CONNECT);
@@ -104,8 +129,6 @@ function send_mail(string $to, string $subject, string $text, string $html): arr
     } finally {
         fclose($stream);
     }
-
-    return ['skipped' => false];
 }
 
 function smtp_local_hostname(): string

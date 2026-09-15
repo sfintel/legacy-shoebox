@@ -31,6 +31,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.3.0' => [
+            'description' => 'Added a "Send test email" button to the setup wizard\'s Advanced/SMTP stage, so SMTP settings can be verified before finishing setup instead of only on the first real signup-approval email. New api/setup/test_smtp.php; includes/mailer.php refactored into a parameterized smtp_send_with_config(). No schema change',
+            'db' => null,
+            'env' => [],
+        ],
         '2.2.2' => [
             'description' => 'Fix the Ask tab failing on every subject with "The AI backend failed to respond" — Anthropic started rejecting the `temperature` param on this app\'s default model (claude-sonnet-5) with "temperature is deprecated for this model"; ai_chat_anthropic() now detects that specific error and transparently retries once without it. No schema change',
             'db' => null,

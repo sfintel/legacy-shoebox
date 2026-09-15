@@ -14,6 +14,28 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.3.0] — 2026-09-15
+
+### Added
+
+- **"Send test email" button on the setup wizard's Advanced/SMTP
+  stage** — lets you confirm your SMTP host/port/user/password/from
+  values actually work *before* finishing setup, rather than finding
+  out only when the first real signup-approval email silently fails.
+  Sends to your own admin address using exactly the values currently
+  typed into the form (not yet saved to `.env`). New
+  `api/setup/test_smtp.php`; `includes/mailer.php`'s SMTP client is
+  refactored into a parameterized `smtp_send_with_config()` so this
+  didn't need a second SMTP implementation.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.2.2] — 2026-09-15
 
 ### Fixed
