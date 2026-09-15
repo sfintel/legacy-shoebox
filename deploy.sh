@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Pulls the latest code into THIS clone, syncs it into a target webroot,
-# then runs that webroot's upgrade.sh. Run this from inside a git clone
+# re-syncs any symlink-mirrored subject webroot alongside it (see below),
+# then runs the target's upgrade.sh. Run this from inside a git clone
 # kept outside any webroot (see UPGRADE.md for why) — never point git
 # itself at a webroot directory.
 #
@@ -48,6 +49,32 @@ rsync -rlc --delete --no-times --no-perms --no-owner --no-group \
     --exclude '.git' \
     --exclude '.env' \
     "./" "$TARGET/"
+
+echo
+echo "== Checking for symlink-mirrored subjects alongside $TARGET =="
+# A subject added via add_subject_host.sh (see that script and README's
+# "Multiple subjects" section) is just a directory of symlinks pointing
+# back at $TARGET's own files — including a brand-new TOP-LEVEL file
+# added after that subject's mirror was created, which never gets a
+# symlink of its own and 404s there until someone remembers to re-run
+# add_subject_host.sh by hand (this bit a real deploy — see CHANGELOG's
+# 2.4.1 entry). Close that gap here instead of relying on memory: any
+# sibling directory next to $TARGET whose own config.php is a symlink
+# resolving to this exact $TARGET/config.php is unambiguously one of
+# these mirrors (nothing else would ever look like that), so re-run
+# add_subject_host.sh against every one found, picking up anything new
+# automatically on every deploy.
+TARGET_CONFIG_REAL="$(readlink -f "$TARGET/config.php")"
+shopt -s nullglob
+for sibling in "$(dirname "$TARGET")"/*/; do
+    sibling="${sibling%/}"
+    if [ "$sibling" != "$TARGET" ] && [ -L "$sibling/config.php" ] \
+        && [ "$(readlink -f "$sibling/config.php")" = "$TARGET_CONFIG_REAL" ]; then
+        echo "  Found mirror: $sibling — re-running add_subject_host.sh"
+        ./add_subject_host.sh "$TARGET" "$sibling"
+    fi
+done
+shopt -u nullglob
 
 echo
 echo "== Running upgrade.sh in $TARGET =="
