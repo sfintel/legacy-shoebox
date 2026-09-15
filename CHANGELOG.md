@@ -14,6 +14,22 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.2.0] — 2026-09-15
+
+### Added
+
+- **Per-subject AI settings UI** — a subject's own admin can now
+  view/edit that subject's AI provider, API key, base URL, model, and
+  sampling temperature after setup, from a new "AI settings" tab on
+  `/admin_settings.php`. Previously this was only settable once during
+  the setup wizard's admin-creation step, with no way to change it
+  afterward short of a direct SQL `UPDATE` on the `subjects` row.
+  Leaving the API key blank clears the override and falls back to the
+  install-wide `.env` default (same behavior `ai_provider.php` already
+  implemented internally — this just exposes it in the UI). New
+  `api/admin/ai_settings.php` endpoint, admin-only, scoped to the
+  logged-in admin's own subject.
+
 ## [2.1.0] — 2026-09-15
 
 ### Added

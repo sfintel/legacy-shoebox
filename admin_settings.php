@@ -27,6 +27,7 @@ require_admin_page();
     <button class="tab-btn" data-tab="sources" id="tab-sources" role="tab" aria-selected="false" aria-controls="panel-sources">Sources</button>
     <button class="tab-btn" data-tab="audience" id="tab-audience" role="tab" aria-selected="false" aria-controls="panel-audience">Audience categories</button>
     <button class="tab-btn" data-tab="keywords" id="tab-keywords" role="tab" aria-selected="false" aria-controls="panel-keywords">Keywords</button>
+    <button class="tab-btn" data-tab="ai" id="tab-ai" role="tab" aria-selected="false" aria-controls="panel-ai">AI settings</button>
   </nav>
 
   <main id="app" tabindex="-1" style="max-width:90vw;">
@@ -127,6 +128,45 @@ require_admin_page();
           <tbody id="keywordRows"></tbody>
         </table>
       </div>
+    </section>
+
+    <!-- AI SETTINGS -->
+    <section class="panel" id="panel-ai" role="tabpanel" aria-labelledby="tab-ai" tabindex="0">
+      <h2>AI settings</h2>
+      <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
+        Powers the Ask tab and AI features for this subject only. Leave the API key blank to inherit the
+        install-wide default configured in <code>.env</code><span id="aiInstallStatus"></span>. Setting a key
+        here overrides the default for this subject alone — other subjects on this install are unaffected.
+      </p>
+      <p class="meta" id="aiEffectiveStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
+      <form id="aiForm" class="content-form" style="max-width:640px;">
+        <div class="form-row">
+          <label for="aiProvider">Provider</label>
+          <select id="aiProvider">
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openai">OpenAI, or an OpenAI-compatible API (Groq, DeepSeek, OpenRouter, a local model, etc.)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="aiApiKey">API key (blank = inherit install default)</label>
+          <input type="text" id="aiApiKey" placeholder="sk-ant-...">
+        </div>
+        <div class="form-row" id="aiBaseUrlField" style="display:none;">
+          <label for="aiBaseUrl">API base URL (blank = OpenAI itself)</label>
+          <input type="text" id="aiBaseUrl" placeholder="e.g. https://api.groq.com/openai/v1">
+        </div>
+        <div class="form-row">
+          <label for="aiModel">Model (blank = a sensible default)</label>
+          <input type="text" id="aiModel" placeholder="e.g. claude-sonnet-5">
+        </div>
+        <div class="form-row">
+          <label for="aiTemperature">Sampling temperature (blank = 0.2; type "default" to use the provider's own default)</label>
+          <input type="text" id="aiTemperature" placeholder="0.2">
+        </div>
+        <p class="form-error" id="aiFormError" role="alert" style="display:none;"></p>
+        <p class="meta" id="aiStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
+        <button type="submit" class="btn-primary" id="aiSubmitBtn">Save AI settings</button>
+      </form>
     </section>
 
   </main>

@@ -31,6 +31,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.2.0' => [
+            'description' => 'A subject\'s own admin can now view/edit that subject\'s AI provider/key/base-url/model/temperature after setup, from a new "AI settings" tab on admin_settings.php (backed by api/admin/ai_settings.php) — previously only settable once, during the setup wizard, with no way to change it afterward short of a direct SQL UPDATE. Blank fields inherit the install-wide .env default, same semantics ai_provider.php already used. No schema change — subjects.ai_* columns already existed since 2.0.0',
+            'db' => null,
+            'env' => [],
+        ],
         '2.1.0' => [
             'description' => 'Per-subject and whole-site backup/restore: /admin_backup.php now scopes to only the current subject (never able to see/restore any other subject\'s data); new /master_admin_backup.php offers both whole-site (every subject at once) and per-subject backup/restore for any subject; cron_backup.php dispatches across every active subject in one cron line. Also fixes upgrade.php\'s own pre-migration safety backup silently failing since 2.0.0 (no schema change, this is purely code)',
             'db' => null,

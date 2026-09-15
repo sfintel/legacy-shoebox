@@ -547,8 +547,76 @@
     }
   });
 
+  // --- AI settings ---
+  const aiForm = document.getElementById("aiForm");
+  const aiSubmitBtn = document.getElementById("aiSubmitBtn");
+  const aiFormError = document.getElementById("aiFormError");
+  const aiStatus = document.getElementById("aiStatus");
+  const aiProviderSelect = document.getElementById("aiProvider");
+  const aiBaseUrlField = document.getElementById("aiBaseUrlField");
+
+  function syncAiFields() {
+    aiBaseUrlField.style.display = aiProviderSelect.value === "openai" ? "" : "none";
+  }
+  aiProviderSelect.addEventListener("change", syncAiFields);
+
+  function populateAiForm(s) {
+    aiProviderSelect.value = s.aiProvider || "anthropic";
+    document.getElementById("aiApiKey").value = s.aiApiKey || "";
+    document.getElementById("aiBaseUrl").value = s.aiBaseUrl || "";
+    document.getElementById("aiModel").value = s.aiModel || "";
+    document.getElementById("aiTemperature").value = s.aiTemperature || "";
+    syncAiFields();
+
+    document.getElementById("aiInstallStatus").textContent = s.installConfigured
+      ? " (currently configured)"
+      : " (not currently configured)";
+    aiEffectiveStatus.textContent = s.hasOverride
+      ? `This subject is using its own override: ${s.effectiveProvider} / ${s.effectiveModel}.`
+      : `This subject is inheriting the install default: ${s.effectiveProvider} / ${s.effectiveModel}${s.installConfigured ? "" : " (no API key configured anywhere — AI features are off)"}.`;
+  }
+
+  const aiEffectiveStatus = document.getElementById("aiEffectiveStatus");
+
+  async function loadAiSettings() {
+    const res = await fetch("/api/admin/ai_settings.php");
+    if (res.status === 403) return;
+    const data = await res.json();
+    populateAiForm(data.settings || {});
+  }
+
+  aiForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    aiFormError.style.display = "none";
+    aiSubmitBtn.disabled = true;
+    try {
+      const res = await fetch("/api/admin/ai_settings.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ai_provider: aiProviderSelect.value,
+          ai_api_key: document.getElementById("aiApiKey").value,
+          ai_base_url: document.getElementById("aiBaseUrl").value,
+          ai_model: document.getElementById("aiModel").value,
+          ai_temperature: document.getElementById("aiTemperature").value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Save failed");
+      populateAiForm(data.settings || {});
+      aiStatus.textContent = "Saved.";
+      setTimeout(() => { aiStatus.textContent = ""; }, 3000);
+    } catch (err) {
+      aiFormError.textContent = err.message;
+      aiFormError.style.display = "";
+    } finally {
+      aiSubmitBtn.disabled = false;
+    }
+  });
+
   loadIdentity();
   loadSources();
   loadModes();
   loadKeywords();
+  loadAiSettings();
 })();
