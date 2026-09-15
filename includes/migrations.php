@@ -31,6 +31,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.4.1' => [
+            'description' => 'json_response() (every JSON API endpoint) now sends Cache-Control: no-store — fixes a deleted passkey (or any other list-then-mutate UI) sometimes still showing the old row until a hard page refresh, since the browser could cache the GET response with no cache headers of its own. No schema change',
+            'db' => null,
+            'env' => [],
+        ],
         '2.4.0' => [
             'description' => 'A master admin can now register their own passkey and sign in with it directly as master admin (not just as a shadow admin of one subject) — new "Master admin passkey" section on account.php, gated to a master-admin session. webauthn_credentials.user_id becomes nullable and gains a master_admin_id column (FK to master_admins, ON DELETE CASCADE) — a row belongs to exactly one of the two',
             'db' => static function (PDO $pdo): void {

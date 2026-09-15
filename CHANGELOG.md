@@ -14,6 +14,26 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.4.1] — 2026-09-15
+
+### Fixed
+
+- After deleting a passkey (personal or master admin) on `/account.php`,
+  the list could keep showing the deleted row until a hard page
+  refresh — the browser was caching the GET response listing
+  credentials, since `json_response()` (used by every JSON API endpoint
+  in this app) never sent an explicit `Cache-Control` header. Now sends
+  `Cache-Control: no-store` on every response, so a re-fetch right
+  after a change always hits the server instead of a stale cached copy.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.4.0] — 2026-09-15
 
 ### Added

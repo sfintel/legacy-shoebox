@@ -10,6 +10,12 @@ function json_response($data, int $status = 200): void
 {
     http_response_code($status);
     header('Content-Type: application/json');
+    // Every JSON response is dynamic, often per-session data (admin
+    // lists, passkey credentials, etc.) — explicit no-store rather than
+    // relying on PHP's session-cache-limiter default (which some hosts
+    // override in php.ini), so a browser never serves a stale GET from
+    // its own cache after a POST changes that same data underneath it.
+    header('Cache-Control: no-store');
     echo json_encode($data);
     exit;
 }
