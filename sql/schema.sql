@@ -130,21 +130,31 @@ CREATE TABLE IF NOT EXISTS users (
 -- never generated or interpreted by this app itself. No subject_id
 -- column needed: scoped indirectly via user_id -> users.subject_id, and
 -- credential_id is cryptographically unique per device regardless of
--- subject.
+-- subject. A row belongs to EITHER a per-subject user OR a master admin
+-- (see master_admins above) — exactly one of user_id/master_admin_id is
+-- set, enforced at the application layer (includes/webauthn_helper.php)
+-- rather than a DB constraint, since MySQL has no clean "exactly one of
+-- N nullable columns" check. A master admin's own passkey is still
+-- scoped to whichever hostname (RP ID) it was registered on — WebAuthn
+-- itself enforces that at the browser level, so no extra column is
+-- needed here either.
 CREATE TABLE IF NOT EXISTS webauthn_credentials (
-  id             CHAR(36)       NOT NULL PRIMARY KEY,
-  user_id        CHAR(36)       NOT NULL,
-  credential_id  VARBINARY(1023) NOT NULL,
-  public_key     TEXT           NOT NULL,
-  sign_count     INT UNSIGNED   NOT NULL DEFAULT 0,
+  id              CHAR(36)       NOT NULL PRIMARY KEY,
+  user_id         CHAR(36)       NULL,
+  master_admin_id CHAR(36)       NULL,
+  credential_id   VARBINARY(1023) NOT NULL,
+  public_key      TEXT           NOT NULL,
+  sign_count      INT UNSIGNED   NOT NULL DEFAULT 0,
   -- User-chosen at registration time (e.g. "MacBook Touch ID") so a
   -- person with several passkeys can tell them apart later.
-  label          VARCHAR(255)   NULL,
-  created_at     DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  last_used_at   DATETIME       NULL,
+  label           VARCHAR(255)   NULL,
+  created_at      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_used_at    DATETIME       NULL,
   UNIQUE KEY uniq_credential_id (credential_id),
   CONSTRAINT fk_webauthn_credentials_user FOREIGN KEY (user_id)
-    REFERENCES users(id) ON DELETE CASCADE
+    REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_webauthn_credentials_master_admin FOREIGN KEY (master_admin_id)
+    REFERENCES master_admins(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Records which single-use approve/reject email links have already been

@@ -14,6 +14,36 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.4.0] — 2026-09-15
+
+### Added
+
+- **A master admin can now register and sign in with their own
+  passkey, directly as master admin.** Previously the only passkey
+  reachable from a master-admin session was on their per-subject
+  shadow-admin account, which signed you in as an ordinary admin on
+  just that one subject — not as master admin — and, worse, could
+  collide with an existing personal admin passkey on the same hostname
+  (some platform authenticators only support one discoverable passkey
+  per site per device). New "Master admin passkey" section on
+  `/account.php`, shown only in a master-admin session; new
+  `api/master_admin/webauthn_*.php` endpoints. Sign-in is unchanged
+  from the user's perspective (same login page, same "sign in with a
+  passkey" button) — the server now recognizes a master-admin
+  credential and grants full master-admin session rights instead of a
+  per-subject login.
+
+### Database changes
+
+`webauthn_credentials.user_id` becomes nullable, and the table gains a
+`master_admin_id CHAR(36) NULL` column (FK to `master_admins`, `ON
+DELETE CASCADE`) — a row belongs to exactly one of the two owner
+types. Applied automatically by `upgrade.php`.
+
+### Environment changes
+
+None.
+
 ## [2.3.0] — 2026-09-15
 
 ### Added

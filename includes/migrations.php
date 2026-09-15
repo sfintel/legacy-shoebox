@@ -31,6 +31,33 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.4.0' => [
+            'description' => 'A master admin can now register their own passkey and sign in with it directly as master admin (not just as a shadow admin of one subject) — new "Master admin passkey" section on account.php, gated to a master-admin session. webauthn_credentials.user_id becomes nullable and gains a master_admin_id column (FK to master_admins, ON DELETE CASCADE) — a row belongs to exactly one of the two',
+            'db' => static function (PDO $pdo): void {
+                $hasCol = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'webauthn_credentials' AND column_name = 'master_admin_id'"
+                )->fetchColumn();
+                if ($hasCol === 0) {
+                    $pdo->exec("ALTER TABLE webauthn_credentials ADD COLUMN master_admin_id CHAR(36) NULL AFTER user_id");
+                }
+                $userIdNullable = (string) $pdo->query(
+                    "SELECT IS_NULLABLE FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'webauthn_credentials' AND column_name = 'user_id'"
+                )->fetchColumn();
+                if ($userIdNullable === 'NO') {
+                    $pdo->exec('ALTER TABLE webauthn_credentials MODIFY COLUMN user_id CHAR(36) NULL');
+                }
+                $hasFk = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.table_constraints
+                     WHERE table_schema = DATABASE() AND table_name = 'webauthn_credentials' AND constraint_name = 'fk_webauthn_credentials_master_admin'"
+                )->fetchColumn();
+                if ($hasFk === 0) {
+                    $pdo->exec('ALTER TABLE webauthn_credentials ADD CONSTRAINT fk_webauthn_credentials_master_admin FOREIGN KEY (master_admin_id) REFERENCES master_admins(id) ON DELETE CASCADE');
+                }
+            },
+            'env' => [],
+        ],
         '2.3.0' => [
             'description' => 'Added a "Send test email" button to the setup wizard\'s Advanced/SMTP stage, so SMTP settings can be verified before finishing setup instead of only on the first real signup-approval email. New api/setup/test_smtp.php; includes/mailer.php refactored into a parameterized smtp_send_with_config(). No schema change',
             'db' => null,

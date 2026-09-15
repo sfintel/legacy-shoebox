@@ -47,6 +47,18 @@ function webauthn_credentials_for_user(string $userId): array
     return $stmt->fetchAll();
 }
 
+// A master admin's own passkey (see includes/master_admin.php) — distinct
+// from any per-subject shadow user's passkeys, even though both can
+// exist for the same person. Signing in with one of these calls
+// auth_login_master() instead of auth_login(), granting real
+// cross-subject master-admin session rights (see webauthn_login_verify()).
+function webauthn_credentials_for_master_admin(string $masterAdminId): array
+{
+    $stmt = db()->prepare('SELECT * FROM webauthn_credentials WHERE master_admin_id = ? ORDER BY created_at ASC');
+    $stmt->execute([$masterAdminId]);
+    return $stmt->fetchAll();
+}
+
 function webauthn_credential_find(string $id): ?array
 {
     $stmt = db()->prepare('SELECT * FROM webauthn_credentials WHERE id = ?');
@@ -82,6 +94,14 @@ function webauthn_credential_delete(string $id, string $ownerId): bool
 {
     $stmt = db()->prepare('DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?');
     $stmt->execute([$id, $ownerId]);
+    return $stmt->rowCount() > 0;
+}
+
+// Same ownership-checked delete, for a master admin's own passkey.
+function webauthn_credential_delete_for_master_admin(string $id, string $masterAdminId): bool
+{
+    $stmt = db()->prepare('DELETE FROM webauthn_credentials WHERE id = ? AND master_admin_id = ?');
+    $stmt->execute([$id, $masterAdminId]);
     return $stmt->rowCount() > 0;
 }
 
@@ -133,6 +153,51 @@ function webauthn_registration_verify(string $userId, string $clientDataJSON, st
     return webauthn_credential_public(webauthn_credential_find($id));
 }
 
+// Same registration flow, for a master admin's own passkey rather than a
+// per-subject user's — see api/master_admin/webauthn_register_options.php.
+function webauthn_registration_options_for_master_admin(array $master): object
+{
+    $server = webauthn_server();
+    $excludeIds = array_map(
+        static fn (array $c) => new ByteBuffer($c['credential_id']),
+        webauthn_credentials_for_master_admin($master['id'])
+    );
+    $args = $server->getCreateArgs($master['id'], $master['email'], $master['name'], 60, false, 'preferred', null, $excludeIds);
+    auth_start_session();
+    $_SESSION['webauthn_challenge'] = base64_encode($server->getChallenge()->getBinaryString());
+    return $args;
+}
+
+// $clientDataJSON/$attestationObject are raw binary, same as
+// webauthn_registration_verify() above.
+function webauthn_registration_verify_for_master_admin(string $masterAdminId, string $clientDataJSON, string $attestationObject, string $label): array
+{
+    auth_start_session();
+    $challengeB64 = $_SESSION['webauthn_challenge'] ?? null;
+    if ($challengeB64 === null) {
+        throw new RuntimeException('No pending passkey registration for this session — try again.');
+    }
+    unset($_SESSION['webauthn_challenge']);
+
+    $server = webauthn_server();
+    $data = $server->processCreate($clientDataJSON, $attestationObject, base64_decode($challengeB64), 'preferred');
+
+    $id = make_uuid();
+    db()->prepare(
+        'INSERT INTO webauthn_credentials (id, master_admin_id, credential_id, public_key, sign_count, label)
+         VALUES (?, ?, ?, ?, ?, ?)'
+    )->execute([
+        $id,
+        $masterAdminId,
+        $data->credentialId,
+        $data->credentialPublicKey,
+        (int) ($data->signatureCounter ?? 0),
+        trim($label) !== '' ? trim($label) : null,
+    ]);
+
+    return webauthn_credential_public(webauthn_credential_find($id));
+}
+
 // --- Authentication (signing in with an already-registered passkey) ---
 
 // Only offered for an account that could actually use it (approved,
@@ -151,26 +216,56 @@ function webauthn_login_options(array $user): object
     auth_start_session();
     $_SESSION['webauthn_challenge'] = base64_encode($server->getChallenge()->getBinaryString());
     $_SESSION['webauthn_login_user_id'] = $user['id'];
+    unset($_SESSION['webauthn_login_master_admin_id']);
     return $args;
 }
 
-// Returns the authenticated user's row on success — the caller
-// (api/webauthn/login_verify.php) is responsible for calling
-// auth_login() with it; this function only verifies the assertion and
-// updates the credential's bookkeeping, matching how api/login.php's
-// password check is separate from the auth_login() call it makes.
+// Same login-options flow, for a master admin signing in with their own
+// passkey rather than a per-subject user's — api/webauthn/login_options.php
+// tries this first (mirroring api/login.php's own password-check order,
+// see includes/master_admin.php).
+function webauthn_login_options_for_master_admin(array $master): object
+{
+    $server = webauthn_server();
+    $credentialIds = array_map(
+        static fn (array $c) => new ByteBuffer($c['credential_id']),
+        webauthn_credentials_for_master_admin($master['id'])
+    );
+    $args = $server->getGetArgs($credentialIds, 60, true, true, true, true, true, 'preferred');
+    auth_start_session();
+    $_SESSION['webauthn_challenge'] = base64_encode($server->getChallenge()->getBinaryString());
+    $_SESSION['webauthn_login_master_admin_id'] = $master['id'];
+    unset($_SESSION['webauthn_login_user_id']);
+    return $args;
+}
+
+// Returns a tagged result — ['type' => 'user', 'user' => [...]] or
+// ['type' => 'master_admin', 'master_admin' => [...]] — since a single
+// login attempt can be completing either flow (whichever of
+// webauthn_login_options()/webauthn_login_options_for_master_admin()
+// this session's pending challenge was actually created by). The caller
+// (api/webauthn/login_verify.php) picks auth_login() vs.
+// auth_login_master() based on which came back, matching how
+// api/login.php's own password check is separate from the auth_login*()
+// call it makes. This function only verifies the assertion and updates
+// the credential's bookkeeping.
 function webauthn_login_verify(string $credentialIdBinary, string $clientDataJSON, string $authenticatorData, string $signature): array
 {
     auth_start_session();
     $challengeB64 = $_SESSION['webauthn_challenge'] ?? null;
     $pendingUserId = $_SESSION['webauthn_login_user_id'] ?? null;
-    if ($challengeB64 === null || $pendingUserId === null) {
+    $pendingMasterAdminId = $_SESSION['webauthn_login_master_admin_id'] ?? null;
+    if ($challengeB64 === null || ($pendingUserId === null && $pendingMasterAdminId === null)) {
         throw new RuntimeException('No pending passkey sign-in for this session — try again.');
     }
-    unset($_SESSION['webauthn_challenge'], $_SESSION['webauthn_login_user_id']);
+    unset($_SESSION['webauthn_challenge'], $_SESSION['webauthn_login_user_id'], $_SESSION['webauthn_login_master_admin_id']);
 
     $credential = webauthn_credential_find_by_credential_id($credentialIdBinary);
-    if ($credential === null || $credential['user_id'] !== $pendingUserId) {
+    $matchesPending = $credential !== null && (
+        ($pendingUserId !== null && $credential['user_id'] === $pendingUserId)
+        || ($pendingMasterAdminId !== null && $credential['master_admin_id'] === $pendingMasterAdminId)
+    );
+    if (!$matchesPending) {
         throw new RuntimeException('That passkey is not registered to this account.');
     }
 
@@ -192,9 +287,17 @@ function webauthn_login_verify(string $credentialIdBinary, string $clientDataJSO
     db()->prepare('UPDATE webauthn_credentials SET sign_count = ?, last_used_at = NOW() WHERE id = ?')
         ->execute([$newSignCount ?? $credential['sign_count'], $credential['id']]);
 
+    if ($credential['master_admin_id'] !== null) {
+        $master = master_admin_find_by_id($credential['master_admin_id']);
+        if ($master === null) {
+            throw new RuntimeException('Account no longer exists.');
+        }
+        return ['type' => 'master_admin', 'master_admin' => $master];
+    }
+
     $user = user_find_by_id($pendingUserId);
     if ($user === null) {
         throw new RuntimeException('Account no longer exists.');
     }
-    return $user;
+    return ['type' => 'user', 'user' => $user];
 }

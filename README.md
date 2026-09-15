@@ -313,6 +313,14 @@ with a passkey" on the login page. A user can register several (one per
 device) and remove any of them at any time from that same page; removing
 a passkey never touches the account's password.
 
+A **master admin** (see "Master admin" above) can additionally register a passkey for their
+master-admin identity specifically, from a separate "Master admin passkey" section that appears
+on `/account.php` only in a master-admin session. Signing in with it grants real master-admin
+session rights directly (the cross-subject dashboard, etc.), unlike a passkey on one of their
+per-subject shadow-admin accounts, which only ever signs you into that one subject as an ordinary
+admin. Like any passkey, it's tied to the hostname it was registered on — register one per subject
+you want to sign in as master admin from.
+
 Built on a vendored copy of [lbuchs/WebAuthn](https://github.com/lbuchs/WebAuthn)
 (`includes/webauthn/`, MIT-licensed — see `NOTICE.md` in that directory)
 rather than hand-rolled, since WebAuthn's signature/attestation

@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 $user = require_auth_page();
 $showPasskeys = user_can_use_passkey($user);
+$isMasterAdmin = is_master_admin_session();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -74,6 +75,37 @@ $showPasskeys = user_can_use_passkey($user);
           <tr><th>Name</th><th>Added</th><th>Last used</th><th>Actions</th></tr>
         </thead>
         <tbody id="credentialRows"></tbody>
+      </table>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($isMasterAdmin): ?>
+    <h2>Master admin passkey</h2>
+    <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
+      This is separate from the passkey above — it's tied to your master admin identity, not to your
+      admin account on this one subject, and signing in with it grants master admin access (the
+      cross-subject dashboard) directly rather than just admin rights on <?= h(current_subject()['hostname'] ?? 'this subject') ?>.
+      Like any passkey, it only works on the site (hostname) you register it on — register one on
+      each subject's hostname you want to sign in as master admin from.
+    </p>
+
+    <form id="masterRegisterForm" class="content-form" style="max-width:500px;">
+      <div class="form-row">
+        <label for="masterLabelInput">Name this passkey (optional)</label>
+        <input type="text" id="masterLabelInput" placeholder="e.g. MacBook Touch ID, YubiKey">
+      </div>
+      <p class="form-error" id="masterRegisterError" role="alert" style="display:none;"></p>
+      <button type="submit" class="btn-primary" id="masterRegisterBtn">Add a master admin passkey</button>
+    </form>
+
+    <h2>Registered master admin passkeys</h2>
+    <p class="meta" id="masterStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Name</th><th>Added</th><th>Last used</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="masterCredentialRows"></tbody>
       </table>
     </div>
     <?php endif; ?>

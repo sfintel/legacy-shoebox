@@ -49,6 +49,8 @@
   if (!window.PasskeyAuth || !window.PasskeyAuth.isSupported()) {
     document.getElementById("unsupportedNotice").style.display = "";
     document.getElementById("registerBtn").disabled = true;
+    const masterBtn = document.getElementById("masterRegisterBtn");
+    if (masterBtn) masterBtn.disabled = true;
   }
 
   function esc(str) {
@@ -130,4 +132,79 @@
   });
 
   load();
+
+  // --- Master admin passkey (only present on the page for a master
+  // admin session — see account.php) — same flow, separate identity and
+  // endpoints, so it's kept fully independent of the section above
+  // rather than parameterizing one set of functions for both. ---
+  const masterRegisterForm = document.getElementById("masterRegisterForm");
+  if (masterRegisterForm) {
+    async function loadMaster() {
+      const res = await fetch("/api/master_admin/webauthn_credentials.php");
+      if (res.status === 401) {
+        document.getElementById("masterStatus").textContent = "Not signed in as master admin.";
+        return;
+      }
+      const data = await res.json();
+      renderMaster(data.credentials || []);
+    }
+
+    function renderMaster(credentials) {
+      const rows = credentials.map((c) => `<tr>
+          <td>${esc(c.label)}</td>
+          <td>${esc(fmtDate(c.createdAt))}</td>
+          <td>${esc(fmtDate(c.lastUsedAt))}</td>
+          <td><div class="admin-actions"><button class="danger" data-id="${c.id}">Delete</button></div></td>
+        </tr>`).join("");
+      document.getElementById("masterCredentialRows").innerHTML = rows || `<tr><td colspan="4" class="meta">No master admin passkeys registered yet.</td></tr>`;
+      document.getElementById("masterStatus").textContent = `${credentials.length} passkey${credentials.length === 1 ? "" : "s"}`;
+
+      document.querySelectorAll("#masterCredentialRows button.danger").forEach((btn) => {
+        btn.addEventListener("click", () => handleMasterDelete(btn.dataset.id));
+      });
+    }
+
+    async function handleMasterDelete(id) {
+      if (!confirm("Remove this master admin passkey? You'll still be able to sign in as master admin with your password.")) return;
+      try {
+        const res = await fetch("/api/master_admin/webauthn_credential_delete.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Delete failed");
+        loadMaster();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    const masterRegisterBtn = document.getElementById("masterRegisterBtn");
+    const masterRegisterError = document.getElementById("masterRegisterError");
+
+    masterRegisterForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      masterRegisterError.style.display = "none";
+      masterRegisterBtn.disabled = true;
+      masterRegisterBtn.textContent = "Follow your device's prompt…";
+      try {
+        await window.PasskeyAuth.registerPasskey(
+          "/api/master_admin/webauthn_register_options.php",
+          "/api/master_admin/webauthn_register_verify.php",
+          document.getElementById("masterLabelInput").value
+        );
+        masterRegisterForm.reset();
+        loadMaster();
+      } catch (err) {
+        masterRegisterError.textContent = err.message;
+        masterRegisterError.style.display = "";
+      } finally {
+        masterRegisterBtn.disabled = false;
+        masterRegisterBtn.textContent = "Add a master admin passkey";
+      }
+    });
+
+    loadMaster();
+  }
 })();

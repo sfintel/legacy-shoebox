@@ -16,6 +16,19 @@ $genericError = 'No passkey is available for that account.';
 $body = read_json_body();
 $email = trim((string) ($body['email'] ?? ''));
 
+// Checked first, same precedence as api/login.php's password check — a
+// master admin's email takes priority over any per-subject account that
+// happens to share it.
+$master = $email !== '' ? master_admin_find_by_email($email) : null;
+if ($master && webauthn_credentials_for_master_admin($master['id'])) {
+    try {
+        json_response(webauthn_login_options_for_master_admin($master));
+    } catch (Throwable $e) {
+        error_log('webauthn_login_options_for_master_admin failed: ' . $e->getMessage());
+        json_response(['error' => $genericError], 500);
+    }
+}
+
 $user = $email !== '' ? user_find_by_email($email) : null;
 if (!$user || !user_can_use_passkey($user) || !webauthn_credentials_for_user($user['id'])) {
     json_response(['error' => $genericError], 400);

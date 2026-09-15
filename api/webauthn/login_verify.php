@@ -18,7 +18,7 @@ if ($credentialId === '' || $clientDataJSON === '' || $authenticatorData === '' 
 }
 
 try {
-    $user = webauthn_login_verify(
+    $result = webauthn_login_verify(
         webauthn_b64url_decode($credentialId),
         webauthn_b64url_decode($clientDataJSON),
         webauthn_b64url_decode($authenticatorData),
@@ -28,6 +28,15 @@ try {
     json_response(['error' => $e->getMessage()], 400);
 }
 
+if ($result['type'] === 'master_admin') {
+    // No analogous role/status re-check here — master_admins carries no
+    // such column (see sql/schema.sql); the row still existing (already
+    // checked inside webauthn_login_verify()) is the only precondition.
+    auth_login_master($result['master_admin']);
+    json_response(['ok' => true]);
+}
+
+$user = $result['user'];
 // Re-check eligibility at verify time too, not just at options time —
 // role/status could have changed in between (e.g. an admin revoked
 // this account moments ago).
