@@ -162,6 +162,21 @@ finishes, and stays that way unless you deliberately add another.
    `ARCHIVE_ROOT_BASE/{slug}/` directory, fully separate from every
    other subject.
 
+**Keeping a symlink-mirrored subject in sync with brand-new top-level
+files**: `deploy.sh` only rsyncs into the ONE webroot you point it at
+(your original subject's), and a symlink-mirrored subject only sees a
+file if a symlink for it existed at the moment `add_subject_host.sh`
+ran — a symlinked *directory* (like `api/` or `js/`) picks up new files
+added inside it automatically, but a brand-new *top-level* file (a new
+`.php` page at the repo root, say) won't appear on an existing
+symlink-mirrored subject until it gets its own symlink, and will 404
+until then. `add_subject_host.sh` is safe to re-run any time against an
+existing subject's docroot as the fix — pass the same two paths again
+(`./add_subject_host.sh /path/to/existing/webroot /path/to/that/subjects/own/docroot`)
+and it clears and re-links everything from scratch, picking up
+anything new. Do this after any release that adds a new top-level file
+or directory.
+
 ### What's shared vs. per-subject
 
 Shared, install-wide, in `.env`: database credentials, `SESSION_SECRET`,
