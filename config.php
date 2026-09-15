@@ -112,10 +112,15 @@ define('APP_URL', $resolvedHostname !== null
 // creates it), and it must find this install's actual, existing
 // uploads/backups directory under the OLD single-tenant ARCHIVE_ROOT
 // value, not a nonexistent ARCHIVE_ROOT_BASE/{placeholder} path.
+// Always defined, regardless of whether a subject is resolved this
+// request — whole-install operations (upgrade.php's safety backup, the
+// master admin's whole-site backup, cron_backup.php's per-subject
+// dispatch loop) need this independent of any one subject's context.
+$archiveRootBaseRaw = (string) env('ARCHIVE_ROOT_BASE', '..');
+define('ARCHIVE_ROOT_BASE', rtrim(str_starts_with($archiveRootBaseRaw, '/') ? $archiveRootBaseRaw : __DIR__ . '/' . $archiveRootBaseRaw, '/'));
+
 if (current_subject() !== null) {
-    $archiveRootBase = (string) env('ARCHIVE_ROOT_BASE', '..');
-    $archiveRootBase = rtrim(str_starts_with($archiveRootBase, '/') ? $archiveRootBase : __DIR__ . '/' . $archiveRootBase, '/');
-    define('ARCHIVE_ROOT', $archiveRootBase . '/' . current_subject()['slug']);
+    define('ARCHIVE_ROOT', ARCHIVE_ROOT_BASE . '/' . current_subject()['slug']);
 } else {
     $legacyArchiveRoot = (string) env('ARCHIVE_ROOT', '..');
     define('ARCHIVE_ROOT', rtrim(str_starts_with($legacyArchiveRoot, '/') ? $legacyArchiveRoot : __DIR__ . '/' . $legacyArchiveRoot, '/'));

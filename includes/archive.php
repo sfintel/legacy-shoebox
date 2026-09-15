@@ -970,7 +970,7 @@ function archive_timeline_delete(string $id): bool
 // wrapper (below, and alongside people/places/quotes) so callers don't
 // need to know $table/$rows plumbing details. $table is always one of
 // this app's own hardcoded table names, never user input — same trust
-// level as backup_dump_sql()'s table-name interpolation.
+// level as includes/backup.php's own table-name interpolation.
 function archive_move_row(string $table, array $rows, string $id, string $direction): void
 {
     if (!in_array($direction, ['up', 'down'], true)) {

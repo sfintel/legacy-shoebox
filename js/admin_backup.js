@@ -143,7 +143,7 @@
   restoreForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     restoreError.style.display = "none";
-    if (!confirm("This will permanently replace the current database and all uploaded files. Continue?")) return;
+    if (!confirm("This will permanently replace this subject's data and uploaded files. Continue?")) return;
 
     const fileInput = document.getElementById("restoreFile");
     if (!fileInput.files.length) return;

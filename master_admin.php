@@ -23,9 +23,12 @@ $subjects = db()->query('SELECT * FROM subjects ORDER BY created_at ASC')->fetch
       <h1 class="brand-title">Master admin</h1>
       <span class="brand-sub">Signed in as <?= h($master['name']) ?> (<?= h($master['email']) ?>)</span>
     </div>
-    <form action="/api/logout.php" method="post" id="logoutForm">
-      <button type="submit" class="linklike" id="logoutBtn">Log out</button>
-    </form>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <a class="ghost-btn" href="/master_admin_backup.php" style="text-decoration:none; display:inline-block;">Backup &amp; Restore</a>
+      <form action="/api/logout.php" method="post" id="logoutForm">
+        <button type="submit" class="linklike" id="logoutBtn">Log out</button>
+      </form>
+    </div>
   </header>
 
   <main id="app" tabindex="-1" style="max-width:1000px;">

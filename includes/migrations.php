@@ -31,6 +31,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.1.0' => [
+            'description' => 'Per-subject and whole-site backup/restore: /admin_backup.php now scopes to only the current subject (never able to see/restore any other subject\'s data); new /master_admin_backup.php offers both whole-site (every subject at once) and per-subject backup/restore for any subject; cron_backup.php dispatches across every active subject in one cron line. Also fixes upgrade.php\'s own pre-migration safety backup silently failing since 2.0.0 (no schema change, this is purely code)',
+            'db' => null,
+            'env' => [],
+        ],
         '2.0.4' => [
             'description' => 'create_master_admin.php now also refuses an email already used by a regular per-subject account (not just an existing master admin) — prompted by two accidentally-overlapping master admins created on production after the 2.0.1 login bug made the first one look like it hadn\'t worked',
             'db' => null,

@@ -194,17 +194,10 @@ currently on — visible in that subject's own `/admin.php` user list
 "admin accounts can't be deleted/demoted here" rule every admin has.
 `/master_admin.php` (reachable from any subject's hostname once logged
 in as a master admin) lists every subject on the install with a link
-into each one's admin area.
-
-### A current limitation: backup/restore is still whole-install
-
-`/admin_backup.php` (below) backs up and restores **every subject at
-once** — there's no way yet to back up or restore just one. If you're
-running more than one subject, restoring a backup replaces all of
-them, not just the one you meant to fix. Per-subject backup/restore is
-planned but not built yet; until it is, treat any restore on a
-multi-subject install as an all-or-nothing operation and double-check
-that's really what you want before typing the confirmation phrase.
+into each one's admin area, and `/master_admin_backup.php` (linked from
+there) is the master admin's own Backup &amp; Restore page — see
+"Backup & Restore" below for how it differs from a subject's own
+`/admin_backup.php`.
 
 ## Building out the archive
 
@@ -520,68 +513,97 @@ archive.
 
 ## Backup & Restore
 
-`/admin_backup.php` (admin-only) creates a single downloadable .zip
-containing a full database dump and every file under every subject's
-`ARCHIVE_ROOT_BASE/{slug}/uploads/` — **the whole install, every
-subject at once**; see "A current limitation" under "Multiple subjects"
-above if you're running more than one. Backups are pure PHP (PDO for
-the dump, the `ZipArchive` extension for packaging) — no `mysqldump` or
-`shell_exec` dependency, so it works on hosts that don't allow either.
-Backups are stored under `ARCHIVE_ROOT_BASE/{slug}/backups/`, outside
-the webroot like `uploads/` already is, and are only ever served
-through an authenticated download endpoint — never a direct URL.
+Two distinct scopes, matching who's doing the backing up:
 
-Restoring from a backup **replaces the entire database and every
-subject's uploads directory** with what's in that .zip — it's a full
-point-in-time restore, not a merge, and requires typing a confirmation
-phrase before the button becomes clickable. Use it to undo a bad
-upgrade or other mistake, not as a way to apply a single schema change
-(see [UPGRADE.md](UPGRADE.md) for why).
+- **`/admin_backup.php`** (a subject's own admin) — creates and restores
+  backups of **that subject only**: its own rows (never any other
+  subject's) plus its own `ARCHIVE_ROOT_BASE/{slug}/uploads/`. A restore
+  here can never see, touch, or affect any other subject on the install.
+- **`/master_admin_backup.php`** (master admin only, linked from
+  `/master_admin.php`) — has both a **whole-site** section (every
+  subject's rows and uploads at once, in one .zip — the install-wide
+  safety-net use case, e.g. before running `upgrade.php`) and a
+  **per-subject** section (pick any one subject from a dropdown and
+  back up/restore just that one, same scope as `/admin_backup.php` but
+  usable for any subject, not just whichever one you happen to be
+  signed into).
+
+Both scopes are pure PHP (PDO for the dump, the `ZipArchive` extension
+for packaging) — no `mysqldump` or `shell_exec` dependency, so backups
+work on hosts that don't allow either. Files are stored outside the
+webroot (whole-site backups under `ARCHIVE_ROOT_BASE/_install_backups/`;
+per-subject backups under that subject's own
+`ARCHIVE_ROOT_BASE/{slug}/backups/`), same protection `uploads/` already
+has, and are only ever served through an authenticated download
+endpoint — never a direct URL.
+
+Restoring **always replaces**, never merges, whatever the chosen
+scope covers — the whole install, or one subject — with what's in that
+.zip, and requires typing a confirmation phrase before the button
+becomes clickable. Use it to undo a bad upgrade or other mistake, not
+as a way to apply a single schema change (see
+[UPGRADE.md](UPGRADE.md) for why).
 
 ### Retention, scheduling, and storage location
 
 Three things are configurable in `.env` (see `.env.example`'s "Backup &
-Restore" section) — not on `/admin_backup.php` itself, same as SMTP and
+Restore" section) — not on either backup page itself, same as SMTP and
 rate-limit settings, since these are infrastructure config rather than
-archive content:
+archive content. They apply the same way to every subject independently
+(each subject keeps its own newest N, on its own schedule check) — none
+of this is configurable per subject:
 
 - **`BACKUP_RETENTION_COUNT`** (default 14) — the oldest backups are
   deleted automatically once there are more than this, whether they were
   made by hand or automatically. Applied every time a backup is created,
-  and also available on demand via the "Apply retention now" button on
-  `/admin_backup.php` (useful the first time you set a lower count, to
-  clean up an existing pile without waiting for the next backup). Set to
-  `0` to keep everything and never prune.
+  and also available on demand via each backup page's "Apply retention
+  now" button (useful the first time you set a lower count, to clean up
+  an existing pile without waiting for the next backup). Set to `0` to
+  keep everything and never prune.
 - **`BACKUP_AUTO_INTERVAL_HOURS`** (default `0`, meaning off) — how often
-  an automatic backup should run. Setting this alone does nothing by
-  itself: this app has no long-running process of its own (same shared-
-  hosting assumption as everywhere else in this README), so automatic
-  backups need a host cron job to actually trigger them. Point one at
-  `cron_backup.php`:
+  an automatic backup should run, per subject. Setting this alone does
+  nothing by itself: this app has no long-running process of its own
+  (same shared-hosting assumption as everywhere else in this README), so
+  automatic backups need a host cron job to actually trigger them. Point
+  one at `cron_backup.php`:
   - **Preferred**: cPanel's *Cron Jobs* running the command
-    `php /home/you/public_html/cron_backup.php` (adjust the path) on a
-    short, frequent schedule (e.g. hourly) — each run is a no-op unless a
-    backup is actually due, so scheduling it more often than you want
-    backups is harmless. A command-line cron job isn't reachable over
-    HTTP, so no secret/token is needed for this route.
+    `php /home/you/family-legacy-archive/cron_backup.php` (adjust the
+    path) on a short, frequent schedule (e.g. hourly) — with no
+    arguments, this dispatches once per active subject on the install
+    automatically (each as its own child process — see the file's own
+    comment for why), so one cron line covers every subject regardless
+    of how many you add later. Each run is a no-op for a subject unless
+    its own backup is actually due, so scheduling it more often than you
+    want backups is harmless. A command-line cron job isn't reachable
+    over HTTP, so no secret/token is needed for this route.
   - **If your host only offers "cron via URL"** (wget/curl pinging a URL
     on a schedule, no shell command option): set `BACKUP_CRON_SECRET` in
     `.env` to a random string, then point cron at
-    `https://yoursite.example/cron_backup.php?token=that-string`. Without
-    a configured secret, `cron_backup.php` refuses every HTTP request —
-    it creates backups and touches disk, so it's never a publicly
-    reachable no-auth endpoint by default.
+    `https://<one-subjects-hostname>/cron_backup.php?token=that-string`
+    — **one line per subject** you want covered this way, since an HTTP
+    hit can only ever resolve the one subject whose hostname it targets
+    (no multi-subject dispatch is possible over HTTP). Without a
+    configured secret, `cron_backup.php` refuses every HTTP request — it
+    creates backups and touches disk, so it's never a publicly reachable
+    no-auth endpoint by default.
 - **`BACKUP_DIR`** (optional) — where backup .zip files are stored.
-  Defaults to `ARCHIVE_ROOT_BASE/{slug}/backups`, outside the webroot
-  like `uploads/` already is; only set this if you specifically want
-  backups on a different disk/mount (e.g. more free space), and keep it
-  outside the webroot the same way.
+  Per-subject backups default to `ARCHIVE_ROOT_BASE/{slug}/backups`
+  (outside the webroot like `uploads/` already is); whole-site backups
+  default to `ARCHIVE_ROOT_BASE/_install_backups`. Only set this if you
+  specifically want backups on a different disk/mount (e.g. more free
+  space), and keep it outside the webroot the same way — each scope
+  namespaces itself under this path (`BACKUP_DIR/{slug}` /
+  `BACKUP_DIR/_install`) so they never collide.
 
 ### Moving to a new host
 
-A backup is a valid way to move the whole archive to a different
+A **whole-site** backup (master admin only — see above) is a valid way
+to move the entire install, every subject at once, to a different
 host — including one with a completely different database server or
-credentials. `database.sql` inside the .zip is a full rebuild (`DROP
+credentials. (A per-subject backup can't do this on its own — it has no
+`database.sql`/schema in it, only that one subject's own rows, meant to
+be restored onto an already-running install.) `database.sql` inside the
+whole-site .zip is a full rebuild (`DROP
 TABLE IF EXISTS` + `CREATE TABLE` + `INSERT` for every table), and
 restoring just runs that through whatever DB connection the *new*
 host's own `.env` already points at — it never reads or restores
@@ -590,12 +612,14 @@ never included in the backup in the first place. To migrate:
 
 1. Deploy the codebase to the new host with its own fresh `.env`
    pointing at its own database (an empty database is fine).
-2. Run the setup wizard once, just to get a working admin login — it
-   only creates one admin account and a site-settings row, no real
-   content.
-3. Log in and restore the old host's backup from `/admin_backup.php`.
-   This replaces that throwaway admin (and everything else) with the
-   real data from the backup.
+2. Run the setup wizard once, just to get a working schema and a
+   throwaway subject/admin — no real content needed, it's all about to
+   be replaced.
+3. Create a master admin on the new host (`php create_master_admin.php`)
+   and log in at `/master_admin_backup.php`. Restore the old host's
+   whole-site backup there — this replaces that throwaway subject (and
+   everything else) with the real data from the backup, master admin
+   account included (a whole-site backup includes `master_admins` too).
 
 The one thing a restore never carries over is `.env` itself — secrets
 are deliberately excluded from the backup, so `SESSION_SECRET`,

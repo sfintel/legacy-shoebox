@@ -14,6 +14,42 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.1.0] — 2026-09-15
+
+### Added
+
+- **Per-subject and whole-site backup/restore** — the multi-subject
+  release (2.0.0) shipped with backup/restore still whole-database
+  only; this fixes it properly:
+  - `/admin_backup.php` (a subject's own admin) now backs up and
+    restores **only that subject** — its own rows and its own
+    `ARCHIVE_ROOT_BASE/{slug}/uploads/`, never any other subject's.
+    Restoring can no longer affect any subject other than your own.
+  - New `/master_admin_backup.php` (master admin only) has both a
+    **whole-site** section (every subject at once, in one .zip — the
+    install-wide safety-net use case) and a **per-subject** section
+    (pick any subject from a dropdown, same scope as `/admin_backup.php`
+    but for any subject, not just whichever one you're signed into).
+  - `cron_backup.php` now dispatches automatic backups across every
+    active subject in one cron line (each as its own child process —
+    see the file's own comment for why a single long-lived process
+    can't do this) instead of covering only whichever `ARCHIVE_ROOT`
+    happened to be resolved.
+  - Fixed a related regression found while building this: `upgrade.php`'s
+    own pre-migration safety backup had been silently failing (reported
+    "Backup created" but wrote no real file) on any post-2.0.0 upgrade,
+    since its whole-install backup ran with no subject resolved and
+    fell back to a now-nonexistent legacy `ARCHIVE_ROOT` path — it now
+    uses a subject-independent location and correctly bundles every
+    subject's uploads.
+
+### Environment changes
+
+- Per-subject backups still default to `ARCHIVE_ROOT_BASE/{slug}/backups`;
+  whole-site backups now default to `ARCHIVE_ROOT_BASE/_install_backups`
+  (both still overridable via `BACKUP_DIR`, now namespaced per scope so
+  they never collide). No new required variables.
+
 ## [2.0.4] — 2026-09-14
 
 ### Added

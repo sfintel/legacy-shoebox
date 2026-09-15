@@ -86,9 +86,9 @@ if (version_compare($currentVersion, $targetVersion, '>=')) {
 
 echo "Creating a safety backup before making any changes...\n";
 try {
-    $backupFile = backup_create();
-    echo "Backup created: backups/$backupFile\n";
-    echo "(If anything below goes wrong, restore it from /admin_backup.php or by hand — see UPGRADE.md.)\n\n";
+    $backupFile = backup_create_full();
+    echo "Backup created: " . backup_dir_full() . "/$backupFile\n";
+    echo "(A whole-install backup covering every subject — if anything below goes wrong, restore it from the master admin's Backup page or by hand — see UPGRADE.md.)\n\n";
 } catch (Throwable $e) {
     fwrite(STDERR, "Backup failed, aborting before touching anything: " . $e->getMessage() . "\n");
     exit(1);

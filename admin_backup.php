@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 require_admin_page();
+$subject = require_current_subject();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -25,8 +26,12 @@ require_admin_page();
   <main id="app" tabindex="-1" style="max-width:900px;">
     <h2>Create a backup</h2>
     <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
-      Bundles the full database and every uploaded file into one .zip. Do this before upgrading to a
-      newer release (see UPGRADE.md) or before any other change you might want to undo.
+      Bundles <?= h(site_name()) ?>'s own data and uploaded files into one .zip — this subject only, never
+      any other archive on this install. Do this before any change you might want to undo.
+      <?php if (is_master_admin_session()): ?>
+        A master admin can also back up (or restore) every subject at once from
+        <a href="/master_admin_backup.php">the master admin Backup page</a>.
+      <?php endif; ?>
     </p>
     <button type="button" class="btn-primary" id="createBtn">Create backup now</button>
     <p class="meta" id="createStatus" role="status" style="color:var(--muted); font-size:.85rem;"></p>
@@ -54,7 +59,8 @@ require_admin_page();
 
     <h2>Restore from backup</h2>
     <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
-      <strong>This replaces the entire database and every uploaded file with what's in the backup.</strong>
+      <strong>This replaces <?= h(site_name()) ?>'s data and uploaded files with what's in the backup —
+      this subject only, never any other archive on this install.</strong>
       Anything added or changed since that backup was made will be lost. Create a fresh backup first if
       you want a way back from the restore itself.
     </p>

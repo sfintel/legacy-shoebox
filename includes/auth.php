@@ -149,6 +149,19 @@ function require_master_admin_page(): array
     return $master;
 }
 
+// For api/master_admin/*.php endpoints: responds 401 JSON instead of
+// redirecting, same pairing as require_auth_page()/require_auth_api().
+function require_master_admin_api(): array
+{
+    auth_start_session();
+    $id = $_SESSION['master_admin_id'] ?? null;
+    $master = $id ? master_admin_find_by_id($id) : null;
+    if (!$master) {
+        json_response(['error' => 'Not authenticated as a master admin'], 401);
+    }
+    return $master;
+}
+
 // admin and author can both add content; reader cannot. See the `role`
 // column comment in sql/schema.sql.
 function user_can_add_content(array $user): bool
