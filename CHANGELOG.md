@@ -14,6 +14,34 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.2.1] — 2026-09-15
+
+### Fixed
+
+- **Removed `BACKUP_DIR` from the setup wizard's "advanced" stage** —
+  it wrote to the shared, install-wide `.env` file, but the wizard runs
+  once per *subject*; filling it in during any subject's setup silently
+  redirected every other subject's backup location too (discovered live
+  on production: a second subject's setup left the first subject's
+  admin unable to see its own pre-existing backups). `BACKUP_DIR`
+  remains a valid hand-edit-only `.env` setting (see README) — it's
+  just no longer offered as a per-subject wizard field. Also removed
+  from `.env.example` for the same reason: each subject already gets
+  its own backup folder by default, so this shared override is now
+  documented in README only, as an advanced escape hatch.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None required. If your install's `.env` currently has a non-blank
+`BACKUP_DIR` that was set through a subject's setup wizard rather than
+deliberately by hand, double check it's still the value you want — it
+now affects every subject sharing this `.env`, not just the one whose
+wizard set it.
+
 ## [2.2.0] — 2026-09-15
 
 ### Added

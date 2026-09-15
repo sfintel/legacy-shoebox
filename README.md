@@ -586,14 +586,20 @@ of this is configurable per subject:
     configured secret, `cron_backup.php` refuses every HTTP request — it
     creates backups and touches disk, so it's never a publicly reachable
     no-auth endpoint by default.
-- **`BACKUP_DIR`** (optional) — where backup .zip files are stored.
-  Per-subject backups default to `ARCHIVE_ROOT_BASE/{slug}/backups`
-  (outside the webroot like `uploads/` already is); whole-site backups
-  default to `ARCHIVE_ROOT_BASE/_install_backups`. Only set this if you
+- **`BACKUP_DIR`** (optional, hand-edit only — not in the setup wizard)
+  — where backup .zip files are stored. Per-subject backups default to
+  `ARCHIVE_ROOT_BASE/{slug}/backups` (outside the webroot like
+  `uploads/` already is); whole-site backups default to
+  `ARCHIVE_ROOT_BASE/_install_backups`. Only set this if you
   specifically want backups on a different disk/mount (e.g. more free
   space), and keep it outside the webroot the same way — each scope
   namespaces itself under this path (`BACKUP_DIR/{slug}` /
-  `BACKUP_DIR/_install`) so they never collide.
+  `BACKUP_DIR/_install`) so they never collide. **`.env` is shared
+  across every subject on this install**, so setting this changes the
+  default backup location for *every* subject at once, not just the
+  one you're thinking about — leave it blank (the default) unless you
+  specifically need every subject's backups redirected to the same
+  alternate location.
 
 ### Moving to a new host
 

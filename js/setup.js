@@ -117,7 +117,6 @@
     MAIL_FROM: document.getElementById("mailFrom").value,
     BACKUP_RETENTION_COUNT: document.getElementById("backupRetentionCount").value,
     BACKUP_AUTO_INTERVAL_HOURS: document.getElementById("backupAutoIntervalHours").value,
-    BACKUP_DIR: document.getElementById("backupDir").value,
     BACKUP_CRON_SECRET: document.getElementById("backupCronSecret").value,
   }), "/api/setup/finalize.php");
 })();

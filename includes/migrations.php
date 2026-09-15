@@ -31,6 +31,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.2.1' => [
+            'description' => 'Removed BACKUP_DIR from the setup wizard\'s "advanced" stage — it wrote to the shared install-wide .env, so filling it in during any subject\'s setup silently redirected every other subject\'s backup location too (found live on production after a second subject\'s setup orphaned the first subject\'s existing backups). BACKUP_DIR remains a valid hand-edit-only .env setting. No schema change',
+            'db' => null,
+            'env' => [],
+        ],
         '2.2.0' => [
             'description' => 'A subject\'s own admin can now view/edit that subject\'s AI provider/key/base-url/model/temperature after setup, from a new "AI settings" tab on admin_settings.php (backed by api/admin/ai_settings.php) — previously only settable once, during the setup wizard, with no way to change it afterward short of a direct SQL UPDATE. Blank fields inherit the install-wide .env default, same semantics ai_provider.php already used. No schema change — subjects.ai_* columns already existed since 2.0.0',
             'db' => null,
