@@ -69,6 +69,8 @@ require_content_page();
         <option value="document">Document</option>
         <option value="url">URL</option>
         <option value="story">Story</option>
+        <option value="awaiting-approval">Awaiting approval (Stories)</option>
+        <option value="awaiting-suggestions">Awaiting suggestion approval</option>
       </select>
     </div>
     <p class="meta" id="status" role="status" style="color:var(--muted); font-size:.85rem;"></p>

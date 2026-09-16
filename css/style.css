@@ -282,6 +282,16 @@ input[type=search]{min-width:180px;}
    read as the same kind of status at a glance. */
 .status-unreviewed{background:#1c2e3a; color:#7ec3e0;}
 
+/* admin_nav_html()'s "Content" nav link, only rendered when an admin
+   has a story or AI suggestion awaiting a decision (see
+   content_pending_review_count()). A plain colored dot, not a count —
+   the nav link's own text is short, and any admin page needs to render
+   this cheaply on every load. */
+.nav-dot{
+  display:inline-block; width:8px; height:8px; border-radius:50%;
+  background:#e08a7d; vertical-align:2px; margin-left:2px;
+}
+
 .admin-table th.sortable{cursor:pointer; user-select:none;}
 .admin-table th.sortable:hover{color:var(--text);}
 .admin-table th.sortable::after{

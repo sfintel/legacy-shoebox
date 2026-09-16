@@ -215,13 +215,23 @@ function admin_nav_html(string $current): string
         'redactions' => ['/admin_redactions.php', 'Redactions'],
         'backup' => ['/admin_backup.php', 'Backup'],
     ];
+    // Only meaningful to an admin — approving/dismissing a story or
+    // suggestion is admin-only (require_admin_api()), so a non-admin
+    // author reaching admin_content.php via require_content_page()
+    // never sees a dot for something they can't act on anyway.
+    $user = current_user();
+    $showContentDot = ($user['role'] ?? null) === 'admin' && content_pending_review_count() > 0;
+
     $out = '<div style="display:flex; gap:8px; flex-wrap:wrap;">';
     foreach ($sections as $key => [$href, $label]) {
         $isCurrent = $key === $current;
         $class = 'ghost-btn' . ($isCurrent ? ' active' : '');
         $aria = $isCurrent ? ' aria-current="page"' : '';
         $id = $key !== 'content' ? ' id="' . $key . 'Link"' : '';
-        $out .= '<a' . $id . ' class="' . $class . '" href="' . h($href) . '" style="text-decoration:none; display:inline-block;"' . $aria . '>' . h($label) . "</a>\n";
+        $dot = ($key === 'content' && $showContentDot)
+            ? ' <span class="nav-dot" aria-label="Items awaiting approval" title="Items awaiting approval"></span>'
+            : '';
+        $out .= '<a' . $id . ' class="' . $class . '" href="' . h($href) . '" style="text-decoration:none; display:inline-block;"' . $aria . '>' . h($label) . $dot . "</a>\n";
     }
     if (is_master_admin_session()) {
         $out .= '<a class="ghost-btn" href="/master_admin.php" style="text-decoration:none; display:inline-block;">Master admin</a>' . "\n";

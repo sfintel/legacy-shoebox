@@ -14,6 +14,33 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.7.0] — 2026-09-16
+
+### Added
+
+- **Two new "Show" filter views on `/admin_content.php`**: "Awaiting
+  approval (Stories)" and "Awaiting suggestion approval" — a
+  cross-type view over whichever items currently need an admin
+  decision, instead of having to scroll the full list checking each
+  row's Suggestions button one at a time.
+- **A red dot on the "Content" nav link** (every `admin_*.php` page,
+  admin sessions only) whenever any story or AI suggestion is awaiting
+  approval — so it's visible without visiting the Content page at all.
+
+### Fixed
+
+- **A URL content item's "View" button opened the archived text
+  snapshot used for AI analysis, not the actual source page.** Fixed
+  to open the item's real source URL in a new tab instead.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.6.1] — 2026-09-16
 
 ### Fixed

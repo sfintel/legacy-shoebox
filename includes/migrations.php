@@ -31,6 +31,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.7.0' => [
+            'description' => 'admin_content.php gains "Awaiting approval (Stories)" and "Awaiting suggestion approval" Show-filter views; a red dot appears on the Content nav link (admin sessions only) whenever anything needs a decision. Also fixed: a URL content item\'s "View" button opened the archived text snapshot instead of the actual source page. No schema change',
+            'db' => null,
+            'env' => [],
+        ],
         '2.6.1' => [
             'description' => 'Fix the service worker serving a stale admin page/script indefinitely after a deploy — its fetch handler defaulted to cache-first for anything not explicitly special-cased, which silently applied to every admin_*.php page and script, not just the reader-facing app shell it was designed for. Now only APP_SHELL (/, /login.php, /css/style.css, /js/app.js, icons) is cache-first; everything else defaults to network-first. Cache version bumped (v6 -> v7) to clear already-affected installs. No schema change',
             'db' => null,

@@ -74,8 +74,22 @@
   // Client-side only — every item is already loaded in memory (same
   // assumption render()'s own tag-picker suggestion list already makes),
   // so there's no reason to round-trip the server for either operation.
+  // The two "awaiting" filters aren't a content type at all — they're a
+  // cross-type view over whichever items currently need an admin
+  // decision, matching the same two conditions renderActions() already
+  // uses to decide whether to show an "Approve" button or a highlighted
+  // "Suggestions" button on a row.
   function visibleItems() {
-    let items = typeFilter === "all" ? currentItems : currentItems.filter((i) => i.type === typeFilter);
+    let items;
+    if (typeFilter === "all") {
+      items = currentItems;
+    } else if (typeFilter === "awaiting-approval") {
+      items = currentItems.filter((i) => i.type === "story" && !i.storyApprovedAt);
+    } else if (typeFilter === "awaiting-suggestions") {
+      items = currentItems.filter((i) => (i.suggestions || []).some((s) => s.status === "pending"));
+    } else {
+      items = currentItems.filter((i) => i.type === typeFilter);
+    }
     if (sortState.key) {
       items = [...items].sort((a, b) => {
         const av = String(a[sortState.key] || "").toLowerCase();
@@ -175,7 +189,13 @@
       ? files.map((f) => `<a href="${fileUrl(f.id)}" target="_blank" rel="noopener">
           <img src="${fileUrl(f.id)}" alt="${esc(f.originalName)}" style="max-height:48px; max-width:64px; object-fit:cover; border-radius:4px; vertical-align:middle;">
         </a>`).join(" ")
-      : (viewFile ? `<a href="${fileUrl(viewFile.id)}" target="_blank" rel="noopener">View</a>` : "");
+      // A URL item's own file[0] is the archived text snapshot used for
+      // AI analysis (see content_create_url()), not something a click on
+      // "View" should open — the point of this button is to see the
+      // actual source page, so it links to item.sourceUrl instead.
+      : item.type === "url"
+        ? (item.sourceUrl ? `<a href="${esc(item.sourceUrl)}" target="_blank" rel="noopener">View</a>` : "")
+        : (viewFile ? `<a href="${fileUrl(viewFile.id)}" target="_blank" rel="noopener">View</a>` : "");
     const suggestions = item.suggestions || [];
     const pending = suggestions.filter((s) => s.status === "pending").length;
     const suggestionsBtn = suggestions.length

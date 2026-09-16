@@ -890,6 +890,27 @@ function content_stories_pending(): array
     return $stmt->fetchAll();
 }
 
+// Combined count behind admin_nav_html()'s "Content" nav-link dot (see
+// includes/helpers.php) — everything currently awaiting an admin
+// decision on the Content page: unapproved Stories and pending AI
+// suggestions (timeline/person/place/quote proposals), the same two
+// conditions admin_content.js's own filter/highlight logic checks
+// client-side. A plain count, not the rows themselves, since the nav
+// only ever needs to know "is there anything to look at."
+function content_pending_review_count(): int
+{
+    $subjectId = current_subject_id();
+    $stmt = db()->prepare("SELECT COUNT(*) FROM content_items WHERE subject_id = ? AND type = 'story' AND story_approved_at IS NULL");
+    $stmt->execute([$subjectId]);
+    $pendingStories = (int) $stmt->fetchColumn();
+
+    $stmt = db()->prepare("SELECT COUNT(*) FROM content_suggestions WHERE subject_id = ? AND status = 'pending'");
+    $stmt->execute([$subjectId]);
+    $pendingSuggestions = (int) $stmt->fetchColumn();
+
+    return $pendingStories + $pendingSuggestions;
+}
+
 // Oldest-first, matching content_context()'s own reasoning for why
 // family-added material reads oldest-first (so it reads as later
 // context, not because recency matters here more than there).
