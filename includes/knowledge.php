@@ -86,6 +86,13 @@ function knowledge_system_role(): string
         . "the real id shown next to that file) so the app can display it. Only ever use an id that's "
         . "actually listed there — never invent one. If nothing matching exists, say plainly that you "
         . "don't have that photo/video, exactly like you would for testimony that isn't recorded.";
+    $rules[] = 'The same applies any time you CITE a specific family-contributed photo or video as the '
+        . 'source of a claim, not only when the user explicitly asks to see it — e.g. anywhere you would '
+        . 'otherwise write something like "(Family-contributed photo, \"Title\")", also place that file\'s '
+        . 'exact [[photo:ID]] or [[video:ID]] token right next to the citation, so the reader can view it '
+        . 'directly instead of only reading its title. Same rule as above: only ever use an id actually '
+        . "listed there, never invent one, and if an item has several files pick whichever one's id is "
+        . 'actually relevant to what you cited.';
     $rules[] = 'When you cite a specific moment from a family-contributed transcript whose block above '
         . 'notes a companion video (an "id=" shown there), quote the actual words for that moment '
         . 'verbatim in quotation marks — not a paraphrase — and place that video\'s exact [[video:ID]] '

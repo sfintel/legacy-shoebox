@@ -31,6 +31,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.7.1' => [
+            'description' => 'Ask tab now attaches a [[photo:ID]]/[[video:ID]] token (rendering an inline image/video) any time the model CITES a family-contributed photo/video as the source of a claim, not only when the user explicitly asks to see it. Found live: an answer cited "(Family-contributed photos, ...)" with no way to actually view it. Prompt-only change (includes/knowledge.php), no new mechanism, no schema change',
+            'db' => null,
+            'env' => [],
+        ],
         '2.7.0' => [
             'description' => 'admin_content.php gains "Awaiting approval (Stories)" and "Awaiting suggestion approval" Show-filter views; a red dot appears on the Content nav link (admin sessions only) whenever anything needs a decision. Also fixed: a URL content item\'s "View" button opened the archived text snapshot instead of the actual source page. No schema change',
             'db' => null,

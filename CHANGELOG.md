@@ -14,6 +14,29 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.7.1] — 2026-09-16
+
+### Fixed
+
+- **The Ask tab could cite a specific family-contributed photo or
+  video by title, with no way to actually view it** — e.g. an answer
+  ending in `(Family-contributed photos, "Title")` with no link. The
+  `[[photo:ID]]`/`[[video:ID]]` mechanism that renders an inline
+  image/video already existed, but the prompt only instructed the
+  model to use it when the user explicitly asked to *see* something,
+  not whenever it *cited* one as the source of a claim. The rule now
+  covers both cases — any time the model would otherwise write a bare
+  `(Family-contributed photo, "Title")`-style citation, it includes
+  that file's token too. Prompt-only change; no new mechanism.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.7.0] — 2026-09-16
 
 ### Added
