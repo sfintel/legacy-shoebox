@@ -14,6 +14,39 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.6.1] — 2026-09-16
+
+### Fixed
+
+- **The service worker could serve a stale admin page/script indefinitely
+  after a deploy.** Found live immediately after 2.6.0 shipped: the new
+  per-suggestion "Edit" button wasn't showing up, even though the code
+  was correctly deployed — the browser's already-installed PWA cache
+  was still serving the pre-2.6.0 `admin_content.js`. Root cause:
+  `service-worker.js`'s fetch handler defaulted to cache-first
+  (stale-while-revalidate) for anything not explicitly special-cased,
+  and only `/api/data.php` had been carved out as network-first — every
+  `admin_*.php` page and every JS/CSS file it loads fell into that same
+  default, so any deploy touching admin code could go unnoticed by an
+  already-installed PWA for an unbounded number of page loads (only a
+  page that's fully reloaded picks up the revalidated copy at all).
+  Admin surfaces have no offline-use case to justify that risk, so only
+  `APP_SHELL` (the reader-facing experience this was actually designed
+  for: `/`, `/login.php`, `/css/style.css`, `/js/app.js`, icons) keeps
+  cache-first treatment now — everything else, including every admin
+  page and script, defaults to network-first (falling back to cache
+  only when actually offline). Cache version bumped (v6 → v7) to
+  immediately clear out already-affected installs, not just prevent
+  recurrence.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.6.0] — 2026-09-16
 
 ### Added

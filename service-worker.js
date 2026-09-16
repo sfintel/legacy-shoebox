@@ -1,4 +1,4 @@
-const CACHE_NAME = "app-lamp-v6";
+const CACHE_NAME = "app-lamp-v7";
 const APP_SHELL = [
   "/",
   "/login.php",
@@ -44,20 +44,26 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// /api/data.php stands in for the Node version's static /data/*.json
-// files, but unlike a static file it changes whenever an admin edits
-// the archive — a cache-first (stale-while-revalidate) strategy meant
-// an edit wouldn't show up until a *second* page load (the first load
-// serves the stale cached copy while quietly refreshing it for next
-// time). Network-first here instead: always try the network, only fall
-// back to cache when actually offline.
-const NETWORK_FIRST_PREFIXES = ["/api/data.php"];
-
+// Everything else — every admin_*.php page and every JS/CSS file it
+// loads (admin_content.js, account.js, date_format.js, etc.), plus
+// /api/data.php — defaults to network-first, falling back to cache only
+// when actually offline. This used to be cache-first (stale-while-
+// revalidate) for anything not explicitly listed above, which is where
+// /api/data.php's own special case came from — but that same default
+// silently applied to every admin page and script too, so a deploy that
+// changed e.g. admin_content.js could leave an already-installed PWA
+// showing the OLD script for a full extra page load (or indefinitely,
+// for a page that's rarely fully reloaded) — confirmed live in
+// production after the 2.6.0 release (see CHANGELOG). Admin surfaces
+// have no offline-use case to justify cache-first's staleness risk, so
+// only APP_SHELL — the reader-facing experience this was actually
+// designed for — gets cache-first treatment below; everything else
+// prefers a fresh copy whenever the network is available.
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (NO_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p))) return;
 
-  if (NETWORK_FIRST_PREFIXES.some((p) => url.pathname.startsWith(p))) {
+  if (!APP_SHELL.includes(url.pathname)) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
@@ -72,10 +78,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first (stale-while-revalidate) for the app shell — this is
-  // fine here since JS/CSS/icons only change on a deploy, not on every
-  // admin edit, and cache-first is what makes the PWA feel instant and
-  // work offline.
+  // Cache-first (stale-while-revalidate) for the app shell only — this
+  // is fine here since these specific files only change on a deploy,
+  // not on every admin edit, and cache-first is what makes the reading
+  // experience feel instant and work offline.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request)
