@@ -39,6 +39,29 @@
     }
   });
 
+  // --- Date display preference (every logged-in user) ---
+  const dateFormatSelect = document.getElementById("dateFormatSelect");
+  const dateFormatPreview = document.getElementById("dateFormatPreview");
+  const now = new Date().toISOString();
+
+  function renderDateFormatPreview() {
+    dateFormatPreview.textContent = `Preview: ${window.DateFormat.format(now)}`;
+  }
+
+  Object.keys(window.DateFormat.FORMATS).forEach((key) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = window.DateFormat.FORMATS[key].label;
+    dateFormatSelect.appendChild(opt);
+  });
+  dateFormatSelect.value = window.DateFormat.getPreference();
+  renderDateFormatPreview();
+
+  dateFormatSelect.addEventListener("change", () => {
+    window.DateFormat.setPreference(dateFormatSelect.value);
+    renderDateFormatPreview();
+  });
+
   // --- Passkeys (admin/author only — these elements aren't on the page
   // at all for readers, see account.php) ---
   const registerForm = document.getElementById("registerForm");
@@ -59,10 +82,7 @@
     }[c]));
   }
 
-  function fmtDate(iso) {
-    if (!iso) return "—";
-    try { return new Date(iso).toLocaleString(); } catch { return iso; }
-  }
+  const fmtDate = window.DateFormat.format;
 
   async function load() {
     const res = await fetch("/api/webauthn/credentials.php");

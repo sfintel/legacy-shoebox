@@ -94,6 +94,7 @@ require_content_page();
 
 <script src="/js/admin_modal.js"></script>
 <script src="/js/content_form.js"></script>
+<script src="/js/date_format.js"></script>
 <script src="/js/admin_content.js"></script>
 </body>
 </html>

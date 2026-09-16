@@ -111,6 +111,7 @@ $subjects = db()->query('SELECT id, slug, hostname, display_name FROM subjects O
     </form>
   </main>
 
+<script src="/js/date_format.js"></script>
 <script src="/js/master_admin_backup.js"></script>
 </body>
 </html>

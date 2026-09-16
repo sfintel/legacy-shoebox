@@ -78,6 +78,7 @@ $subject = require_current_subject();
     </form>
   </main>
 
+<script src="/js/date_format.js"></script>
 <script src="/js/admin_backup.js"></script>
 </body>
 </html>

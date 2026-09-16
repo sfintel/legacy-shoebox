@@ -47,6 +47,19 @@ $isMasterAdmin = is_master_admin_session();
       <button type="submit" class="btn-primary" id="passwordBtn">Change password</button>
     </form>
 
+    <h2>Date display</h2>
+    <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
+      How dates and times are shown across admin pages (e.g. when a passkey was added, when content
+      was created). Saved only in this browser — it won't follow you to a different device or browser.
+    </p>
+    <form id="dateFormatForm" class="content-form" style="max-width:500px;">
+      <div class="form-row">
+        <label for="dateFormatSelect">Format</label>
+        <select id="dateFormatSelect"></select>
+      </div>
+      <p class="meta" id="dateFormatPreview" style="color:var(--muted); font-size:.85rem;"></p>
+    </form>
+
     <?php if ($showPasskeys): ?>
     <h2>Passkeys</h2>
     <p class="meta" style="color:var(--muted); font-size:.85rem; margin-top:-6px;">
@@ -114,6 +127,7 @@ $isMasterAdmin = is_master_admin_session();
 <?php if ($showPasskeys): ?>
 <script src="/js/webauthn.js"></script>
 <?php endif; ?>
+<script src="/js/date_format.js"></script>
 <script src="/js/account.js"></script>
 </body>
 </html>

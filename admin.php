@@ -37,6 +37,7 @@ require_admin_page();
     </div>
   </main>
 
+<script src="/js/date_format.js"></script>
 <script src="/js/admin.js"></script>
 </body>
 </html>

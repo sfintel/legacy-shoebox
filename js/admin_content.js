@@ -52,10 +52,7 @@
     }[c]));
   }
 
-  function fmtDate(iso) {
-    if (!iso) return "—";
-    try { return new Date(iso).toLocaleString(); } catch { return iso; }
-  }
+  const fmtDate = window.DateFormat.format;
 
   function truncate(str, n) {
     str = String(str || "");
@@ -182,7 +179,7 @@
     const suggestions = item.suggestions || [];
     const pending = suggestions.filter((s) => s.status === "pending").length;
     const suggestionsBtn = suggestions.length
-      ? `<button data-id="${item.id}" data-action="suggestions">Suggestions${pending ? ` (${pending})` : ""}</button>`
+      ? `<button class="${pending ? "has-pending" : ""}" data-id="${item.id}" data-action="suggestions">Suggestions${pending ? ` (${pending})` : ""}</button>`
       : "";
     const approveBtn = item.type === "story" && !item.storyApprovedAt && isAdmin
       ? `<button class="primary" data-id="${item.id}" data-action="approve-story">Approve</button>`
@@ -310,19 +307,89 @@
     return lines.join("<br>");
   }
 
+  // Editable inputs matching kw_apply_suggestion()'s field mapping per
+  // kind (includes/knowledge_writer.php) — lets an admin correct a field
+  // the AI got wrong (e.g. a timeline date derived from a photo's EXIF
+  // metadata, which reflects when the photo was taken, not when the
+  // depicted event happened) before it's written into the archive,
+  // rather than only being able to approve verbatim or dismiss outright.
+  // names/tags are plain comma-separated text — archive_normalize_names()/
+  // archive_normalize_tags() already split a comma-separated string
+  // server-side, so no client-side array-building is needed.
+  function suggestionEditFormHtml(s) {
+    const f = s.fields || {};
+    if (s.kind === "timeline") {
+      return `<div class="content-form" style="max-width:none;">
+        <div class="form-row"><label>Date</label><input type="text" class="e-date" value="${esc(f.date || "")}"></div>
+        <div class="form-row"><label>Event</label><textarea class="e-event" rows="2">${esc(f.event || "")}</textarea></div>
+        <div class="form-row"><label>Confidence</label>
+          <select class="e-confidence">
+            ${["high", "medium", "low"].map((c) => `<option value="${c}" ${f.confidence === c ? "selected" : ""}>${c}</option>`).join("")}
+          </select>
+        </div>
+        <div class="form-row"><label>Note (optional)</label><textarea class="e-note" rows="2">${esc(f.note || "")}</textarea></div>
+      </div>`;
+    }
+    if (s.kind === "person" || s.kind === "place") {
+      return `<div class="content-form" style="max-width:none;">
+        <div class="form-row"><label>Names (comma-separated)</label><input type="text" class="e-names" value="${esc((f.names || []).join(", "))}"></div>
+        <div class="form-row"><label>Role</label><input type="text" class="e-role" value="${esc(f.role || "")}"></div>
+        ${s.kind === "person" ? `<div class="form-row"><label>Fate (optional)</label><input type="text" class="e-fate" value="${esc(f.fate || "")}"></div>` : ""}
+        <div class="form-row"><label>Notes</label><textarea class="e-notes" rows="2">${esc(f.notes || "")}</textarea></div>
+      </div>`;
+    }
+    // quote
+    return `<div class="content-form" style="max-width:none;">
+      <div class="form-row"><label>Speaker</label><input type="text" class="e-speaker" value="${esc(f.speaker || "")}"></div>
+      <div class="form-row"><label>Tags (comma-separated)</label><input type="text" class="e-tags" value="${esc((f.tags || []).join(", "))}"></div>
+      <div class="form-row"><label>Quote</label><textarea class="e-quote" rows="3">${esc(f.quote || "")}</textarea></div>
+    </div>`;
+  }
+
+  // Reads the currently-visible edit inputs for one suggestion card back
+  // into a fields object shaped the way kw_apply_suggestion() expects.
+  function readSuggestionEditForm(card, kind) {
+    if (kind === "timeline") {
+      return {
+        date: card.querySelector(".e-date").value,
+        event: card.querySelector(".e-event").value,
+        confidence: card.querySelector(".e-confidence").value,
+        note: card.querySelector(".e-note").value,
+      };
+    }
+    if (kind === "person" || kind === "place") {
+      const fields = {
+        names: card.querySelector(".e-names").value,
+        role: card.querySelector(".e-role").value,
+        notes: card.querySelector(".e-notes").value,
+      };
+      if (kind === "person") fields.fate = card.querySelector(".e-fate").value;
+      return fields;
+    }
+    return {
+      speaker: card.querySelector(".e-speaker").value,
+      tags: card.querySelector(".e-tags").value,
+      quote: card.querySelector(".e-quote").value,
+    };
+  }
+
+  const editingSuggestionIds = new Set();
+
   function renderSuggestionsRow(item) {
     const suggestions = item.suggestions || [];
     const cards = suggestions.length
       ? suggestions.map((s) => {
+          const isEditing = s.status === "pending" && editingSuggestionIds.has(s.id);
           const actions = s.status === "pending" && isAdmin
             ? `<div class="admin-actions">
                 <button class="primary" data-suggestion-id="${s.id}" data-action="approve">Approve</button>
                 <button data-suggestion-id="${s.id}" data-action="dismiss">Dismiss</button>
+                <button data-suggestion-id="${s.id}" data-action="toggle-edit">${isEditing ? "Cancel edit" : "Edit"}</button>
               </div>`
             : `<span class="status-badge status-${s.status === "dismissed" ? "rejected" : esc(s.status)}">${esc(s.status)}</span>`;
-          return `<div class="card" style="margin-bottom:10px;">
+          return `<div class="card" data-suggestion-card="${s.id}" data-suggestion-kind="${s.kind}" style="margin-bottom:10px;">
             <div class="meta">${esc(s.kind)}</div>
-            <div class="body">${suggestionFieldsHtml(s)}</div>
+            <div class="body">${isEditing ? suggestionEditFormHtml(s) : suggestionFieldsHtml(s)}</div>
             ${actions}
           </div>`;
         }).join("")
@@ -345,20 +412,41 @@
     row.insertAdjacentHTML("afterend", renderSuggestionsRow(item));
     const panel = document.querySelector(`tr[data-suggestions-for="${id}"]`);
     panel.querySelectorAll("button[data-suggestion-id]").forEach((btn) => {
-      btn.addEventListener("click", () => handleSuggestionAction(btn.dataset.suggestionId, btn.dataset.action, id));
+      btn.addEventListener("click", () => {
+        if (btn.dataset.action === "toggle-edit") {
+          if (editingSuggestionIds.has(btn.dataset.suggestionId)) {
+            editingSuggestionIds.delete(btn.dataset.suggestionId);
+          } else {
+            editingSuggestionIds.add(btn.dataset.suggestionId);
+          }
+          // Re-render the panel in place to reflect the new edit state
+          // — not a real toggle-open/close, just reusing this function's
+          // "remove, then insert fresh" pair to redraw with current data.
+          document.querySelector(`tr[data-suggestions-for="${id}"]`)?.remove();
+          toggleSuggestions(id);
+          return;
+        }
+        handleSuggestionAction(btn.dataset.suggestionId, btn.dataset.action, id);
+      });
     });
   }
 
   async function handleSuggestionAction(suggestionId, action, itemId) {
     if (action === "approve" && !confirm("Add this to the archive? This writes directly into the knowledge base.")) return;
+    const body = { id: suggestionId, action };
+    if (action === "approve" && editingSuggestionIds.has(suggestionId)) {
+      const card = document.querySelector(`[data-suggestion-card="${suggestionId}"]`);
+      body.fields = readSuggestionEditForm(card, card.dataset.suggestionKind);
+    }
     try {
       const res = await fetch("/api/admin/content_suggestions.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: suggestionId, action }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Action failed");
+      editingSuggestionIds.delete(suggestionId);
       document.querySelector(`tr[data-suggestions-for="${itemId}"]`)?.remove();
       await load();
       toggleSuggestions(itemId);

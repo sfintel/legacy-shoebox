@@ -337,6 +337,11 @@ input[type=search]{min-width:180px;}
 }
 .admin-actions button.primary{background:var(--accent); color:#1b1a17; border-color:var(--accent); font-weight:600;}
 .admin-actions button.danger{border-color:#7a3b34; color:#e08a7d;}
+/* Same amber used by .status-pending elsewhere ("awaiting a decision")
+   — deliberately NOT var(--accent), which body.admin-theme overrides to
+   steel-blue and would make this look like every other button rather
+   than standing out as needing attention. */
+.admin-actions button.has-pending{background:#3a2f1c; border-color:#6b5528; color:#e0b060; font-weight:600;}
 .admin-actions button:hover, .admin-actions a:hover{filter:brightness(1.15);}
 /* Both axes explicitly overflow:auto (not overflow-x:auto plus
    overflow-y:visible, tried first and reverted — see git history)

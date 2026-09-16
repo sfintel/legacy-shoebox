@@ -12,10 +12,7 @@
     }[c]));
   }
 
-  function fmtDate(iso) {
-    if (!iso) return "—";
-    try { return new Date(iso).toLocaleString(); } catch { return iso; }
-  }
+  const fmtDate = window.DateFormat.format;
 
   async function load() {
     const res = await fetch("/api/admin/redactions.php");

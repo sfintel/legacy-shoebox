@@ -12,10 +12,7 @@
     }[c]));
   }
 
-  function fmtDate(iso) {
-    if (!iso) return "—";
-    try { return new Date(iso).toLocaleString(); } catch { return iso; }
-  }
+  const fmtDate = window.DateFormat.format;
 
   function fmtSize(bytes) {
     if (bytes < 1024) return `${bytes} B`;

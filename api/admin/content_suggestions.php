@@ -37,7 +37,19 @@ if ($method === 'POST') {
 
     $result = ['ok' => true];
     if ($action === 'approve') {
-        $fields = json_decode($suggestion['payload'], true);
+        $storedFields = json_decode($suggestion['payload'], true);
+        // Optional: the admin corrected a field before approving (e.g. a
+        // timeline date the AI derived from a photo's EXIF metadata,
+        // which reflects when the photo was taken/scanned, not when the
+        // depicted event happened) — see js/admin_content.js's edit
+        // toggle on each suggestion card. citation/sourceNote are
+        // PHP-attached at suggestion-creation time and never
+        // user-editable, so they're always taken from the original
+        // stored payload regardless of what an edited submission sends.
+        $editedFields = $body['fields'] ?? null;
+        $fields = is_array($editedFields) ? $editedFields : $storedFields;
+        $fields['citation'] = $storedFields['citation'] ?? null;
+        $fields['sourceNote'] = $storedFields['sourceNote'] ?? null;
         try {
             $result['applied'] = kw_apply_suggestion($suggestion['kind'], $fields, $suggestion['content_item_id']);
         } catch (RuntimeException $e) {

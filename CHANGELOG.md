@@ -14,6 +14,42 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.6.0] — 2026-09-16
+
+### Added
+
+- **Pending suggestions now stand out visually** — a content item's
+  "Suggestions" button gets a distinct amber highlight whenever it has
+  any pending (not yet approved/dismissed) AI suggestions, instead of
+  looking identical to every other button until you click in and count.
+- **AI suggestions can now be edited before approval**, not just
+  approved verbatim or dismissed outright. Found live: a timeline
+  suggestion's date came from a photo's EXIF metadata (when the photo
+  was taken/scanned), which can have no relationship to when the
+  depicted event actually happened — previously the only way to fix
+  that was to dismiss the whole suggestion and manually re-enter it by
+  hand via the Archive Editor, losing the AI's synthesis of names/
+  details in the process. Each pending suggestion card now has an
+  "Edit" toggle exposing its fields (date/event/confidence/note for
+  timeline; names/role/fate/notes for person; names/role/notes for
+  place; speaker/tags/quote for quote) — Approve then writes the
+  edited values instead of the original AI-proposed ones.
+- **Configurable date/time display on admin pages** — a new "Date
+  display" setting on `/account.php` (Browser default, MM/DD/YYYY,
+  DD/MM/YYYY, or YYYY-MM-DD/24-hour), stored per-browser (not synced
+  across devices, since it's purely cosmetic). New shared
+  `js/date_format.js` replaces 8 near-identical, hand-duplicated
+  `fmtDate()` functions that existed one-per-admin-page with a single
+  configurable implementation.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.5.0] — 2026-09-16
 
 ### Fixed

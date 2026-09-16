@@ -12,10 +12,6 @@
     }[c]));
   }
 
-  function fmtDate(iso) {
-    if (!iso) return "—";
-    try { return new Date(iso).toLocaleString(); } catch { return iso; }
-  }
 
   function truncate(str, n) {
     str = String(str || "");
