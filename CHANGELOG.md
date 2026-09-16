@@ -14,6 +14,41 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.5.0] — 2026-09-16
+
+### Fixed
+
+- **Quotes could be duplicated** — the AI suggestion prompt's
+  "don't propose a duplicate" rule explicitly protected person/place/
+  event entries but never mentioned quotes, even though the full
+  existing quote bank is already in the model's context; found live
+  after noticing the same testimony line appearing multiple times with
+  different tags (24 of 44 quotes in production were exact-text
+  duplicates). The prompt now explicitly extends the dedup rule to
+  quotes, and also clarifies that a quote's worth is judged
+  independently of whether the surrounding event is already known
+  (a source that mostly retells an already-documented event can still
+  contain a new quote worth adding — e.g. a different speaker
+  corroborating it in their own words). As a belt-and-suspenders
+  safety net that doesn't rely on the model getting this right,
+  `archive_quote_create()`/`archive_quote_update()` now refuse an
+  exact-text duplicate within the same subject's quote bank (both the
+  manual admin form and AI-suggestion approval surface this as a clear
+  error instead of silently inserting another copy).
+
+### Database changes
+
+None — this is a behavior fix in code, not a schema change. If your
+install already has duplicate quotes from before this fix, run the new
+`dedupe_quotes.php` once (`php dedupe_quotes.php --dry-run` first to
+preview, then `php dedupe_quotes.php` for real) — collapses exact-text
+duplicates across every subject, merging their tags. Safe to run
+repeatedly; a clean install has nothing for it to do.
+
+### Environment changes
+
+None.
+
 ## [2.4.1] — 2026-09-15
 
 ### Fixed

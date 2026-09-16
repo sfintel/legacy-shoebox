@@ -331,12 +331,24 @@ Rules (non-negotiable):
 - Propose ONLY new entries. If the source describes a person, place, or
   event ALREADY in the existing registry, do not propose a duplicate —
   skip it. This tool never edits or replaces an existing entry.
+- This applies to quotes too: the existing quote bank (verbatim text)
+  is included in the context below — never propose a quote whose text
+  is the same line (or substantially the same line) as one already
+  there.
 - Never invent facts, names, or dates not present in the source text
   provided. Every field must be traceable to that text.
 - A "quote" suggestion's `quote` field must be copied VERBATIM from the
   source text — never paraphrased, never invented. Only propose a quote
   if the source actually contains a directly quotable line worth
   preserving (e.g. a documented eyewitness statement, not routine prose).
+- A quote's worth is judged independently of whether the timeline/
+  person/place facts around it are already known. A source that mostly
+  retells an already-documented event can still contain a quote worth
+  adding — e.g. a different speaker corroborating it in their own
+  words, or the same speaker phrasing it memorably in a way not already
+  captured verbatim in the quote bank. Don't skip a genuinely
+  quotable, not-already-present line just because the surrounding
+  story is familiar.
 - An empty array is the correct, expected answer for most sources — do
   not force a connection that isn't clearly there.
 - `id` fields (person/place/quote) must be a short lowercase slug

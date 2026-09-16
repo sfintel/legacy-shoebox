@@ -31,6 +31,11 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.5.0' => [
+            'description' => 'AI suggestion prompt now checks the existing quote bank for duplicates (previously only checked person/place/event) and judges a quote\'s worth independently of whether the surrounding event is already known; archive_quote_create()/archive_quote_update() now refuse an exact-text duplicate as a belt-and-suspenders check. Found live: 24 of 44 quotes in production were exact-text duplicates with different tags. New dedupe_quotes.php (CLI, run once by hand — php dedupe_quotes.php --dry-run to preview) collapses existing duplicates, merging tags. No schema change',
+            'db' => null,
+            'env' => [],
+        ],
         '2.4.1' => [
             'description' => 'json_response() (every JSON API endpoint) now sends Cache-Control: no-store — fixes a deleted passkey (or any other list-then-mutate UI) sometimes still showing the old row until a hard page refresh, since the browser could cache the GET response with no cache headers of its own. No schema change',
             'db' => null,

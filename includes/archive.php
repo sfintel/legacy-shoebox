@@ -1012,12 +1012,35 @@ function archive_quote_find(string $id): ?array
     return $row ?: null;
 }
 
+// Exact (trimmed) text match within this subject's own quote bank —
+// catches both a human re-adding a line by hand and an AI suggestion
+// proposing one already present (belt-and-suspenders alongside the
+// prompt instruction in narrative_suggestions_system_prompt(), which
+// can't be relied on alone since the model sometimes misses it — see
+// CHANGELOG's entry on this). $excludeId lets an update check against
+// every OTHER quote without flagging itself as its own duplicate.
+function archive_quote_text_duplicate_exists(string $quoteText, ?string $excludeId = null): bool
+{
+    $sql = 'SELECT COUNT(*) FROM quotes WHERE subject_id = ? AND quote_text = ?';
+    $params = [current_subject_id(), $quoteText];
+    if ($excludeId !== null) {
+        $sql .= ' AND id != ?';
+        $params[] = $excludeId;
+    }
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
 function archive_quote_create(array $fields): array
 {
     $speaker = archive_trim_or_null($fields['speaker'] ?? null);
     $quoteText = archive_trim_or_null($fields['quote_text'] ?? null);
     if ($speaker === null || $quoteText === null) {
         throw new RuntimeException('Speaker and quote text are required.');
+    }
+    if (archive_quote_text_duplicate_exists($quoteText)) {
+        throw new RuntimeException('This exact quote is already in the archive — check the Quotes tab before adding it again.');
     }
     $subjectId = current_subject_id();
     $stmt = db()->prepare('SELECT COALESCE(MAX(sort_order), 0) FROM quotes WHERE subject_id = ?');
@@ -1051,6 +1074,9 @@ function archive_quote_update(string $id, array $fields): array
     $quoteText = archive_trim_or_null($fields['quote_text'] ?? null);
     if ($speaker === null || $quoteText === null) {
         throw new RuntimeException('Speaker and quote text are required.');
+    }
+    if (archive_quote_text_duplicate_exists($quoteText, $id)) {
+        throw new RuntimeException('This exact quote is already in the archive — check the Quotes tab before adding it again.');
     }
     $tags = archive_normalize_tags($fields['tags'] ?? []);
     keywords_ensure($tags); // joins the app-wide master list — see includes/keywords.php
