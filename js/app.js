@@ -176,7 +176,8 @@
     if (!items || !items.length) return "";
     const links = items.map(c => {
       if (c.isVideo) {
-        const url = "/api/file.php?fileId=" + encodeURIComponent(c.fileId);
+        const url = "/api/file.php?fileId=" + encodeURIComponent(c.fileId)
+          + (c.seekSeconds != null ? "#t=" + encodeURIComponent(c.seekSeconds) : "");
         return `<a href="${url}" target="_blank" rel="noopener" class="pill related-content-link">&#9654; ${esc(c.title)}</a>`;
       }
       if (c.type === "photo") {

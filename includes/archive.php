@@ -562,7 +562,7 @@ function archive_timeline_entry_public(array $row): array
         'historical_date' => $row['historical_date'],
         'historical_source' => $row['historical_source'],
         'citation' => $row['citation'],
-        'relatedContent' => archive_content_links_public('timeline', $row['id']),
+        'relatedContent' => archive_content_links_public('timeline', $row['id'], (string) $row['event']),
     ];
 }
 
@@ -1201,20 +1201,39 @@ function archive_content_links_for_entity(string $entityType, string $entityId):
     return $rows;
 }
 
-function archive_content_links_public(string $entityType, string $entityId): array
+// $seekMatchText (optional): text belonging to the entity itself (e.g. a
+// timeline entry's event description) to try to locate in a linked
+// video's transcript, same verbatim-substring approach as
+// archive_quote_video_link()/includes/video_seek.php, so the resulting
+// link opens at that moment instead of always at 0:00. Only worth passing
+// for entities whose own text plausibly appears in a testimony transcript
+// (timeline entries); people/places/quotes either have their own
+// dedicated seek link (quotes) or no comparable text to match.
+function archive_content_links_public(string $entityType, string $entityId, ?string $seekMatchText = null): array
 {
-    return array_map(static fn (array $row): array => [
-        'id' => $row['id'],
-        'type' => $row['type'],
-        'title' => $row['title'],
-        'fileId' => $row['file_ids'][0] ?? null,
-        // Only meaningfully more than one entry for a multi-photo item —
-        // js/app.js's renderRelatedContent() uses this to show/page
-        // through every page rather than just the first.
-        'fileIds' => $row['file_ids'],
-        'sourceUrl' => $row['source_url'],
-        'isVideo' => $row['mime_type'] !== null && str_starts_with((string) $row['mime_type'], 'video/'),
-    ], archive_content_links_for_entity($entityType, $entityId));
+    return array_map(static function (array $row) use ($seekMatchText): array {
+        $isVideo = $row['mime_type'] !== null && str_starts_with((string) $row['mime_type'], 'video/');
+        $seekSeconds = null;
+        if ($isVideo && $seekMatchText !== null && $seekMatchText !== '' && ($row['file_ids'][0] ?? null)) {
+            $segments = video_seek_transcript_segments_for_file($row['file_ids'][0]);
+            if ($segments) {
+                $seekSeconds = video_seek_match_segment($segments, ['text' => $seekMatchText]);
+            }
+        }
+        return [
+            'id' => $row['id'],
+            'type' => $row['type'],
+            'title' => $row['title'],
+            'fileId' => $row['file_ids'][0] ?? null,
+            // Only meaningfully more than one entry for a multi-photo item —
+            // js/app.js's renderRelatedContent() uses this to show/page
+            // through every page rather than just the first.
+            'fileIds' => $row['file_ids'],
+            'sourceUrl' => $row['source_url'],
+            'isVideo' => $isVideo,
+            'seekSeconds' => $seekSeconds,
+        ];
+    }, archive_content_links_for_entity($entityType, $entityId));
 }
 
 // --- Plain-text formatting for the AI context (includes/knowledge.php) ---
