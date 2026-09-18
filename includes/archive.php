@@ -562,7 +562,7 @@ function archive_timeline_entry_public(array $row): array
         'historical_date' => $row['historical_date'],
         'historical_source' => $row['historical_source'],
         'citation' => $row['citation'],
-        'relatedContent' => archive_content_links_public('timeline', $row['id'], (string) $row['event']),
+        'relatedContent' => archive_content_links_public('timeline', $row['id'], (string) $row['event'], $row['note'] !== null ? (string) $row['note'] : null),
     ];
 }
 
@@ -1209,15 +1209,28 @@ function archive_content_links_for_entity(string $entityType, string $entityId):
 // for entities whose own text plausibly appears in a testimony transcript
 // (timeline entries); people/places/quotes either have their own
 // dedicated seek link (quotes) or no comparable text to match.
-function archive_content_links_public(string $entityType, string $entityId, ?string $seekMatchText = null): array
+// $seekMatchFallbackText (optional): tried only if $seekMatchText doesn't
+// match anything — a timeline entry's own `event` text is usually a
+// paraphrased summary that never appears verbatim in the transcript, but
+// its `note` field occasionally quotes the subject directly (e.g. `Slava
+// says "..."`), which the primary summary text can't be.
+function archive_content_links_public(string $entityType, string $entityId, ?string $seekMatchText = null, ?string $seekMatchFallbackText = null): array
 {
-    return array_map(static function (array $row) use ($seekMatchText): array {
+    return array_map(static function (array $row) use ($seekMatchText, $seekMatchFallbackText): array {
         $isVideo = $row['mime_type'] !== null && str_starts_with((string) $row['mime_type'], 'video/');
         $seekSeconds = null;
-        if ($isVideo && $seekMatchText !== null && $seekMatchText !== '' && ($row['file_ids'][0] ?? null)) {
+        if ($isVideo && ($row['file_ids'][0] ?? null)) {
             $segments = video_seek_transcript_segments_for_file($row['file_ids'][0]);
             if ($segments) {
-                $seekSeconds = video_seek_match_segment($segments, ['text' => $seekMatchText]);
+                foreach ([$seekMatchText, $seekMatchFallbackText] as $candidate) {
+                    if ($candidate === null || $candidate === '') {
+                        continue;
+                    }
+                    $seekSeconds = video_seek_match_segment($segments, ['text' => $candidate]);
+                    if ($seekSeconds !== null) {
+                        break;
+                    }
+                }
             }
         }
         return [
