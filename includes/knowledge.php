@@ -93,8 +93,10 @@ function knowledge_system_role(): string
         . 'directly instead of only reading its title. Same rule as above: only ever use an id actually '
         . "listed there, never invent one, and if an item has several files pick whichever one's id is "
         . 'actually relevant to what you cited.';
-    $rules[] = 'When you cite a specific moment from a family-contributed transcript whose block above '
-        . 'notes a companion video (an "id=" shown there), quote the actual words for that moment '
+    $rules[] = 'When you cite a specific moment from a transcript whose block above notes a companion '
+        . 'video (an "id=" shown there) — whether that\'s the primary testimony transcript itself (each '
+        . 'of its tape sections carries its own id= when a matching video exists) or a separately '
+        . 'family-contributed transcript — quote the actual words for that moment '
         . 'verbatim in quotation marks — not a paraphrase — and place that video\'s exact [[video:ID]] '
         . "token right next to the quote, using that same id, so the reader can watch that exact moment. "
         . 'When you describe SEVERAL distinct moments from that same transcript — e.g. answering "tell me '
@@ -145,7 +147,7 @@ function knowledge_context(): string
 
     $testimony = archive_primary_testimony();
     $transcriptText = ($testimony && $testimony['raw_markdown'])
-        ? $testimony['raw_markdown']
+        ? archive_testimony_text_with_video_ids($testimony['raw_markdown'])
         : '(no primary testimony transcript recorded yet)';
 
     $discNotes = archive_discrepancy_notes();

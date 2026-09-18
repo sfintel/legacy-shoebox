@@ -52,6 +52,32 @@ function archive_primary_testimony(): ?array
     return $stmt->fetch() ?: null;
 }
 
+// Annotates each "## Tape N" section of the primary testimony transcript
+// (see transcript_parse_tapes()'s same header convention) with the
+// matching Content Library video's file id, so knowledge.php's
+// knowledge_context() can feed the model an id= hint right next to the
+// verbatim testimony text it's most likely to quote from — without this,
+// a quote drawn from THIS block (as opposed to a separately-uploaded
+// Content Library transcript, which already gets a companion note via
+// content_context()) had no id available at all, so the model could
+// never attach a [[video:ID]] token to it (see knowledge_system_role()'s
+// rule for that token) no matter how well it followed the citation
+// instruction. Sections with no matching video (or malformed markdown,
+// no "## Tape N" headers) pass through unchanged.
+function archive_testimony_text_with_video_ids(string $markdown): string
+{
+    return (string) preg_replace_callback(
+        '/^(##\s*Tape\s+(\d+)[^\n]*)$/mi',
+        static function (array $m): string {
+            $videoFile = archive_video_file_for_tape($m[2]);
+            return $videoFile
+                ? $m[1] . "\nA companion video of this testimony exists: id={$videoFile['id']}."
+                : $m[1];
+        },
+        $markdown
+    );
+}
+
 function archive_discrepancy_notes(): ?array
 {
     $stmt = db()->prepare('SELECT * FROM discrepancy_notes WHERE subject_id = ?');
@@ -580,13 +606,37 @@ function archive_quote_public(array $row): array
     ];
 }
 
+// Looks up the Content Library video whose title names the given tape
+// number (the "VHA Interview 14091 — Tape N" naming convention) and
+// returns its first file's row, or null if no such video exists. Shared
+// by archive_quote_video_link() below and knowledge.php's
+// archive_testimony_text_with_video_ids() (which annotates the primary
+// testimony transcript fed to the Ask tab's model with the same ids, so
+// it has something to cite — see knowledge_system_role()'s [[video:ID]]
+// rule).
+function archive_video_file_for_tape(string $tapeNum): ?array
+{
+    static $videos = null;
+    if ($videos === null) {
+        $stmt = db()->prepare("SELECT * FROM content_items WHERE subject_id = ? AND type = 'video' ORDER BY created_at ASC");
+        $stmt->execute([current_subject_id()]);
+        $videos = $stmt->fetchAll();
+    }
+
+    foreach ($videos as $candidate) {
+        if (preg_match('/\bTape\s*' . preg_quote($tapeNum, '/') . '\b/i', (string) $candidate['title'])) {
+            return content_files_for_item($candidate['id'])[0] ?? null;
+        }
+    }
+    return null;
+}
+
 // Best-effort "watch the moment this quote comes from" link for the
 // Quotes tab's Watch video button — same "Tape N" parse js/app.js
 // already does client-side for the View in transcript button, matched
-// against a Content Library video item whose title names that tape
-// (see the "VHA Interview 14091 — Tape N" naming convention), then the
-// same verbatim-substring matching includes/video_seek.php uses for
-// Ask-tab citations, just triggered from a stored quote instead of a
+// against a Content Library video item whose title names that tape,
+// then the same verbatim-substring matching includes/video_seek.php uses
+// for Ask-tab citations, just triggered from a stored quote instead of a
 // fresh reply. Returns null if source_note doesn't name a tape, or no
 // video exists for that tape. seekSeconds inside a non-null result may
 // itself be null if the quote's stored text isn't a verbatim substring
@@ -598,26 +648,7 @@ function archive_quote_video_link(array $row): ?array
     if (!preg_match('/Tape\s+(\d+)/i', (string) ($row['source_note'] ?? ''), $m)) {
         return null;
     }
-    $tapeNum = $m[1];
-
-    static $videos = null;
-    if ($videos === null) {
-        $stmt = db()->prepare("SELECT * FROM content_items WHERE subject_id = ? AND type = 'video' ORDER BY created_at ASC");
-        $stmt->execute([current_subject_id()]);
-        $videos = $stmt->fetchAll();
-    }
-
-    $video = null;
-    foreach ($videos as $candidate) {
-        if (preg_match('/\bTape\s*' . preg_quote($tapeNum, '/') . '\b/i', (string) $candidate['title'])) {
-            $video = $candidate;
-            break;
-        }
-    }
-    if (!$video) {
-        return null;
-    }
-    $videoFile = content_files_for_item($video['id'])[0] ?? null;
+    $videoFile = archive_video_file_for_tape($m[1]);
     if (!$videoFile) {
         return null;
     }
@@ -1214,6 +1245,13 @@ function archive_content_links_for_entity(string $entityType, string $entityId):
 // paraphrased summary that never appears verbatim in the transcript, but
 // its `note` field occasionally quotes the subject directly (e.g. `Slava
 // says "..."`), which the primary summary text can't be.
+//
+// If NEITHER text is a verbatim substring of the transcript (the normal
+// case for a timeline entry — see video_seek_fuzzy_match_segment()'s own
+// comment), falls back further to an approximate keyword-overlap match
+// across both texts combined: still opening at a real, evidence-backed
+// point in the video rather than always 0:00, which is the actual point
+// of showing a video link at all, even for a paraphrased citation.
 function archive_content_links_public(string $entityType, string $entityId, ?string $seekMatchText = null, ?string $seekMatchFallbackText = null): array
 {
     return array_map(static function (array $row) use ($seekMatchText, $seekMatchFallbackText): array {
@@ -1229,6 +1267,12 @@ function archive_content_links_public(string $entityType, string $entityId, ?str
                     $seekSeconds = video_seek_match_segment($segments, ['text' => $candidate]);
                     if ($seekSeconds !== null) {
                         break;
+                    }
+                }
+                if ($seekSeconds === null) {
+                    $combined = trim(($seekMatchText ?? '') . ' ' . ($seekMatchFallbackText ?? ''));
+                    if ($combined !== '') {
+                        $seekSeconds = video_seek_fuzzy_match_segment($segments, $combined);
                     }
                 }
             }

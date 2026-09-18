@@ -197,3 +197,114 @@ function video_seek_match_segment(array $segments, array $quote): ?int
     }
     return null;
 }
+
+// Words too common to say anything about WHERE in a transcript a
+// paraphrased description is talking about — see
+// video_seek_fuzzy_match_segment() below.
+const VIDEO_SEEK_FUZZY_STOPWORDS = [
+    'the', 'a', 'an', 'and', 'or', 'but', 'of', 'to', 'in', 'on', 'at', 'by', 'for',
+    'with', 'from', 'as', 'is', 'was', 'were', 'are', 'be', 'been', 'being',
+    'this', 'that', 'these', 'those', 'it', 'its', 'they', 'their', 'them',
+    'he', 'his', 'him', 'she', 'her', 'we', 'our', 'us', 'you', 'your', 'i', 'my',
+    'not', 'no', 'so', 'if', 'then', 'than', 'into', 'onto', 'out', 'up', 'down',
+    'over', 'under', 'after', 'before', 'when', 'while', 'during', 'about',
+    'again', 'also', 'one', 'two', 'three', 'had', 'has', 'have', 'did', 'does',
+    'would', 'could', 'should', 'will', 'can', 'there', 'here', 'all', 'each',
+];
+// Segments per sliding window — wider than video_seek_match_segment()'s
+// exact-quote window, since a paraphrased timeline/note description
+// typically covers more ground than one verbatim quote does.
+const VIDEO_SEEK_FUZZY_WINDOW = 6;
+// Minimum weighted keyword-overlap score (see below) before a fuzzy
+// match is trusted at all — below this, "no reliable guess" (the
+// caller's existing 0:00 fallback) beats anchoring to a window that
+// merely happens to share one common word with the description.
+const VIDEO_SEEK_FUZZY_MIN_SCORE = 1.5;
+
+// Approximate, best-effort counterpart to video_seek_match_segment() for
+// text that will never appear verbatim in a transcript — e.g. a timeline
+// entry's `event`/`note` fields describe what happened in the curator's
+// own words, not the subject's, so requiring an exact substring almost
+// never finds anything. Instead, scores every sliding window of segments
+// by how many of $text's distinctive words it contains, weighting each
+// word by how RARE it is across the whole transcript (a crude,
+// self-contained inverse-document-frequency — no external
+// dictionary/library needed) so a name mentioned throughout the tape
+// counts for much less than a specific place or detail mentioned only a
+// few times. Still grounded in the real transcript, never a guess pulled
+// from nowhere — but unlike video_seek_match_segment(), the result is an
+// approximate "this is roughly where that's talked about," not a
+// verified verbatim anchor, so callers should treat it as a lower-
+// confidence fallback, tried only after an exact match fails.
+function video_seek_fuzzy_match_segment(array $segments, string $text): ?int
+{
+    $keywords = video_seek_fuzzy_keywords($text);
+    if (!$keywords || !$segments) {
+        return null;
+    }
+
+    $segmentWords = array_map(
+        static fn (array $seg): array => array_unique(video_seek_fuzzy_tokenize($seg['text'])),
+        $segments
+    );
+
+    $docFreq = [];
+    foreach ($keywords as $word) {
+        $count = 0;
+        foreach ($segmentWords as $words) {
+            if (in_array($word, $words, true)) {
+                $count++;
+            }
+        }
+        $docFreq[$word] = $count;
+    }
+
+    $total = count($segments);
+    $bestScore = 0.0;
+    $bestStart = null;
+
+    for ($i = 0; $i < $total; $i++) {
+        $windowWords = [];
+        for ($j = $i; $j < min($i + VIDEO_SEEK_FUZZY_WINDOW, $total); $j++) {
+            $windowWords = array_merge($windowWords, $segmentWords[$j]);
+        }
+        $windowWords = array_flip($windowWords);
+
+        $score = 0.0;
+        foreach ($keywords as $word) {
+            if (isset($windowWords[$word]) && $docFreq[$word] > 0) {
+                $score += 1.0 / $docFreq[$word];
+            }
+        }
+
+        if ($score > $bestScore) {
+            $bestScore = $score;
+            $bestStart = $segments[$i]['start'];
+        }
+    }
+
+    if ($bestStart === null || $bestScore < VIDEO_SEEK_FUZZY_MIN_SCORE) {
+        return null;
+    }
+
+    return max(0, $bestStart - VIDEO_SEEK_BACKOFF_SECONDS);
+}
+
+// Lowercased, punctuation-stripped words from $text, deduplicated and
+// with stopwords/very-short words removed — the "distinctive vocabulary"
+// video_seek_fuzzy_match_segment() looks for in the transcript.
+function video_seek_fuzzy_keywords(string $text): array
+{
+    $words = array_unique(video_seek_fuzzy_tokenize($text));
+    return array_values(array_filter(
+        $words,
+        static fn (string $w): bool => mb_strlen($w, 'UTF-8') >= 3 && !in_array($w, VIDEO_SEEK_FUZZY_STOPWORDS, true)
+    ));
+}
+
+function video_seek_fuzzy_tokenize(string $text): array
+{
+    $normalized = quote_check_normalize($text);
+    preg_match_all('/[\p{L}\p{N}]+/u', $normalized, $m);
+    return $m[0];
+}
