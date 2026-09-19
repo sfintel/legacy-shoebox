@@ -7,6 +7,8 @@
       window.location.href = "/login.php";
       return;
     }
+    chatStoreKey = "askHistory:" + window.location.host + ":" + String(d.email || "").toLowerCase();
+    restoreChatHistory();
     if (d.role === "admin") {
       const menu = document.getElementById("adminMenu");
       if (menu) menu.style.display = "";
@@ -25,6 +27,9 @@
 
   document.getElementById("logoutBtn").addEventListener("click", async () => {
     await fetch("/api/logout.php", { method: "POST" });
+    if (chatStoreKey) {
+      try { localStorage.removeItem(chatStoreKey); } catch (e) { /* ignore */ }
+    }
     window.location.href = "/login.php";
   });
 
@@ -482,7 +487,55 @@
   const chatInput = document.getElementById("chatInput");
   const sendBtn = document.getElementById("sendBtn");
   const audienceSelect = document.getElementById("audienceMode");
+  const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+  const chatPlaceholderHtml = chatLog.innerHTML;
+  // Each entry: {role, content} plus, for assistant replies, the extras
+  // setAssistantReply() needs to re-render it identically (unverifiedQuotes,
+  // truncated, videoSeeks). Only {role, content} is ever sent to the server.
   let history = [];
+  // Persisted in localStorage, keyed by signed-in user so a shared browser
+  // never shows one person's conversation to another; removed on sign-out.
+  const CHAT_STORE_MAX = 60;
+  let chatStoreKey = null;
+
+  function saveChatHistory() {
+    if (!chatStoreKey) return;
+    try {
+      localStorage.setItem(chatStoreKey, JSON.stringify(history.slice(-CHAT_STORE_MAX)));
+    } catch (e) { /* storage unavailable or full — history just won't persist */ }
+  }
+
+  function restoreChatHistory() {
+    if (!chatStoreKey || history.length) return;
+    let saved = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(chatStoreKey) || "null");
+    } catch (e) { return; }
+    if (!Array.isArray(saved)) return;
+    while (saved.length && saved[0].role !== "user") saved.shift();
+    // Don't announce every restored bubble to screen readers as if new.
+    chatLog.setAttribute("aria-live", "off");
+    for (const m of saved) {
+      if (!m || typeof m.content !== "string" || (m.role !== "user" && m.role !== "assistant")) continue;
+      history.push(m);
+      if (m.role === "user") {
+        addBubble("user", m.content);
+      } else {
+        const bubble = addBubble("assistant", "");
+        setAssistantReply(bubble, m.content, m.unverifiedQuotes, m.truncated, m.videoSeeks);
+      }
+    }
+    chatLog.setAttribute("aria-live", "polite");
+  }
+
+  clearHistoryBtn.addEventListener("click", () => {
+    if (history.length && !confirm("Clear this conversation?")) return;
+    history = [];
+    chatLog.innerHTML = chatPlaceholderHtml;
+    if (chatStoreKey) {
+      try { localStorage.removeItem(chatStoreKey); } catch (e) { /* ignore */ }
+    }
+  });
 
   function addBubble(role, text, opts) {
     opts = opts || {};
@@ -591,7 +644,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
-          history: history.slice(0, -1),
+          history: history.slice(0, -1).map(m => ({ role: m.role, content: m.content })),
           audienceMode: audienceSelect.value,
         }),
       });
@@ -599,7 +652,14 @@
       if (!res.ok) throw new Error(data.error || "Request failed");
       setAssistantReply(pending, data.reply, data.unverifiedQuotes, data.truncated, data.videoSeeks);
       pending.classList.remove("pending");
-      history.push({ role: "assistant", content: data.reply });
+      history.push({
+        role: "assistant",
+        content: data.reply,
+        unverifiedQuotes: data.unverifiedQuotes,
+        truncated: data.truncated,
+        videoSeeks: data.videoSeeks,
+      });
+      saveChatHistory();
     } catch (err) {
       pending.textContent = "Something went wrong: " + err.message;
       pending.classList.remove("pending");

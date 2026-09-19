@@ -105,6 +105,7 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
         <select id="audienceMode">
           <?= audience_mode_options($defaultAudienceMode) ?>
         </select>
+        <button type="button" id="clearHistoryBtn" class="ghost-btn" style="margin-left:auto;">Clear history</button>
       </div>
       <div id="chatLog" class="chat-log" role="log" aria-live="polite" aria-relevant="additions">
         <div class="msg assistant">
