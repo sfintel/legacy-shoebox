@@ -497,7 +497,7 @@
   // backed by content_media_public() in includes/content.php.
   let mediaData = [];
   let renderedMedia = [];
-  loadData("media").then(data => { mediaData = data; renderMediaGrid(mediaData); });
+  loadData("media").then(data => { mediaData = data; applyMediaFilter(); });
   function mediaThumb(item) {
     const fileId = item.files[0] && item.files[0].id;
     if (!fileId) return `<div class="media-thumb-icon">&#128196;</div>`;
@@ -541,14 +541,34 @@
       description: m.narrativeNote || m.description || "",
     })), startIndex < 0 ? 0 : startIndex);
   });
-  document.getElementById("mediaSearch").addEventListener("input", e => {
-    const q = e.target.value.toLowerCase();
-    renderMediaGrid(mediaData.filter(m =>
+  // Mirrors admin_content.php's "Show:" type filter + sortable columns —
+  // same idea, simplified to two dropdowns since the Media tab is a card
+  // grid, not a sortable table. Search, type filter, and sort all apply
+  // together, so any control can be changed independently without losing
+  // the others' state.
+  function applyMediaFilter() {
+    const q = document.getElementById("mediaSearch").value.toLowerCase();
+    const typeFilter = document.getElementById("mediaTypeFilter").value;
+    const sort = document.getElementById("mediaSort").value;
+    let items = mediaData.filter(m =>
       (m.title || "").toLowerCase().includes(q) ||
       (m.tags || []).join(" ").toLowerCase().includes(q) ||
       (m.description || "").toLowerCase().includes(q)
-    ));
-  });
+    );
+    if (typeFilter !== "all") {
+      items = items.filter(m => m.type === typeFilter);
+    }
+    items = items.slice();
+    if (sort === "oldest") {
+      items.reverse(); // mediaData already arrives newest-first from the server
+    } else if (sort === "title") {
+      items.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+    }
+    renderMediaGrid(items);
+  }
+  document.getElementById("mediaSearch").addEventListener("input", applyMediaFilter);
+  document.getElementById("mediaTypeFilter").addEventListener("change", applyMediaFilter);
+  document.getElementById("mediaSort").addEventListener("change", applyMediaFilter);
 
   // --- Transcript ---
   let transcriptData = null;

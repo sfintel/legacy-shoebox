@@ -195,6 +195,21 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
         <h2>Media</h2>
         <input type="search" id="mediaSearch" placeholder="Search media…" aria-label="Search media">
       </div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+        <label for="mediaTypeFilter" style="font-size:.85rem; color:var(--muted);">Show:</label>
+        <select id="mediaTypeFilter">
+          <option value="all">All types</option>
+          <option value="video">Video</option>
+          <option value="audio">Audio</option>
+          <option value="photo">Photo</option>
+        </select>
+        <label for="mediaSort" style="font-size:.85rem; color:var(--muted);">Sort:</label>
+        <select id="mediaSort">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="title">Title A&ndash;Z</option>
+        </select>
+      </div>
       <div id="mediaGrid" class="media-grid"></div>
     </section>
 

@@ -12,13 +12,20 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [2.8.0] — 2026-09-24
+
 ### Added
 
 - **Media tab** — a new tab on the main page listing every stored
   video, audio, and photo item, independent of whether it's linked to
   a specific Timeline/Quotes/People/Places entry. Searchable by
-  title/tags/description; clicking a card opens the item in the pop-up
-  player (or the existing photo lightbox for photos).
+  title/tags/description, with a type filter ("Show: All types / Video
+  / Audio / Photo") and a sort dropdown (Newest first / Oldest first /
+  Title A–Z) mirroring admin_content.php's own filter/sort controls.
+  Clicking a card opens the item in the pop-up player (or the existing
+  photo lightbox for photos).
 
 ### Changed
 
@@ -27,6 +34,14 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
   related-content pills and the Quotes tab's "Watch video" button all
   play through the same viewer as the new Media tab, with prev/next
   navigation when there's more than one item to browse.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
 
 ## [2.7.1] — 2026-09-16
 
