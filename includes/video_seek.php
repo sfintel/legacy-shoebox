@@ -308,3 +308,49 @@ function video_seek_fuzzy_tokenize(string $text): array
     preg_match_all('/[\p{L}\p{N}]+/u', $normalized, $m);
     return $m[0];
 }
+
+// --- Pseudo closed captions (api/captions.php, the Media tab) ---
+// Turns the SAME segments video_seek_transcript_segments_for_file()
+// already computes for quote-based seeking into a WebVTT track. "Pseudo"
+// because it's not a real captioning pass: a cue is exactly one
+// transcript speaker-turn segment (real spoken words at their real
+// timecodes, never generated/summarized), which usually runs much
+// longer and covers far more text than a real caption line ever would.
+// Still strictly more useful than nothing, and, like every other
+// video_seek.php output, fully deterministic — never the model. Returns
+// null under the same conditions the segments lookup does (no linked
+// transcript, or an older non-timecoded one) — api/captions.php serves
+// that as 404 rather than an empty-but-200 track file.
+function video_seek_vtt_for_file(string $fileId): ?string
+{
+    $segments = video_seek_transcript_segments_for_file($fileId);
+    if (!$segments) {
+        return null;
+    }
+    $vtt = "WEBVTT\n\n";
+    $cueNumber = 0;
+    foreach ($segments as $seg) {
+        $text = trim((string) $seg['text']);
+        if ($text === '') {
+            continue;
+        }
+        $start = (int) $seg['start'];
+        // Guards against a zero/negative-duration cue (some source
+        // transcripts have back-to-back turns sharing one timecode) —
+        // WebVTT requires a cue's end to be strictly after its start.
+        $end = max($start + 1, (int) $seg['end']);
+        $speaker = trim((string) ($seg['speaker'] ?? ''));
+        $cueText = $speaker !== '' ? "{$speaker}: {$text}" : $text;
+        $cueNumber++;
+        $vtt .= "{$cueNumber}\n" . video_seek_vtt_timestamp($start) . ' --> ' . video_seek_vtt_timestamp($end) . "\n{$cueText}\n\n";
+    }
+    return $cueNumber > 0 ? $vtt : null;
+}
+
+function video_seek_vtt_timestamp(int $totalSeconds): string
+{
+    $h = intdiv($totalSeconds, 3600);
+    $m = intdiv($totalSeconds % 3600, 60);
+    $s = $totalSeconds % 60;
+    return sprintf('%02d:%02d:%02d.000', $h, $m, $s);
+}

@@ -14,6 +14,31 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.9.0] — 2026-09-24
+
+### Added
+
+- **Pseudo closed captions for videos in the Media tab.** When a video
+  is linked to a transcript in the newer timecoded format, its
+  speaker-turn segments are served as a WebVTT track
+  (`api/captions.php`, `video_seek_vtt_for_file()` in
+  `includes/video_seek.php`) and attached to the pop-up player, with a
+  "CC" badge on the video's thumbnail. "Pseudo" because each cue is a
+  whole transcript segment — real spoken words at their real
+  timecodes, never generated or summarized — rather than caption-
+  authored lines; videos with no linked timecoded transcript are
+  unaffected (no badge, no track). Timeline/Quotes/People/Places
+  pop-up video links are unaffected — captions are Media-tab-only for
+  now.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.8.1] — 2026-09-24
 
 ### Added

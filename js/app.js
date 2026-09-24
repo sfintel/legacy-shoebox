@@ -191,7 +191,19 @@
       const url = "/api/file.php?fileId=" + encodeURIComponent(item.fileId)
         + (item.seekSeconds != null ? "#t=" + encodeURIComponent(item.seekSeconds) : "");
       const tag = item.mediaType === "audio" ? "audio" : "video";
-      playerEl.innerHTML = `<${tag} controls autoplay src="${esc(url)}"></${tag}>`;
+      // "Pseudo" closed captions (see video_seek_vtt_for_file() in
+      // includes/video_seek.php) — one cue per transcript speaker-turn
+      // segment, not real caption-authored lines, but real timecoded
+      // spoken words. Only offered when the caller already knows
+      // (item.hasCaptions, set by the Media tab from api/data.php's
+      // "media" dataset) rather than always pointing at api/captions.php
+      // and letting a 404 fail silently — that would show a CC button
+      // that does nothing for every video without a linked timecoded
+      // transcript.
+      const track = item.hasCaptions
+        ? `<track kind="captions" src="/api/captions.php?fileId=${encodeURIComponent(item.fileId)}" srclang="en" label="Captions">`
+        : "";
+      playerEl.innerHTML = `<${tag} controls autoplay src="${esc(url)}">${track}</${tag}>`;
       infoEl.textContent = item.description || "";
       const multi = items.length > 1;
       counterEl.textContent = multi ? `${index + 1} / ${items.length}` : "";
@@ -536,7 +548,8 @@
       return `<img src="${url}" alt="" loading="lazy">`;
     }
     if (item.type === "video") {
-      return `<video muted preload="metadata" src="${url}"></video><div class="media-thumb-badge">&#9654;</div>`;
+      const cc = item.hasCaptions ? `<div class="media-thumb-cc">CC</div>` : "";
+      return `<video muted preload="metadata" src="${url}"></video><div class="media-thumb-badge">&#9654;</div>${cc}`;
     }
     if (item.type === "transcript") {
       return `<div class="media-thumb-icon">&#128221;</div>`;
@@ -577,6 +590,7 @@
       fileId: m.files[0] && m.files[0].id,
       mediaType: m.type,
       description: m.narrativeNote || m.description || "",
+      hasCaptions: !!m.hasCaptions,
     })), startIndex < 0 ? 0 : startIndex);
   });
   // Mirrors admin_content.php's "Show:" type filter + sortable columns —

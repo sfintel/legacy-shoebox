@@ -35,8 +35,21 @@ $data = match ($name) {
     // "video" it can't actually play; a transcript item always has one
     // (content_create_transcript() writes it unconditionally) but the
     // same guard costs nothing to keep shared.
+    //
+    // hasCaptions (video items only) tells js/app.js whether to attach a
+    // <track> to api/captions.php — computed here, not in
+    // content_media_public() (includes/content.php), so that lower-level
+    // content-item shaping function doesn't have to depend on
+    // includes/video_seek.php's transcript-linking logic.
     'media' => array_values(array_filter(
-        array_map('content_media_public', array_filter(
+        array_map(static function (array $item): array {
+            $public = content_media_public($item);
+            if ($item['type'] === 'video') {
+                $fileId = $public['files'][0]['id'] ?? null;
+                $public['hasCaptions'] = $fileId !== null && !empty(video_seek_transcript_segments_for_file($fileId));
+            }
+            return $public;
+        }, array_filter(
             content_all(),
             static fn (array $item): bool => in_array($item['type'], ['video', 'audio', 'photo', 'transcript'], true)
         )),
