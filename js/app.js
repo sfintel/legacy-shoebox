@@ -226,6 +226,36 @@
     return { open };
   })();
 
+  // Plain-text viewer for a Media tab "transcript" card — fetches the
+  // item's single .md file (content_create_transcript() always writes
+  // exactly one) and shows it inline, rather than hard-linking off to
+  // /api/file.php like Documents/URLs still do (those aren't "media" the
+  // pop-up-not-new-tab request was about).
+  const TranscriptViewer = (function () {
+    const overlay = document.getElementById("transcriptViewerModal");
+    const titleEl = document.getElementById("transcriptViewerTitle");
+    const bodyEl = document.getElementById("transcriptViewerBody");
+    function open(title, fileId) {
+      titleEl.textContent = title || "";
+      bodyEl.textContent = "Loading…";
+      overlay.style.display = "flex";
+      fetch("/api/file.php?fileId=" + encodeURIComponent(fileId))
+        .then(r => { if (!r.ok) throw new Error("failed"); return r.text(); })
+        .then(text => { bodyEl.textContent = text; })
+        .catch(() => { bodyEl.textContent = "Couldn't load this transcript."; });
+    }
+    function close() {
+      overlay.style.display = "none";
+    }
+    document.getElementById("transcriptViewerClose").addEventListener("click", close);
+    overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+    document.addEventListener("keydown", e => {
+      if (overlay.style.display === "none") return;
+      if (e.key === "Escape") close();
+    });
+    return { open };
+  })();
+
   document.getElementById("app").addEventListener("click", e => {
     const thumb = e.target.closest(".related-photo-thumb");
     if (thumb) {
@@ -508,6 +538,9 @@
     if (item.type === "video") {
       return `<video muted preload="metadata" src="${url}"></video><div class="media-thumb-badge">&#9654;</div>`;
     }
+    if (item.type === "transcript") {
+      return `<div class="media-thumb-icon">&#128221;</div>`;
+    }
     return `<div class="media-thumb-icon">&#127925;</div>`;
   }
   function renderMediaGrid(items) {
@@ -530,6 +563,11 @@
     if (item.type === "photo") {
       const ids = (item.files || []).map(f => f.id).filter(Boolean);
       Lightbox.open(ids, 0, item.title || "");
+      return;
+    }
+    if (item.type === "transcript") {
+      const fileId = item.files[0] && item.files[0].id;
+      if (fileId) TranscriptViewer.open(item.title || "", fileId);
       return;
     }
     const playable = renderedMedia.filter(m => m.type === "video" || m.type === "audio");

@@ -14,6 +14,32 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.8.1] — 2026-09-24
+
+### Added
+
+- **Media tab's Show dropdown now includes "Transcript"** — browses
+  Content Library transcript items (separate from the primary-
+  testimony Transcript tab) alongside video/audio/photo. Clicking a
+  transcript card opens its text in a new in-page viewer rather than
+  linking out.
+
+### Changed
+
+- **The Transcript tab is no longer in the main nav.** The tab and its
+  tape-by-tape view still exist and still work — Quotes' "View in
+  transcript" button still jumps into it and highlights the quote —
+  it's just no longer reachable as a top-level tab, now that
+  individual transcript items are browsable from Media.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.8.0] — 2026-09-24
 
 ### Added

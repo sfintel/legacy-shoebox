@@ -104,6 +104,22 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
     </div>
   </div>
 
+  <!-- Plain-text viewer for a Media tab "transcript" card — a Content
+       Library transcript item's pasted text (content_create_transcript()
+       in includes/content.php), distinct from the primary-testimony
+       tape-by-tape Transcript tab below. -->
+  <div id="transcriptViewerModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="transcriptViewerTitle">
+    <div class="modal-dialog transcript-viewer-dialog">
+      <div class="modal-header">
+        <h2 id="transcriptViewerTitle" style="margin:0;"></h2>
+        <button type="button" id="transcriptViewerClose" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="transcriptViewerBody" class="transcript-viewer-body"></div>
+      </div>
+    </div>
+  </div>
+
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
     <button class="tab-btn active" data-tab="ask" id="tab-ask" role="tab" aria-selected="true" aria-controls="panel-ask">Ask</button>
     <button class="tab-btn" data-tab="timeline" id="tab-timeline" role="tab" aria-selected="false" aria-controls="panel-timeline">Timeline</button>
@@ -112,7 +128,12 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
     <button class="tab-btn" data-tab="people" id="tab-people" role="tab" aria-selected="false" aria-controls="panel-people">People</button>
     <button class="tab-btn" data-tab="places" id="tab-places" role="tab" aria-selected="false" aria-controls="panel-places">Places</button>
     <button class="tab-btn" data-tab="media" id="tab-media" role="tab" aria-selected="false" aria-controls="panel-media">Media</button>
-    <button class="tab-btn" data-tab="transcript" id="tab-transcript" role="tab" aria-selected="false" aria-controls="panel-transcript">Transcript</button>
+    <!-- Hidden from the nav (Media's new "Transcript" type filter replaces
+         browsing this as a top-level tab) but left in the DOM: Quotes'
+         "View in transcript" button still does tabBtn.click() on this id
+         to jump to and highlight a quote inside panel-transcript, and
+         .click() fires normally on a hidden element. -->
+    <button class="tab-btn" data-tab="transcript" id="tab-transcript" role="tab" aria-selected="false" aria-controls="panel-transcript" style="display:none;">Transcript</button>
     <button class="tab-btn" data-tab="notes" id="tab-notes" role="tab" aria-selected="false" aria-controls="panel-notes">Sources &amp; Notes</button>
     <button class="tab-btn" data-tab="about" id="tab-about" role="tab" aria-selected="false" aria-controls="panel-about">About</button>
   </nav>
@@ -202,6 +223,7 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
           <option value="video">Video</option>
           <option value="audio">Audio</option>
           <option value="photo">Photo</option>
+          <option value="transcript">Transcript</option>
         </select>
         <label for="mediaSort" style="font-size:.85rem; color:var(--muted);">Sort:</label>
         <select id="mediaSort">

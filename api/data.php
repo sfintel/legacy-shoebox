@@ -25,18 +25,20 @@ $data = match ($name) {
     'transcript' => archive_transcript_payload(),
     'discrepancies' => archive_discrepancies_payload(),
     'stories' => array_map('content_story_public', content_stories_approved()),
-    // The Media tab's full library — every video/audio/photo item that
-    // actually has a playable file, newest first (content_all()'s own
+    // The Media tab's full library — every video/audio/photo/transcript
+    // item that actually has a file, newest first (content_all()'s own
     // ordering), regardless of whether an admin's AI analysis pass linked
     // it to any Timeline/Quotes/People/Places entry. A video/audio item
     // can exist with no file at all (just a transcript — see
     // content_form.js's "optional if a transcript is given"), so that's
     // filtered here rather than left for js/app.js to handle a fileless
-    // "video" it can't actually play.
+    // "video" it can't actually play; a transcript item always has one
+    // (content_create_transcript() writes it unconditionally) but the
+    // same guard costs nothing to keep shared.
     'media' => array_values(array_filter(
         array_map('content_media_public', array_filter(
             content_all(),
-            static fn (array $item): bool => in_array($item['type'], ['video', 'audio', 'photo'], true)
+            static fn (array $item): bool => in_array($item['type'], ['video', 'audio', 'photo', 'transcript'], true)
         )),
         static fn (array $item): bool => !empty($item['files'])
     )),
