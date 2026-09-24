@@ -348,9 +348,14 @@ function video_seek_vtt_for_file(string $fileId): ?string
         // control bar) instead of letting each browser's own "avoid the
         // controls" heuristic nudge cues up to differing heights, which
         // is what was landing them over the speaker's face in some
-        // videos.
+        // videos. The ",end" line-alignment is load-bearing: without it,
+        // "line:90%" anchors the TOP of the cue box at 90% down, so a
+        // cue that wraps to 2-3 lines grows downward off the bottom edge
+        // and gets clipped — ",end" anchors the BOTTOM of the box there
+        // instead, so a longer cue grows upward (further over the frame,
+        // never off it) rather than losing lines.
         $vtt .= "{$cueNumber}\n" . video_seek_vtt_timestamp($start) . ' --> ' . video_seek_vtt_timestamp($end)
-            . " line:90% position:50% align:center size:90%\n{$cueText}\n\n";
+            . " line:90%,end position:50% align:center size:90%\n{$cueText}\n\n";
     }
     return $cueNumber > 0 ? $vtt : null;
 }

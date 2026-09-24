@@ -14,6 +14,26 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.9.2] — 2026-09-24
+
+### Fixed
+
+- **Longer captions got cut off after the first line.** v2.9.1's
+  `line:90%` cue positioning anchored the TOP of the caption box at
+  that height, so a cue wrapping to 2-3 lines grew downward off the
+  bottom of the video and lost everything past line one. Cues now use
+  `line:90%,end`, anchoring the BOTTOM of the box there instead — a
+  longer cue grows upward (further over the frame, same tradeoff the
+  position was already accepting) rather than losing lines.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.9.1] — 2026-09-24
 
 ### Fixed
