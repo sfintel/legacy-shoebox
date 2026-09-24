@@ -14,6 +14,25 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.10.1] — 2026-09-24
+
+### Changed
+
+- **Timeline/People/Places related-content pills for video/audio now
+  say "Watch video"/"Listen to audio"**, matching the Quotes tab's
+  button, instead of showing the item's raw title (e.g. "VHA Interview
+  14091 — Tape 1"). The real title is still there as a hover tooltip
+  and as the pop-up player's own header text. Photo/document/URL
+  pills are unchanged.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.10.0] — 2026-09-24
 
 ### Added

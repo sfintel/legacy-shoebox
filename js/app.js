@@ -327,7 +327,12 @@
         const seekAttr = c.seekSeconds != null ? ` data-media-seek="${esc(String(c.seekSeconds))}"` : "";
         const captionsAttr = c.hasCaptions ? ` data-media-captions="1"` : "";
         const icon = c.isVideo ? "&#9654;" : "&#127925;";
-        return `<button type="button" class="pill related-content-link" data-media-file-id="${esc(c.fileId)}" data-media-kind="${c.isVideo ? "video" : "audio"}" data-media-title="${esc(c.title)}"${seekAttr}${captionsAttr}>${icon} ${esc(c.title)}</button>`;
+        // Generic action label, matching the Quotes tab's "Watch video"
+        // button, rather than the item's raw title (e.g. "VHA Interview
+        // 14091 — Tape 1") — the title's still there, as a hover tooltip
+        // and as the pop-up player's own header text via data-media-title.
+        const label = c.isVideo ? "Watch video" : "Listen to audio";
+        return `<button type="button" class="pill related-content-link" data-media-file-id="${esc(c.fileId)}" data-media-kind="${c.isVideo ? "video" : "audio"}" data-media-title="${esc(c.title)}" title="${esc(c.title)}"${seekAttr}${captionsAttr}>${icon} ${label}</button>`;
       }
       if (c.type === "photo") {
         // fileIds covers every page of a multi-page item (a scanned
