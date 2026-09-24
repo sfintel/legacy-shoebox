@@ -84,6 +84,26 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
     </div>
   </div>
 
+  <!-- Pop-up player for every video/audio "watch/listen" link app-wide
+       (Timeline/Quotes/People/Places related-content pills, the Quotes
+       "Watch video" button, the Media tab) — plays in place instead of
+       handing the file off to a new browser tab. -->
+  <div id="mediaViewer" class="modal-overlay lightbox-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Media player">
+    <div class="modal-dialog lightbox-dialog media-viewer-dialog">
+      <div class="modal-header">
+        <span id="mediaViewerTitle" class="meta" style="margin:0;"></span>
+        <button type="button" id="mediaViewerClose" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="lightbox-body media-viewer-body">
+        <button type="button" id="mediaViewerPrev" class="lightbox-nav lightbox-prev" aria-label="Previous">&#8592;</button>
+        <div id="mediaViewerPlayer" class="media-viewer-player"></div>
+        <button type="button" id="mediaViewerNext" class="lightbox-nav lightbox-next" aria-label="Next">&#8594;</button>
+      </div>
+      <div id="mediaViewerInfo" class="meta media-viewer-info"></div>
+      <div id="mediaViewerCounter" class="meta lightbox-counter"></div>
+    </div>
+  </div>
+
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
     <button class="tab-btn active" data-tab="ask" id="tab-ask" role="tab" aria-selected="true" aria-controls="panel-ask">Ask</button>
     <button class="tab-btn" data-tab="timeline" id="tab-timeline" role="tab" aria-selected="false" aria-controls="panel-timeline">Timeline</button>
@@ -91,6 +111,7 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
     <button class="tab-btn" data-tab="stories" id="tab-stories" role="tab" aria-selected="false" aria-controls="panel-stories">Stories</button>
     <button class="tab-btn" data-tab="people" id="tab-people" role="tab" aria-selected="false" aria-controls="panel-people">People</button>
     <button class="tab-btn" data-tab="places" id="tab-places" role="tab" aria-selected="false" aria-controls="panel-places">Places</button>
+    <button class="tab-btn" data-tab="media" id="tab-media" role="tab" aria-selected="false" aria-controls="panel-media">Media</button>
     <button class="tab-btn" data-tab="transcript" id="tab-transcript" role="tab" aria-selected="false" aria-controls="panel-transcript">Transcript</button>
     <button class="tab-btn" data-tab="notes" id="tab-notes" role="tab" aria-selected="false" aria-controls="panel-notes">Sources &amp; Notes</button>
     <button class="tab-btn" data-tab="about" id="tab-about" role="tab" aria-selected="false" aria-controls="panel-about">About</button>
@@ -166,6 +187,15 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
         <input type="search" id="placesSearch" placeholder="Search places…" aria-label="Search places">
       </div>
       <div id="placesList" class="stack"></div>
+    </section>
+
+    <!-- MEDIA -->
+    <section class="panel" id="panel-media" role="tabpanel" aria-labelledby="tab-media" tabindex="0">
+      <div class="panel-head">
+        <h2>Media</h2>
+        <input type="search" id="mediaSearch" placeholder="Search media…" aria-label="Search media">
+      </div>
+      <div id="mediaGrid" class="media-grid"></div>
     </section>
 
     <!-- TRANSCRIPT -->

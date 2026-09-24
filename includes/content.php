@@ -193,6 +193,28 @@ function content_file_public(array $file): array
     ];
 }
 
+// Shape returned to js/app.js's Media tab (api/data.php's "media"
+// dataset) — every video/audio/photo item any approved user can browse
+// and play, not just the ones an admin's AI analysis pass happened to
+// link to a specific Timeline/Quotes/People/Places entry (that's
+// archive_content_links_public()'s job). Omits admin-only fields
+// content_public() carries (suggestions, linkedItemId, review status)
+// since this is a plain browse/play view, not a management one.
+function content_media_public(array $item): array
+{
+    return [
+        'id' => $item['id'],
+        'type' => $item['type'],
+        'title' => $item['title'],
+        'description' => $item['description'],
+        'narrativeNote' => $item['narrative_note'],
+        'tags' => json_decode((string) ($item['tags'] ?? '[]'), true) ?: [],
+        'createdAt' => $item['created_at'],
+        'sourceUrl' => $item['source_url'] ?? null,
+        'files' => array_map('content_file_public', content_files_for_item($item['id'])),
+    ];
+}
+
 // Pulls a curated subset of capture metadata (date taken, device, GPS,
 // dimensions/duration) out of a photo or video file via exiftool, which
 // reports normalized field names for both formats alike (confirmed

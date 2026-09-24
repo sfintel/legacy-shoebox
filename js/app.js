@@ -166,10 +166,81 @@
     });
     return { open };
   })();
+
+  // Pop-up player for every video/audio "watch/listen" link app-wide
+  // (see #mediaViewer in index.php) — takes a list of {title, fileId,
+  // mediaType ("video"|"audio"), seekSeconds, description} so a single-
+  // item related-content pill and the many-item Media tab can share the
+  // same prev/next-capable viewer. Playback is torn down on close (the
+  // player element is emptied, not just hidden) so audio/video doesn't
+  // keep playing in the background behind the overlay.
+  const MediaViewer = (function () {
+    const overlay = document.getElementById("mediaViewer");
+    const titleEl = document.getElementById("mediaViewerTitle");
+    const playerEl = document.getElementById("mediaViewerPlayer");
+    const infoEl = document.getElementById("mediaViewerInfo");
+    const counterEl = document.getElementById("mediaViewerCounter");
+    const prevBtn = document.getElementById("mediaViewerPrev");
+    const nextBtn = document.getElementById("mediaViewerNext");
+    let items = [];
+    let index = 0;
+
+    function render() {
+      const item = items[index];
+      titleEl.textContent = item.title || "";
+      const url = "/api/file.php?fileId=" + encodeURIComponent(item.fileId)
+        + (item.seekSeconds != null ? "#t=" + encodeURIComponent(item.seekSeconds) : "");
+      const tag = item.mediaType === "audio" ? "audio" : "video";
+      playerEl.innerHTML = `<${tag} controls autoplay src="${esc(url)}"></${tag}>`;
+      infoEl.textContent = item.description || "";
+      const multi = items.length > 1;
+      counterEl.textContent = multi ? `${index + 1} / ${items.length}` : "";
+      prevBtn.style.display = multi ? "" : "none";
+      nextBtn.style.display = multi ? "" : "none";
+    }
+    function open(newItems, startIndex) {
+      if (!newItems || !newItems.length) return;
+      items = newItems;
+      index = startIndex || 0;
+      render();
+      overlay.style.display = "flex";
+    }
+    function close() {
+      overlay.style.display = "none";
+      playerEl.innerHTML = "";
+    }
+    function step(delta) {
+      index = (index + delta + items.length) % items.length;
+      render();
+    }
+    prevBtn.addEventListener("click", () => step(-1));
+    nextBtn.addEventListener("click", () => step(1));
+    document.getElementById("mediaViewerClose").addEventListener("click", close);
+    overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+    document.addEventListener("keydown", e => {
+      if (overlay.style.display === "none") return;
+      if (e.key === "Escape") close();
+      if (e.key === "ArrowLeft") step(-1);
+      if (e.key === "ArrowRight") step(1);
+    });
+    return { open };
+  })();
+
   document.getElementById("app").addEventListener("click", e => {
-    const btn = e.target.closest(".related-photo-thumb");
-    if (!btn) return;
-    Lightbox.open(btn.dataset.fileIds.split(","), Number(btn.dataset.index || 0), btn.dataset.title || "");
+    const thumb = e.target.closest(".related-photo-thumb");
+    if (thumb) {
+      Lightbox.open(thumb.dataset.fileIds.split(","), Number(thumb.dataset.index || 0), thumb.dataset.title || "");
+      return;
+    }
+    const mediaBtn = e.target.closest("[data-media-file-id]");
+    if (mediaBtn) {
+      MediaViewer.open([{
+        title: mediaBtn.dataset.mediaTitle || "",
+        fileId: mediaBtn.dataset.mediaFileId,
+        mediaType: mediaBtn.dataset.mediaKind,
+        seekSeconds: mediaBtn.dataset.mediaSeek || null,
+      }], 0);
+    }
   });
 
   // Shared by the Timeline/Quotes/People/Places cards — each entry's
@@ -180,10 +251,10 @@
   function renderRelatedContent(items) {
     if (!items || !items.length) return "";
     const links = items.map(c => {
-      if (c.isVideo) {
-        const url = "/api/file.php?fileId=" + encodeURIComponent(c.fileId)
-          + (c.seekSeconds != null ? "#t=" + encodeURIComponent(c.seekSeconds) : "");
-        return `<a href="${url}" target="_blank" rel="noopener" class="pill related-content-link">&#9654; ${esc(c.title)}</a>`;
+      if (c.isVideo || c.isAudio) {
+        const seekAttr = c.seekSeconds != null ? ` data-media-seek="${esc(String(c.seekSeconds))}"` : "";
+        const icon = c.isVideo ? "&#9654;" : "&#127925;";
+        return `<button type="button" class="pill related-content-link" data-media-file-id="${esc(c.fileId)}" data-media-kind="${c.isVideo ? "video" : "audio"}" data-media-title="${esc(c.title)}"${seekAttr}>${icon} ${esc(c.title)}</button>`;
       }
       if (c.type === "photo") {
         // fileIds covers every page of a multi-page item (a scanned
@@ -274,7 +345,7 @@
       // couldn't be matched verbatim in that tape's transcript — the
       // video still opens in that case, just at 0:00.
       const watchLink = q.video
-        ? `<a href="/api/file.php?fileId=${encodeURIComponent(q.video.fileId)}${q.video.seekSeconds != null ? "#t=" + encodeURIComponent(q.video.seekSeconds) : ""}" target="_blank" rel="noopener" class="ghost-btn" style="margin-top:8px; text-decoration:none; display:inline-block;">&#9654; Watch video</a>`
+        ? `<button type="button" class="ghost-btn" data-media-file-id="${esc(q.video.fileId)}" data-media-kind="video" data-media-title="${esc(q.speaker)}"${q.video.seekSeconds != null ? ` data-media-seek="${esc(String(q.video.seekSeconds))}"` : ""} style="margin-top:8px;">&#9654; Watch video</button>`
         : "";
       return `
       <div class="card">
@@ -416,6 +487,66 @@
     renderPlaces(placesData.filter(p =>
       (p.names || []).join(" ").toLowerCase().includes(q) ||
       (p.notes || "").toLowerCase().includes(q)
+    ));
+  });
+
+  // --- Media ---
+  // The full Content Library, browsable directly rather than only via
+  // whatever a Timeline/Quotes/People/Places entry happens to link to
+  // (see renderRelatedContent() above) — api/data.php's "media" dataset,
+  // backed by content_media_public() in includes/content.php.
+  let mediaData = [];
+  let renderedMedia = [];
+  loadData("media").then(data => { mediaData = data; renderMediaGrid(mediaData); });
+  function mediaThumb(item) {
+    const fileId = item.files[0] && item.files[0].id;
+    if (!fileId) return `<div class="media-thumb-icon">&#128196;</div>`;
+    const url = "/api/file.php?fileId=" + encodeURIComponent(fileId);
+    if (item.type === "photo") {
+      return `<img src="${url}" alt="" loading="lazy">`;
+    }
+    if (item.type === "video") {
+      return `<video muted preload="metadata" src="${url}"></video><div class="media-thumb-badge">&#9654;</div>`;
+    }
+    return `<div class="media-thumb-icon">&#127925;</div>`;
+  }
+  function renderMediaGrid(items) {
+    renderedMedia = items;
+    const el = document.getElementById("mediaGrid");
+    el.innerHTML = items.map((item, i) => {
+      const meta = (item.files[0] && item.files[0].metadataSummary) || "";
+      return `<button type="button" class="media-card" data-media-index="${i}">
+        <div class="media-thumb">${mediaThumb(item)}</div>
+        <div class="media-card-title">${esc(item.title)}</div>
+        ${meta ? `<div class="media-card-meta">${esc(meta)}</div>` : ""}
+      </button>`;
+    }).join("") || `<p class="meta">No results.</p>`;
+  }
+  document.getElementById("mediaGrid").addEventListener("click", e => {
+    const card = e.target.closest(".media-card");
+    if (!card) return;
+    const item = renderedMedia[Number(card.dataset.mediaIndex)];
+    if (!item) return;
+    if (item.type === "photo") {
+      const ids = (item.files || []).map(f => f.id).filter(Boolean);
+      Lightbox.open(ids, 0, item.title || "");
+      return;
+    }
+    const playable = renderedMedia.filter(m => m.type === "video" || m.type === "audio");
+    const startIndex = playable.indexOf(item);
+    MediaViewer.open(playable.map(m => ({
+      title: m.title || "",
+      fileId: m.files[0] && m.files[0].id,
+      mediaType: m.type,
+      description: m.narrativeNote || m.description || "",
+    })), startIndex < 0 ? 0 : startIndex);
+  });
+  document.getElementById("mediaSearch").addEventListener("input", e => {
+    const q = e.target.value.toLowerCase();
+    renderMediaGrid(mediaData.filter(m =>
+      (m.title || "").toLowerCase().includes(q) ||
+      (m.tags || []).join(" ").toLowerCase().includes(q) ||
+      (m.description || "").toLowerCase().includes(q)
     ));
   });
 

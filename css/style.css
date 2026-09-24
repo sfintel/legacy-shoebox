@@ -158,6 +158,7 @@ input[type=search]{min-width:180px;}
 }
 .related-content-link.pill{
   text-decoration:none; color:var(--accent-2); border:1px solid var(--border);
+  font:inherit; cursor:pointer;
 }
 .related-content-link.pill:hover{border-color:var(--accent-2);}
 .related-photo-thumb{background:transparent; border:none; padding:0; cursor:pointer; display:inline-block;}
@@ -174,6 +175,35 @@ input[type=search]{min-width:180px;}
 .lightbox-prev{left:8px;}
 .lightbox-next{right:8px;}
 .lightbox-counter{text-align:center; padding:0 18px 14px;}
+
+.media-viewer-dialog{max-width:min(90vw, 900px);}
+.media-viewer-body{padding:0 18px 4px;}
+.media-viewer-player{width:100%;}
+.media-viewer-player video{max-width:100%; max-height:70vh; display:block; margin:0 auto; border-radius:6px;}
+.media-viewer-player audio{width:100%; display:block;}
+.media-viewer-info{padding:0 18px 10px; white-space:pre-line; text-align:left;}
+
+.media-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:12px;}
+.media-card{
+  background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:8px;
+  cursor:pointer; color:var(--text); text-align:left; font:inherit; display:block; width:100%;
+}
+.media-card:hover{border-color:var(--accent-2);}
+.media-thumb{
+  position:relative; width:100%; aspect-ratio:4/3; background:var(--panel-2); border-radius:6px;
+  overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:6px;
+}
+.media-thumb img, .media-thumb video{width:100%; height:100%; object-fit:cover; display:block;}
+.media-thumb-icon{font-size:1.8rem; color:var(--muted);}
+.media-thumb-badge{
+  position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,.6); color:#fff;
+  border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:.7rem;
+}
+.media-card-title{
+  font-size:.85rem; font-weight:600; overflow:hidden; text-overflow:ellipsis;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+}
+.media-card-meta{font-size:.72rem; color:var(--muted); margin-top:2px;}
 
 .tag-filters{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;}
 .tag-chip{

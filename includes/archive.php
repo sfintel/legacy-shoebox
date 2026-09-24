@@ -1256,6 +1256,7 @@ function archive_content_links_public(string $entityType, string $entityId, ?str
 {
     return array_map(static function (array $row) use ($seekMatchText, $seekMatchFallbackText): array {
         $isVideo = $row['mime_type'] !== null && str_starts_with((string) $row['mime_type'], 'video/');
+        $isAudio = $row['mime_type'] !== null && str_starts_with((string) $row['mime_type'], 'audio/');
         $seekSeconds = null;
         if ($isVideo && ($row['file_ids'][0] ?? null)) {
             $segments = video_seek_transcript_segments_for_file($row['file_ids'][0]);
@@ -1288,6 +1289,7 @@ function archive_content_links_public(string $entityType, string $entityId, ?str
             'fileIds' => $row['file_ids'],
             'sourceUrl' => $row['source_url'],
             'isVideo' => $isVideo,
+            'isAudio' => $isAudio,
             'seekSeconds' => $seekSeconds,
         ];
     }, archive_content_links_for_entity($entityType, $entityId));

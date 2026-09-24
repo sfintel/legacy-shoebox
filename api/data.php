@@ -4,7 +4,7 @@ require_once __DIR__ . '/../config.php';
 
 require_auth_api();
 
-$allowed = ['quotes', 'people', 'places', 'timeline', 'transcript', 'discrepancies', 'stories'];
+$allowed = ['quotes', 'people', 'places', 'timeline', 'transcript', 'discrepancies', 'stories', 'media'];
 $name = $_GET['name'] ?? '';
 
 if (!in_array($name, $allowed, true)) {
@@ -25,6 +25,21 @@ $data = match ($name) {
     'transcript' => archive_transcript_payload(),
     'discrepancies' => archive_discrepancies_payload(),
     'stories' => array_map('content_story_public', content_stories_approved()),
+    // The Media tab's full library — every video/audio/photo item that
+    // actually has a playable file, newest first (content_all()'s own
+    // ordering), regardless of whether an admin's AI analysis pass linked
+    // it to any Timeline/Quotes/People/Places entry. A video/audio item
+    // can exist with no file at all (just a transcript — see
+    // content_form.js's "optional if a transcript is given"), so that's
+    // filtered here rather than left for js/app.js to handle a fileless
+    // "video" it can't actually play.
+    'media' => array_values(array_filter(
+        array_map('content_media_public', array_filter(
+            content_all(),
+            static fn (array $item): bool => in_array($item['type'], ['video', 'audio', 'photo'], true)
+        )),
+        static fn (array $item): bool => !empty($item['files'])
+    )),
 };
 
 $json = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

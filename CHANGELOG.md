@@ -12,7 +12,21 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **Media tab** — a new tab on the main page listing every stored
+  video, audio, and photo item, independent of whether it's linked to
+  a specific Timeline/Quotes/People/Places entry. Searchable by
+  title/tags/description; clicking a card opens the item in the pop-up
+  player (or the existing photo lightbox for photos).
+
+### Changed
+
+- **Video/audio links now open in an in-page pop-up player instead of
+  a new browser tab** — the Timeline/Quotes/People/Places
+  related-content pills and the Quotes tab's "Watch video" button all
+  play through the same viewer as the new Media tab, with prev/next
+  navigation when there's more than one item to browse.
 
 ## [2.7.1] — 2026-09-16
 
