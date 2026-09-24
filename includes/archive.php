@@ -656,7 +656,10 @@ function archive_quote_video_link(array $row): ?array
     $segments = video_seek_transcript_segments_for_file($videoFile['id']);
     $seconds = $segments ? video_seek_match_segment($segments, ['text' => (string) $row['quote_text']]) : null;
 
-    return ['fileId' => $videoFile['id'], 'seekSeconds' => $seconds];
+    // Same segments already tell us whether pseudo closed captions exist
+    // for this video (see video_seek_vtt_for_file()) — reusing them here
+    // instead of a second lookup.
+    return ['fileId' => $videoFile['id'], 'seekSeconds' => $seconds, 'hasCaptions' => !empty($segments)];
 }
 
 // api/data.php?name=transcript's JSON shape — subject speaker turns are
@@ -1258,8 +1261,10 @@ function archive_content_links_public(string $entityType, string $entityId, ?str
         $isVideo = $row['mime_type'] !== null && str_starts_with((string) $row['mime_type'], 'video/');
         $isAudio = $row['mime_type'] !== null && str_starts_with((string) $row['mime_type'], 'audio/');
         $seekSeconds = null;
+        $hasCaptions = false;
         if ($isVideo && ($row['file_ids'][0] ?? null)) {
             $segments = video_seek_transcript_segments_for_file($row['file_ids'][0]);
+            $hasCaptions = !empty($segments);
             if ($segments) {
                 foreach ([$seekMatchText, $seekMatchFallbackText] as $candidate) {
                     if ($candidate === null || $candidate === '') {
@@ -1291,6 +1296,7 @@ function archive_content_links_public(string $entityType, string $entityId, ?str
             'isVideo' => $isVideo,
             'isAudio' => $isAudio,
             'seekSeconds' => $seekSeconds,
+            'hasCaptions' => $hasCaptions,
         ];
     }, archive_content_links_for_entity($entityType, $entityId));
 }

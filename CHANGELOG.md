@@ -14,6 +14,27 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.10.0] — 2026-09-24
+
+### Added
+
+- **Pseudo closed captions now follow video links everywhere, not just
+  the Media tab** — the Timeline/Quotes/People/Places related-content
+  pills and the Quotes tab's "Watch video" button now carry the same
+  `hasCaptions` flag and get the same CC button/WebVTT track in the
+  pop-up player when the video has a linked timecoded transcript.
+  `archive_content_links_public()` and `archive_quote_video_link()`
+  (both in `includes/archive.php`) compute it the same way
+  `api/data.php`'s "media" dataset already did for the Media tab.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.9.2] — 2026-09-24
 
 ### Fixed

@@ -310,6 +310,7 @@
         fileId: mediaBtn.dataset.mediaFileId,
         mediaType: mediaBtn.dataset.mediaKind,
         seekSeconds: mediaBtn.dataset.mediaSeek || null,
+        hasCaptions: mediaBtn.dataset.mediaCaptions === "1",
       }], 0);
     }
   });
@@ -324,8 +325,9 @@
     const links = items.map(c => {
       if (c.isVideo || c.isAudio) {
         const seekAttr = c.seekSeconds != null ? ` data-media-seek="${esc(String(c.seekSeconds))}"` : "";
+        const captionsAttr = c.hasCaptions ? ` data-media-captions="1"` : "";
         const icon = c.isVideo ? "&#9654;" : "&#127925;";
-        return `<button type="button" class="pill related-content-link" data-media-file-id="${esc(c.fileId)}" data-media-kind="${c.isVideo ? "video" : "audio"}" data-media-title="${esc(c.title)}"${seekAttr}>${icon} ${esc(c.title)}</button>`;
+        return `<button type="button" class="pill related-content-link" data-media-file-id="${esc(c.fileId)}" data-media-kind="${c.isVideo ? "video" : "audio"}" data-media-title="${esc(c.title)}"${seekAttr}${captionsAttr}>${icon} ${esc(c.title)}</button>`;
       }
       if (c.type === "photo") {
         // fileIds covers every page of a multi-page item (a scanned
@@ -416,7 +418,7 @@
       // couldn't be matched verbatim in that tape's transcript — the
       // video still opens in that case, just at 0:00.
       const watchLink = q.video
-        ? `<button type="button" class="ghost-btn" data-media-file-id="${esc(q.video.fileId)}" data-media-kind="video" data-media-title="${esc(q.speaker)}"${q.video.seekSeconds != null ? ` data-media-seek="${esc(String(q.video.seekSeconds))}"` : ""} style="margin-top:8px;">&#9654; Watch video</button>`
+        ? `<button type="button" class="ghost-btn" data-media-file-id="${esc(q.video.fileId)}" data-media-kind="video" data-media-title="${esc(q.speaker)}"${q.video.seekSeconds != null ? ` data-media-seek="${esc(String(q.video.seekSeconds))}"` : ""}${q.video.hasCaptions ? ` data-media-captions="1"` : ""} style="margin-top:8px;">&#9654; Watch video</button>`
         : "";
       return `
       <div class="card">
