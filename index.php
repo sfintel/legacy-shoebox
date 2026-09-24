@@ -92,7 +92,15 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
     <div class="modal-dialog lightbox-dialog media-viewer-dialog">
       <div class="modal-header">
         <span id="mediaViewerTitle" class="meta" style="margin:0;"></span>
-        <button type="button" id="mediaViewerClose" class="modal-close" aria-label="Close">&times;</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <!-- Own explicit toggle rather than relying on the native
+               <video controls> CC menu, which the user found hard to
+               locate (it's a small, sometimes-icon-only control tucked
+               into the native control bar and can land in an overflow
+               menu depending on browser/width). -->
+          <button type="button" id="mediaViewerCC" class="ghost-btn" style="display:none;" aria-pressed="false">CC</button>
+          <button type="button" id="mediaViewerClose" class="modal-close" aria-label="Close">&times;</button>
+        </div>
       </div>
       <div class="lightbox-body media-viewer-body">
         <button type="button" id="mediaViewerPrev" class="lightbox-nav lightbox-prev" aria-label="Previous">&#8592;</button>

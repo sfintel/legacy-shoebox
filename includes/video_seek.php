@@ -342,7 +342,15 @@ function video_seek_vtt_for_file(string $fileId): ?string
         $speaker = trim((string) ($seg['speaker'] ?? ''));
         $cueText = $speaker !== '' ? "{$speaker}: {$text}" : $text;
         $cueNumber++;
-        $vtt .= "{$cueNumber}\n" . video_seek_vtt_timestamp($start) . ' --> ' . video_seek_vtt_timestamp($end) . "\n{$cueText}\n\n";
+        // Explicit cue settings, not the default "auto" line placement —
+        // pins every cue to the same fixed spot near the bottom edge
+        // (leaving a 10% margin below it, clear of the video player's own
+        // control bar) instead of letting each browser's own "avoid the
+        // controls" heuristic nudge cues up to differing heights, which
+        // is what was landing them over the speaker's face in some
+        // videos.
+        $vtt .= "{$cueNumber}\n" . video_seek_vtt_timestamp($start) . ' --> ' . video_seek_vtt_timestamp($end)
+            . " line:90% position:50% align:center size:90%\n{$cueText}\n\n";
     }
     return $cueNumber > 0 ? $vtt : null;
 }

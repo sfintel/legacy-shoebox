@@ -14,6 +14,30 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.9.1] — 2026-09-24
+
+### Fixed
+
+- **The Media tab's caption toggle was hard to find** — it was only
+  reachable through the native `<video>` player's own CC control,
+  which can be a small, unlabeled icon and sometimes lands in a
+  browser's overflow menu. The pop-up player now has its own
+  clearly-labeled "CC" button (off by default; the native control
+  still works too and stays in sync with it).
+- **Captions could cover the speaker's face.** Every cue now carries
+  explicit bottom-anchored positioning (`line:90%`) instead of relying
+  on each browser's own "avoid the control bar" placement heuristic,
+  which was landing cues at inconsistent heights, and the caption box
+  itself is now smaller/tighter (`video::cue` in css/style.css).
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.9.0] — 2026-09-24
 
 ### Added

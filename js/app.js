@@ -182,6 +182,7 @@
     const counterEl = document.getElementById("mediaViewerCounter");
     const prevBtn = document.getElementById("mediaViewerPrev");
     const nextBtn = document.getElementById("mediaViewerNext");
+    const ccBtn = document.getElementById("mediaViewerCC");
     let items = [];
     let index = 0;
 
@@ -209,6 +210,28 @@
       counterEl.textContent = multi ? `${index + 1} / ${items.length}` : "";
       prevBtn.style.display = multi ? "" : "none";
       nextBtn.style.display = multi ? "" : "none";
+      // Starts hidden (loaded, not displayed) rather than "showing" —
+      // captions stay opt-in, but now via this clearly-labeled button
+      // instead of the native player's own easy-to-miss CC control. The
+      // native control still works too (browsers add one automatically
+      // once a track exists) — textTracks' own "change" event, not this
+      // button's click handler, is what updates ccBtn's on/off look, so
+      // toggling from either control keeps the other in sync.
+      const videoEl = playerEl.querySelector("video");
+      const textTrack = videoEl && videoEl.textTracks[0];
+      if (item.hasCaptions && textTrack) {
+        ccBtn.style.display = "";
+        textTrack.mode = "hidden";
+        videoEl.textTracks.onchange = () => {
+          const showing = textTrack.mode === "showing";
+          ccBtn.classList.toggle("active", showing);
+          ccBtn.setAttribute("aria-pressed", showing ? "true" : "false");
+        };
+        ccBtn.classList.remove("active");
+        ccBtn.setAttribute("aria-pressed", "false");
+      } else {
+        ccBtn.style.display = "none";
+      }
     }
     function open(newItems, startIndex) {
       if (!newItems || !newItems.length) return;
@@ -227,6 +250,12 @@
     }
     prevBtn.addEventListener("click", () => step(-1));
     nextBtn.addEventListener("click", () => step(1));
+    ccBtn.addEventListener("click", () => {
+      const videoEl = playerEl.querySelector("video");
+      const textTrack = videoEl && videoEl.textTracks[0];
+      if (!textTrack) return;
+      textTrack.mode = textTrack.mode === "showing" ? "hidden" : "showing";
+    });
     document.getElementById("mediaViewerClose").addEventListener("click", close);
     overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
     document.addEventListener("keydown", e => {
