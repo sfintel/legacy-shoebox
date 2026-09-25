@@ -14,6 +14,26 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.11.2] — 2026-09-25
+
+### Fixed
+
+- **admin_content.php's row "View" modal had no CC button for videos**
+  with a linked timecoded transcript — the modal (added in v2.11.1)
+  was built independently of the public Media tab's pop-up player and
+  never got its captions support. `api/admin/content.php`'s item list
+  now carries the same `hasCaptions` flag `api/data.php`'s "media"
+  dataset already computed, and the modal's video branch attaches the
+  same WebVTT track/CC toggle.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.11.1] — 2026-09-25
 
 ### Fixed

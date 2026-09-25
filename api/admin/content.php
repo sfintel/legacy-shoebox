@@ -9,7 +9,19 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
     // Admins see everything; a permitted non-admin only sees their own.
     $items = content_all($user['role'] === 'admin' ? null : $user['id']);
-    json_response(['items' => array_map('content_public', $items)]);
+    // hasCaptions (video only) mirrors api/data.php's "media" dataset —
+    // computed here rather than in content_public() (includes/content.php)
+    // so that lower-level shaping function doesn't have to depend on
+    // includes/video_seek.php's transcript-linking logic. Drives the row
+    // "View" modal's CC button (js/admin_content.js's FileViewer).
+    json_response(['items' => array_map(static function (array $item): array {
+        $public = content_public($item);
+        if ($item['type'] === 'video') {
+            $fileId = $public['files'][0]['id'] ?? null;
+            $public['hasCaptions'] = $fileId !== null && !empty(video_seek_transcript_segments_for_file($fileId));
+        }
+        return $public;
+    }, $items)]);
 }
 
 if ($method === 'POST') {

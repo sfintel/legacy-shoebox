@@ -157,6 +157,7 @@
     const counterEl = document.getElementById("fileViewerCounter");
     const prevBtn = document.getElementById("fileViewerPrev");
     const nextBtn = document.getElementById("fileViewerNext");
+    const ccBtn = document.getElementById("fileViewerCC");
     let item = null;
     let files = [];
     let index = 0;
@@ -167,10 +168,35 @@
       const mime = f.mimeType || "";
       titleEl.textContent = item.title + (files.length > 1 ? ` (${index + 1}/${files.length})` : "");
       contentEl.className = "file-viewer-content";
+      ccBtn.style.display = "none";
       if (item.type === "photo" || mime.startsWith("image/")) {
         contentEl.innerHTML = `<img src="${url}" alt="${esc(f.originalName)}">`;
       } else if (item.type === "video") {
-        contentEl.innerHTML = `<video controls autoplay src="${url}"></video>`;
+        // Same pseudo closed captions as the public Media tab's pop-up
+        // player (js/app.js's MediaViewer) — a WebVTT track from the
+        // video's linked timecoded transcript, toggled by this modal's
+        // own CC button rather than relying on the native <video>
+        // control's own easy-to-miss one. Starts hidden (loaded, not
+        // shown); the textTracks "change" event, not this button's click
+        // handler, updates ccBtn's look, so the native control (browsers
+        // add one automatically once a track exists) stays in sync too.
+        const track = item.hasCaptions
+          ? `<track kind="captions" src="/api/captions.php?fileId=${encodeURIComponent(f.id)}" srclang="en" label="Captions">`
+          : "";
+        contentEl.innerHTML = `<video controls autoplay src="${url}">${track}</video>`;
+        if (item.hasCaptions) {
+          const videoEl = contentEl.querySelector("video");
+          const textTrack = videoEl.textTracks[0];
+          textTrack.mode = "hidden";
+          videoEl.textTracks.onchange = () => {
+            const showing = textTrack.mode === "showing";
+            ccBtn.classList.toggle("active", showing);
+            ccBtn.setAttribute("aria-pressed", showing ? "true" : "false");
+          };
+          ccBtn.style.display = "";
+          ccBtn.classList.remove("active");
+          ccBtn.setAttribute("aria-pressed", "false");
+        }
       } else if (item.type === "audio") {
         contentEl.innerHTML = `<audio controls autoplay src="${url}"></audio>`;
       } else if (mime === "application/pdf") {
@@ -206,6 +232,12 @@
     }
     prevBtn.addEventListener("click", () => step(-1));
     nextBtn.addEventListener("click", () => step(1));
+    ccBtn.addEventListener("click", () => {
+      const videoEl = contentEl.querySelector("video");
+      const textTrack = videoEl && videoEl.textTracks[0];
+      if (!textTrack) return;
+      textTrack.mode = textTrack.mode === "showing" ? "hidden" : "showing";
+    });
     document.getElementById("fileViewerClose").addEventListener("click", close);
     overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
     document.addEventListener("keydown", (e) => {

@@ -63,7 +63,10 @@ require_content_page();
       <div class="modal-dialog lightbox-dialog file-viewer-dialog">
         <div class="modal-header">
           <span id="fileViewerTitle" class="meta" style="margin:0;"></span>
-          <button type="button" id="fileViewerClose" class="modal-close" aria-label="Close">&times;</button>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button type="button" id="fileViewerCC" class="ghost-btn" style="display:none;" aria-pressed="false">CC</button>
+            <button type="button" id="fileViewerClose" class="modal-close" aria-label="Close">&times;</button>
+          </div>
         </div>
         <div class="lightbox-body file-viewer-body">
           <button type="button" id="fileViewerPrev" class="lightbox-nav lightbox-prev" aria-label="Previous" style="display:none;">&#8592;</button>
