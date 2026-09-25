@@ -93,6 +93,10 @@
       btn.classList.add("active");
       btn.setAttribute("aria-selected", "true");
       document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+      // The Media tab's table view (Title/Type/Keywords/Details/Added)
+      // needs more room than #app's normal prose-reading width — every
+      // other tab keeps that width unchanged.
+      document.getElementById("app").classList.toggle("app-wide", btn.dataset.tab === "media");
     });
   });
 
@@ -618,10 +622,10 @@
       const tags = (item.tags || []).map(t => `<span class="pill">${esc(t)}</span>`).join("");
       return `<tr class="media-table-row" data-media-index="${i}">
         <td>${esc(item.title)}</td>
-        <td>${esc(typeLabels[item.type] || item.type)}</td>
+        <td class="nowrap-cell">${esc(typeLabels[item.type] || item.type)}</td>
         <td>${tags}</td>
         <td class="meta">${esc(meta)}</td>
-        <td class="meta">${esc((item.createdAt || "").slice(0, 10))}</td>
+        <td class="meta nowrap-cell">${esc((item.createdAt || "").slice(0, 10))}</td>
       </tr>`;
     }).join("") || `<tr><td colspan="5" class="meta">No results.</td></tr>`;
   }

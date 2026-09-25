@@ -144,6 +144,79 @@
     return `/api/admin/content_file.php?fileId=${encodeURIComponent(fileId)}`;
   }
 
+  // Row "View" modal — see #fileViewerModal in admin_content.php. Picks
+  // how to render a file by its item type/mime type: image, video, audio,
+  // PDF (iframe), or plain text (transcript's/document's pasted .md, or a
+  // .txt attachment — fetched and shown as text, same approach js/app.js's
+  // public TranscriptViewer uses). A photo album's multiple files get
+  // prev/next through them, same as everything else here.
+  const FileViewer = (function () {
+    const overlay = document.getElementById("fileViewerModal");
+    const titleEl = document.getElementById("fileViewerTitle");
+    const contentEl = document.getElementById("fileViewerContent");
+    const counterEl = document.getElementById("fileViewerCounter");
+    const prevBtn = document.getElementById("fileViewerPrev");
+    const nextBtn = document.getElementById("fileViewerNext");
+    let item = null;
+    let files = [];
+    let index = 0;
+
+    function render() {
+      const f = files[index];
+      const url = fileUrl(f.id);
+      const mime = f.mimeType || "";
+      titleEl.textContent = item.title + (files.length > 1 ? ` (${index + 1}/${files.length})` : "");
+      contentEl.className = "file-viewer-content";
+      if (item.type === "photo" || mime.startsWith("image/")) {
+        contentEl.innerHTML = `<img src="${url}" alt="${esc(f.originalName)}">`;
+      } else if (item.type === "video") {
+        contentEl.innerHTML = `<video controls autoplay src="${url}"></video>`;
+      } else if (item.type === "audio") {
+        contentEl.innerHTML = `<audio controls autoplay src="${url}"></audio>`;
+      } else if (mime === "application/pdf") {
+        contentEl.innerHTML = `<iframe src="${url}" title="${esc(f.originalName)}"></iframe>`;
+      } else {
+        contentEl.classList.add("file-viewer-text");
+        contentEl.textContent = "Loading…";
+        fetch(url)
+          .then((r) => { if (!r.ok) throw new Error("failed"); return r.text(); })
+          .then((text) => { contentEl.textContent = text; })
+          .catch(() => { contentEl.textContent = "Couldn't load this file."; });
+      }
+      const multi = files.length > 1;
+      counterEl.textContent = multi ? `${index + 1} / ${files.length}` : "";
+      prevBtn.style.display = multi ? "" : "none";
+      nextBtn.style.display = multi ? "" : "none";
+    }
+    function open(openItem, startIndex) {
+      files = openItem.files || [];
+      if (!files.length) return;
+      item = openItem;
+      index = startIndex || 0;
+      render();
+      overlay.style.display = "flex";
+    }
+    function close() {
+      overlay.style.display = "none";
+      contentEl.innerHTML = "";
+    }
+    function step(delta) {
+      index = (index + delta + files.length) % files.length;
+      render();
+    }
+    prevBtn.addEventListener("click", () => step(-1));
+    nextBtn.addEventListener("click", () => step(1));
+    document.getElementById("fileViewerClose").addEventListener("click", close);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+    document.addEventListener("keydown", (e) => {
+      if (overlay.style.display === "none") return;
+      if (e.key === "Escape") close();
+      if (e.key === "ArrowLeft") step(-1);
+      if (e.key === "ArrowRight") step(1);
+    });
+    return { open };
+  })();
+
   function renderCaptured(item) {
     const summaries = (item.files || [])
       .map((f, i) => {
@@ -185,17 +258,21 @@
     // click should open. Every other non-photo type has at most one
     // file, so files[0] is still correct for them.
     const viewFile = item.type === "document" ? files[1] : files[0];
+    // Opens in FileViewer's modal (see below) instead of handing the file
+    // off to a new tab. The one exception is the URL type just below —
+    // item.sourceUrl is a third-party page, which can't reliably be
+    // embedded (X-Frame-Options/CSP), so that one still opens externally.
     const viewLinks = isPhotoAlbum
-      ? files.map((f) => `<a href="${fileUrl(f.id)}" target="_blank" rel="noopener">
+      ? files.map((f, i) => `<button type="button" class="file-view-trigger" data-item-id="${item.id}" data-file-index="${i}" title="View">
           <img src="${fileUrl(f.id)}" alt="${esc(f.originalName)}" style="max-height:48px; max-width:64px; object-fit:cover; border-radius:4px; vertical-align:middle;">
-        </a>`).join(" ")
+        </button>`).join(" ")
       // A URL item's own file[0] is the archived text snapshot used for
       // AI analysis (see content_create_url()), not something a click on
       // "View" should open — the point of this button is to see the
       // actual source page, so it links to item.sourceUrl instead.
       : item.type === "url"
         ? (item.sourceUrl ? `<a href="${esc(item.sourceUrl)}" target="_blank" rel="noopener">View</a>` : "")
-        : (viewFile ? `<a href="${fileUrl(viewFile.id)}" target="_blank" rel="noopener">View</a>` : "");
+        : (viewFile ? `<button type="button" class="file-view-trigger" data-item-id="${item.id}">View</button>` : "");
     const suggestions = item.suggestions || [];
     const pending = suggestions.filter((s) => s.status === "pending").length;
     const suggestionsBtn = suggestions.length
@@ -288,6 +365,12 @@
     });
     document.querySelectorAll('#contentRows button[data-action="approve-story"]').forEach((btn) => {
       btn.addEventListener("click", () => handleApproveStory(btn.dataset.id));
+    });
+    document.querySelectorAll("#contentRows .file-view-trigger").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const item = currentItems.find((i) => i.id === btn.dataset.itemId);
+        if (item) FileViewer.open(item, Number(btn.dataset.fileIndex || 0));
+      });
     });
   }
 

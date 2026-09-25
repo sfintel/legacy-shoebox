@@ -14,6 +14,29 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.11.1] — 2026-09-25
+
+### Fixed
+
+- **Media tab table: the Added column wrapped.** The Media panel now
+  widens `#app` to 1200px (every other tab keeps its normal 880px
+  prose-reading width) whenever the Media tab is active, and the
+  Type/Added columns are pinned to `white-space:nowrap`.
+- **admin_content.php's row "View" button opened a new tab.** It now
+  opens a modal viewer in place instead — image, video, audio, PDF
+  (iframe), or plain text (transcript/document text, fetched and
+  shown inline), with prev/next for a photo album's multiple files.
+  A URL item's "View" still opens its external source page in a new
+  tab, since a third-party page can't reliably be embedded.
+
+### Database changes
+
+None.
+
+### Environment changes
+
+None.
+
 ## [2.11.0] — 2026-09-25
 
 ### Added

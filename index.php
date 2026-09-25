@@ -249,7 +249,7 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
       <div id="mediaTableWrap" class="table-wrap" style="display:none;">
         <table class="admin-table">
           <thead>
-            <tr><th>Title</th><th>Type</th><th>Keywords</th><th>Details</th><th>Added</th></tr>
+            <tr><th>Title</th><th class="nowrap-cell">Type</th><th>Keywords</th><th>Details</th><th class="nowrap-cell">Added</th></tr>
           </thead>
           <tbody id="mediaTableBody"></tbody>
         </table>

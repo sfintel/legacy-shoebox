@@ -54,6 +54,26 @@ require_content_page();
       </div>
     </div>
 
+    <!-- Row "View" links open here in place, instead of handing a photo/
+         video/audio/document/transcript file off to a new browser tab —
+         a URL item's own external sourceUrl link is the one exception
+         (see renderActions() in js/admin_content.js), since a third-party
+         page can't reliably be embedded. -->
+    <div id="fileViewerModal" class="modal-overlay lightbox-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="File viewer">
+      <div class="modal-dialog lightbox-dialog file-viewer-dialog">
+        <div class="modal-header">
+          <span id="fileViewerTitle" class="meta" style="margin:0;"></span>
+          <button type="button" id="fileViewerClose" class="modal-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="lightbox-body file-viewer-body">
+          <button type="button" id="fileViewerPrev" class="lightbox-nav lightbox-prev" aria-label="Previous" style="display:none;">&#8592;</button>
+          <div id="fileViewerContent" class="file-viewer-content"></div>
+          <button type="button" id="fileViewerNext" class="lightbox-nav lightbox-next" aria-label="Next" style="display:none;">&#8594;</button>
+        </div>
+        <div id="fileViewerCounter" class="meta lightbox-counter"></div>
+      </div>
+    </div>
+
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
       <h2 style="margin:0;" id="listHeading">Added content</h2>
       <button id="backfillBtn" class="btn-primary" title="Runs the AI narrative-connection note and, for Transcript/Document/URL/approved Story/captioned Photo items, the suggestion-extraction pass on every item that's missing them — safe to run repeatedly, since it only fills in what's missing and never re-runs analysis an item already has. Also links any unlinked video-or-audio/transcript pair whose titles match exactly. Use this after adding several items at once, or if an AI call failed silently when an item was first added.">Backfill AI analysis</button>
