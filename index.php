@@ -239,8 +239,21 @@ $defaultAudienceMode = in_array($user['default_audience_mode'] ?? '', audience_m
           <option value="oldest">Oldest first</option>
           <option value="title">Title A&ndash;Z</option>
         </select>
+        <label for="mediaViewMode" style="font-size:.85rem; color:var(--muted);">View:</label>
+        <select id="mediaViewMode">
+          <option value="grid">Thumbnails</option>
+          <option value="table">Table</option>
+        </select>
       </div>
       <div id="mediaGrid" class="media-grid"></div>
+      <div id="mediaTableWrap" class="table-wrap" style="display:none;">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Title</th><th>Type</th><th>Keywords</th><th>Details</th><th>Added</th></tr>
+          </thead>
+          <tbody id="mediaTableBody"></tbody>
+        </table>
+      </div>
     </section>
 
     <!-- TRANSCRIPT -->

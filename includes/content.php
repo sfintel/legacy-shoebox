@@ -177,6 +177,9 @@ function content_public(array $item): array
         'storyApprovedAt' => $item['type'] === 'story' ? $item['story_approved_at'] : null,
         // `?? null`: same deploy-before-upgrade window as narrativeNoteReviewedAt above.
         'linkedItemId' => $item['linked_item_id'] ?? null,
+        // `?? null`: same deploy-before-upgrade window — thumbnail_file_name
+        // may not exist yet on an old webroot.
+        'hasThumbnail' => !empty($item['thumbnail_file_name'] ?? null),
     ];
 }
 
@@ -212,7 +215,69 @@ function content_media_public(array $item): array
         'createdAt' => $item['created_at'],
         'sourceUrl' => $item['source_url'] ?? null,
         'files' => array_map('content_file_public', content_files_for_item($item['id'])),
+        // video only — see content_set_thumbnail() and api/thumbnail.php.
+        'hasThumbnail' => $item['type'] === 'video' && !empty($item['thumbnail_file_name'] ?? null),
     ];
+}
+
+// $ownerId, when given, restricts to an item created by that user — same
+// posture as content_update_item()/content_delete(). $dataUrl is a
+// browser canvas-captured frame as a "data:image/jpeg;base64,..." string,
+// or "" to clear back to the Media tab's default heuristic thumbnail.
+// Only type='video' items may have one; a captured frame's format is
+// always JPEG (js/admin_content.js always requests canvas.toDataURL with
+// "image/jpeg"), so there's exactly one format to validate/store, not a
+// user-uploaded file's open-ended set.
+function content_set_thumbnail(string $id, ?string $ownerId, string $dataUrl): array
+{
+    $item = content_find($id);
+    if (!$item || ($ownerId !== null && $item['created_by'] !== $ownerId)) {
+        throw new RuntimeException('Content item not found.');
+    }
+    if ($item['type'] !== 'video') {
+        throw new RuntimeException('Only video items can have a custom thumbnail.');
+    }
+
+    $dir = content_upload_dir('thumbnails');
+    $oldFileName = $item['thumbnail_file_name'] ?? null;
+
+    if (trim($dataUrl) === '') {
+        if ($oldFileName) {
+            $oldPath = "$dir/$oldFileName";
+            if (is_file($oldPath)) {
+                unlink($oldPath);
+            }
+        }
+        db()->prepare('UPDATE content_items SET thumbnail_file_name = NULL WHERE id = ?')->execute([$id]);
+        return content_find($id);
+    }
+
+    if (!preg_match('/^data:image\/jpeg;base64,(.+)$/', $dataUrl, $m)) {
+        throw new RuntimeException('Unsupported thumbnail image format.');
+    }
+    $binary = base64_decode($m[1], true);
+    if ($binary === false || $binary === '') {
+        throw new RuntimeException('Could not decode the captured frame.');
+    }
+    if (strlen($binary) > 5 * 1024 * 1024) {
+        throw new RuntimeException('Captured frame is too large.');
+    }
+
+    $fileName = make_uuid() . '.jpg';
+    file_put_contents("$dir/$fileName", $binary);
+    db()->prepare('UPDATE content_items SET thumbnail_file_name = ? WHERE id = ?')->execute([$fileName, $id]);
+
+    // Only unlink the old file once the new one is safely written and the
+    // row updated — never leaves the item pointing at a filename that no
+    // longer exists on disk if something above throws first.
+    if ($oldFileName) {
+        $oldPath = "$dir/$oldFileName";
+        if (is_file($oldPath)) {
+            unlink($oldPath);
+        }
+    }
+
+    return content_find($id);
 }
 
 // Pulls a curated subset of capture metadata (date taken, device, GPS,
@@ -1329,6 +1394,12 @@ function content_delete(string $id, ?string $ownerId = null): bool
         $path = content_upload_dir($item['type']) . '/' . $file['file_name'];
         if (is_file($path)) {
             unlink($path);
+        }
+    }
+    if (!empty($item['thumbnail_file_name'] ?? null)) {
+        $thumbPath = content_upload_dir('thumbnails') . '/' . $item['thumbnail_file_name'];
+        if (is_file($thumbPath)) {
+            unlink($thumbPath);
         }
     }
     // Deleting the parent row cascades the content_files rows in the DB

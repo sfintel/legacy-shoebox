@@ -237,6 +237,12 @@ CREATE TABLE IF NOT EXISTS content_items (
   -- either half of a pair never leaves the other half pointing at a
   -- missing row.
   linked_item_id CHAR(36)     NULL,
+  -- type='video' only: filename (not a path) of an admin-captured JPEG
+  -- frame under ARCHIVE_ROOT/uploads/thumbnails/, used in place of the
+  -- Media tab's default browser-generated first-frame heuristic (see
+  -- content_set_thumbnail() in includes/content.php, api/thumbnail.php).
+  -- NULL means "no custom thumbnail" — the heuristic still applies.
+  thumbnail_file_name VARCHAR(255) NULL,
   created_by    CHAR(36)      NOT NULL,
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_content_items_subject FOREIGN KEY (subject_id)

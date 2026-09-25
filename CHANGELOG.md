@@ -14,6 +14,35 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.11.0] — 2026-09-25
+
+### Added
+
+- **Media tab: Thumbnails/Table view toggle.** A new "View" dropdown
+  switches between the existing card grid and a sortable-columns-free
+  table (Title/Type/Keywords/Details/Added), mirroring
+  admin_content.php's own table. Both views share the same click
+  behavior (photo → lightbox, video/audio → pop-up player,
+  transcript → text viewer).
+- **Custom video thumbnails on the Content page.** A video item's edit
+  row now has a scrub-and-capture picker: play/seek the video, click
+  "Capture this frame," and that frame becomes its thumbnail
+  everywhere the Media tab shows one, replacing the previous always-
+  first-frame heuristic. "Clear thumbnail" reverts to that heuristic.
+  New `api/thumbnail.php` (serves it) and
+  `api/admin/content_thumbnail_set.php` (captures/clears it).
+
+### Database changes
+
+New nullable `content_items.thumbnail_file_name` column (migration
+2.11.0 in `includes/migrations.php`); captured frames are stored as
+JPEGs under `ARCHIVE_ROOT/uploads/thumbnails/`, covered automatically
+by the existing whole-`uploads/`-directory backup.
+
+### Environment changes
+
+None.
+
 ## [2.10.1] — 2026-09-24
 
 ### Changed

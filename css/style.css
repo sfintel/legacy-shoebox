@@ -348,6 +348,8 @@ input[type=search]{min-width:180px;}
 }
 .admin-table th.sort-asc::after{content:"↑";}
 .admin-table th.sort-desc::after{content:"↓";}
+.media-table-row{cursor:pointer;}
+.media-table-row:hover{background:var(--panel-2);}
 
 /* A real tooltip built from CSS/JS rather than the native `title`
    attribute — title tooltips are unreliable across browsers and

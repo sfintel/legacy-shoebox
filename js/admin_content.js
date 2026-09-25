@@ -553,6 +553,26 @@
           </div>`;
         })()
       : "";
+    // Scrub-and-capture thumbnail picker, video items only. The video
+    // element here is a second one just for scrubbing (renderFileEditFields()
+    // above shows no player at all) — kept separate from the Media tab's
+    // pop-up player, since this one needs to stay paused-and-seekable for
+    // frame capture, not autoplay.
+    const thumbnailHtml = item.type === "video" && (item.files || [])[0]
+      ? `<div class="card" style="margin-bottom:10px;">
+          <div class="meta">Thumbnail</div>
+          <div class="thumbnail-preview" style="margin-bottom:8px;">
+            ${item.hasThumbnail
+              ? `<img src="/api/thumbnail.php?itemId=${item.id}&_=${Date.now()}" alt="Current thumbnail" style="max-width:200px; max-height:120px; display:block; border-radius:6px; border:1px solid var(--border);">`
+              : `<span class="meta" style="display:block;">No custom thumbnail — the Media tab uses an auto-generated first frame.</span>`}
+          </div>
+          <video class="thumbnail-scrub-video" src="${fileUrl(item.files[0].id)}" controls preload="metadata" style="max-width:360px; width:100%; display:block; margin-bottom:8px; border-radius:6px;"></video>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="ghost-btn capture-thumbnail-btn">Capture this frame</button>
+            ${item.hasThumbnail ? `<button type="button" class="ghost-btn clear-thumbnail-btn">Clear thumbnail</button>` : ""}
+          </div>
+        </div>`
+      : "";
     return `<tr class="edit-row" data-edit-for="${item.id}">
       <td colspan="9">
         <div class="content-form" style="max-width:none;">
@@ -566,6 +586,7 @@
             <div id="tagsPicker-edit-${item.id}"></div>
           </div>
           ${linkHtml}
+          ${thumbnailHtml}
           ${filesHtml}
           <div style="display:flex; gap:8px;">
             <button type="button" class="btn-primary save-edit">Save</button>
@@ -595,6 +616,63 @@
     );
     editRow.querySelector(".cancel-edit").addEventListener("click", () => editRow.remove());
     editRow.querySelector(".save-edit").addEventListener("click", () => saveEdit(item, editRow));
+    const captureBtn = editRow.querySelector(".capture-thumbnail-btn");
+    if (captureBtn) captureBtn.addEventListener("click", () => captureThumbnail(item, editRow, captureBtn));
+    const clearBtn = editRow.querySelector(".clear-thumbnail-btn");
+    if (clearBtn) clearBtn.addEventListener("click", () => clearThumbnail(item, clearBtn));
+  }
+
+  // Captures whatever frame the admin scrubbed the edit row's video to —
+  // a plain <canvas> draw + toDataURL, same-origin so the canvas is never
+  // tainted — and uploads it as the item's thumbnail. Reopens the edit
+  // row afterward (same load()-then-reopen pattern toggleSuggestions()'s
+  // callers already use) so scrubbing to a better frame and re-capturing
+  // doesn't require re-finding and re-opening Edit each time.
+  async function captureThumbnail(item, editRow, btn) {
+    const videoEl = editRow.querySelector(".thumbnail-scrub-video");
+    if (!videoEl || videoEl.readyState < 2) {
+      alert("Wait for the video to finish loading, then scrub to a frame before capturing.");
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = videoEl.videoWidth;
+    canvas.height = videoEl.videoHeight;
+    canvas.getContext("2d").drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/admin/content_thumbnail_set.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id, dataUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save thumbnail.");
+      await load();
+      toggleEdit(item.id);
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function clearThumbnail(item, btn) {
+    if (!confirm("Remove the custom thumbnail and go back to the auto-generated frame?")) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/admin/content_thumbnail_set.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id, dataUrl: "" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to clear thumbnail.");
+      await load();
+      toggleEdit(item.id);
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
   }
 
   async function saveEdit(item, editRow) {

@@ -585,7 +585,14 @@
     }
     if (item.type === "video") {
       const cc = item.hasCaptions ? `<div class="media-thumb-cc">CC</div>` : "";
-      return `<video muted preload="metadata" src="${url}"></video><div class="media-thumb-badge">&#9654;</div>${cc}`;
+      // Prefer the admin-captured frame (admin_content.php's scrub-and-
+      // capture picker) over the plain <video preload="metadata"> heuristic,
+      // which just shows whatever frame the browser happens to decode
+      // first — usually black or off-subject.
+      const visual = item.hasThumbnail
+        ? `<img src="/api/thumbnail.php?itemId=${encodeURIComponent(item.id)}" alt="" loading="lazy">`
+        : `<video muted preload="metadata" src="${url}"></video>`;
+      return `${visual}<div class="media-thumb-badge">&#9654;</div>${cc}`;
     }
     if (item.type === "transcript") {
       return `<div class="media-thumb-icon">&#128221;</div>`;
@@ -593,7 +600,6 @@
     return `<div class="media-thumb-icon">&#127925;</div>`;
   }
   function renderMediaGrid(items) {
-    renderedMedia = items;
     const el = document.getElementById("mediaGrid");
     el.innerHTML = items.map((item, i) => {
       const meta = (item.files[0] && item.files[0].metadataSummary) || "";
@@ -604,11 +610,25 @@
       </button>`;
     }).join("") || `<p class="meta">No results.</p>`;
   }
-  document.getElementById("mediaGrid").addEventListener("click", e => {
-    const card = e.target.closest(".media-card");
-    if (!card) return;
-    const item = renderedMedia[Number(card.dataset.mediaIndex)];
-    if (!item) return;
+  function renderMediaTable(items) {
+    const el = document.getElementById("mediaTableBody");
+    const typeLabels = { video: "Video", audio: "Audio", photo: "Photo", transcript: "Transcript" };
+    el.innerHTML = items.map((item, i) => {
+      const meta = (item.files[0] && item.files[0].metadataSummary) || "";
+      const tags = (item.tags || []).map(t => `<span class="pill">${esc(t)}</span>`).join("");
+      return `<tr class="media-table-row" data-media-index="${i}">
+        <td>${esc(item.title)}</td>
+        <td>${esc(typeLabels[item.type] || item.type)}</td>
+        <td>${tags}</td>
+        <td class="meta">${esc(meta)}</td>
+        <td class="meta">${esc((item.createdAt || "").slice(0, 10))}</td>
+      </tr>`;
+    }).join("") || `<tr><td colspan="5" class="meta">No results.</td></tr>`;
+  }
+  // Shared by both views (renderMediaGrid's cards and renderMediaTable's
+  // rows carry the same data-media-index into the same renderedMedia
+  // array), so switching the View dropdown doesn't need to touch this.
+  function openMediaItem(item) {
     if (item.type === "photo") {
       const ids = (item.files || []).map(f => f.id).filter(Boolean);
       Lightbox.open(ids, 0, item.title || "");
@@ -628,12 +648,31 @@
       description: m.narrativeNote || m.description || "",
       hasCaptions: !!m.hasCaptions,
     })), startIndex < 0 ? 0 : startIndex);
+  }
+  document.getElementById("panel-media").addEventListener("click", e => {
+    const target = e.target.closest(".media-card, .media-table-row");
+    if (!target) return;
+    const item = renderedMedia[Number(target.dataset.mediaIndex)];
+    if (item) openMediaItem(item);
   });
+  // Redraws the currently-filtered set in whichever view is selected —
+  // called both after a filter/search/sort change (which recomputes
+  // renderedMedia) and on its own when only the View dropdown changes.
+  function renderMedia() {
+    const mode = document.getElementById("mediaViewMode").value;
+    document.getElementById("mediaGrid").style.display = mode === "table" ? "none" : "";
+    document.getElementById("mediaTableWrap").style.display = mode === "table" ? "" : "none";
+    if (mode === "table") {
+      renderMediaTable(renderedMedia);
+    } else {
+      renderMediaGrid(renderedMedia);
+    }
+  }
   // Mirrors admin_content.php's "Show:" type filter + sortable columns —
-  // same idea, simplified to two dropdowns since the Media tab is a card
-  // grid, not a sortable table. Search, type filter, and sort all apply
-  // together, so any control can be changed independently without losing
-  // the others' state.
+  // same idea, plus a Thumbnails/Table view toggle matching admin_content's
+  // own table view. Search, type filter, and sort all apply together, so
+  // any control can be changed independently without losing the others'
+  // state.
   function applyMediaFilter() {
     const q = document.getElementById("mediaSearch").value.toLowerCase();
     const typeFilter = document.getElementById("mediaTypeFilter").value;
@@ -652,11 +691,13 @@
     } else if (sort === "title") {
       items.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
     }
-    renderMediaGrid(items);
+    renderedMedia = items;
+    renderMedia();
   }
   document.getElementById("mediaSearch").addEventListener("input", applyMediaFilter);
   document.getElementById("mediaTypeFilter").addEventListener("change", applyMediaFilter);
   document.getElementById("mediaSort").addEventListener("change", applyMediaFilter);
+  document.getElementById("mediaViewMode").addEventListener("change", renderMedia);
 
   // --- Transcript ---
   let transcriptData = null;

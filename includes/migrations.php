@@ -31,6 +31,19 @@ declare(strict_types=1);
 function migrations_steps(): array
 {
     return [
+        '2.11.0' => [
+            'description' => 'Video items on the Content page can now have a custom thumbnail: scrub the video and capture a frame, instead of always using the Media tab\'s browser-generated first-frame heuristic. Also: the Media tab gains a Thumbnails/Table view toggle. New content_items.thumbnail_file_name column; captured frames stored as JPEGs under ARCHIVE_ROOT/uploads/thumbnails/, served by new api/thumbnail.php',
+            'db' => static function (PDO $pdo): void {
+                $hasCol = (int) $pdo->query(
+                    "SELECT COUNT(*) FROM information_schema.columns
+                     WHERE table_schema = DATABASE() AND table_name = 'content_items' AND column_name = 'thumbnail_file_name'"
+                )->fetchColumn();
+                if ($hasCol === 0) {
+                    $pdo->exec('ALTER TABLE content_items ADD COLUMN thumbnail_file_name VARCHAR(255) NULL AFTER linked_item_id');
+                }
+            },
+            'env' => [],
+        ],
         '2.7.1' => [
             'description' => 'Ask tab now attaches a [[photo:ID]]/[[video:ID]] token (rendering an inline image/video) any time the model CITES a family-contributed photo/video as the source of a claim, not only when the user explicitly asks to see it. Found live: an answer cited "(Family-contributed photos, ...)" with no way to actually view it. Prompt-only change (includes/knowledge.php), no new mechanism, no schema change',
             'db' => null,
