@@ -14,6 +14,14 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.11.3] — 2026-11-17
+
+### Fixed
+- Sign-in page: Chrome on iOS now offers saved passwords from Bitwarden
+  (and other password apps). The email field no longer grabs focus on page
+  load, which kept Chrome from showing password suggestions, and the form
+  is now a standard POST login form.
+
 ## [2.11.2] — 2026-09-25
 
 ### Fixed

@@ -41,9 +41,9 @@ $ss = site_settings();
   <div class="card">
     <h1><?= h(site_name()) ?></h1>
     <p class="sub">Private family archive. Sign in to continue.</p>
-    <form id="loginForm">
+    <form id="loginForm" method="post" action="/login.php">
       <label for="email">Email</label>
-      <input type="email" id="email" name="email" autocomplete="username" autofocus required>
+      <input type="email" id="email" name="email" autocomplete="username" required>
       <label for="password">Password</label>
       <input type="password" id="password" name="password" autocomplete="current-password" required>
       <div class="forgot-link"><a href="/forgot_password.php">Forgot password?</a></div>
