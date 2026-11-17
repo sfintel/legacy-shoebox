@@ -670,6 +670,10 @@ new host regardless of how the database migration goes.
 - Use HTTPS. Most hosts offer a free Let's Encrypt certificate through
   cPanel (*SSL/TLS Status* → *Run AutoSSL*) — turn it on before sending
   anyone a login link.
+  Once a subject is set up, plain `http://` requests to its hostname are
+  redirected to `https://` automatically (`localhost` and CLI scripts are
+  exempt), so any cron job that calls a page over the web should use the
+  `https://` URL.
 - This was built for a small trusted family group, or a handful of such
   groups sharing one install (see "Multiple subjects" above) — not as a
   hardened SaaS-grade multi-tenant platform. The login/approval flow

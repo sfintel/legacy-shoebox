@@ -97,6 +97,23 @@ define('APP_URL', $resolvedHostname !== null
     ? 'https://' . $resolvedHostname
     : rtrim((string) env('APP_URL', 'http://localhost'), '/'));
 
+// Send plain-http visits to the subject's https address, so a password
+// can never be sent unencrypted. Only for web requests on a resolved
+// subject (whose APP_URL above is already https) — never for CLI
+// scripts, and never for localhost, so local testing over http still
+// works. 301 for GET/HEAD; 308 for anything else so a POST stays a POST.
+if (PHP_SAPI !== 'cli' && $resolvedHostname !== null) {
+    $requestIsHttps = (($_SERVER['HTTPS'] ?? '') !== '' && ($_SERVER['HTTPS'] ?? 'off') !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $requestHost = strtolower((string) preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
+    if (!$requestIsHttps && !in_array($requestHost, ['localhost', '127.0.0.1', '[::1]'], true)) {
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        header('Location: ' . APP_URL . ($_SERVER['REQUEST_URI'] ?? '/'),
+            true, in_array($method, ['GET', 'HEAD'], true) ? 301 : 308);
+        exit;
+    }
+}
+
 // ARCHIVE_ROOT_BASE is the parent directory holding every subject's
 // upload/backup data; ARCHIVE_ROOT itself resolves to that subject's
 // own subdirectory (ARCHIVE_ROOT_BASE/{slug}) — includes/content.php

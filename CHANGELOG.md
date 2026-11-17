@@ -14,6 +14,13 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.11.6] — 2026-11-17
+
+### Security
+- Plain `http://` visits to a subject's address are now redirected to its
+  `https://` address (301, or 308 for non-GET requests), so a password can
+  never be sent unencrypted. CLI scripts and `localhost` are unaffected.
+
 ## [2.11.5] — 2026-11-17
 
 ### Fixed
