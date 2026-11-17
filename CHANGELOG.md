@@ -14,6 +14,14 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.11.5] — 2026-11-17
+
+### Fixed
+- Chrome on iOS still didn't offer Bitwarden at the site's bare address
+  after 2.11.4, while `/login.php` worked with an identical page. The
+  in-place sign-in page now answers exactly like `/login.php`: no session
+  cookie and no no-store/no-cache headers for signed-out visitors.
+
 ## [2.11.4] — 2026-11-17
 
 ### Fixed

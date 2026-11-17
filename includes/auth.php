@@ -90,8 +90,14 @@ function require_auth_page(): array
     if (!$user) {
         // Show the sign-in page right here instead of redirecting to
         // /login.php: Chrome on iOS won't offer password-manager AutoFill
-        // (e.g. Bitwarden) on a page it reached through a redirect.
-        header('Cache-Control: no-store');
+        // (e.g. Bitwarden) on a page it reached through a redirect. It's
+        // also picky about the response itself, so answer exactly like
+        // /login.php does: drop the headers that checking for a session
+        // added (session cookie, no-store/no-cache). The login API starts
+        // its own session when the visitor actually signs in.
+        foreach (['Set-Cookie', 'Cache-Control', 'Pragma', 'Expires'] as $hdr) {
+            header_remove($hdr);
+        }
         require __DIR__ . '/../login.php';
         exit;
     }
