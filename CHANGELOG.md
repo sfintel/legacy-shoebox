@@ -14,6 +14,19 @@ why `sql/schema.sql` alone isn't enough to pick those up automatically.
 
 Nothing yet.
 
+## [2.11.4] — 2026-11-17
+
+### Fixed
+- Chrome on iOS still didn't offer saved passwords from Bitwarden (and other
+  password apps) after 2.11.3. The real cause: it won't offer AutoFill on a
+  page reached through a redirect, and logged-out visitors were redirected
+  from `/` (and every other page) to `/login.php`. The sign-in form is now
+  shown in place at the address visited, and after signing in that page
+  reloads (or `/login.php` goes home as before).
+- Service worker: page loads are now network-first, so a cached sign-in
+  page can't be shown at `/` after signing in. Cache version bumped
+  (v7 -> v8).
+
 ## [2.11.3] — 2026-11-17
 
 ### Fixed

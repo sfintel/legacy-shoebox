@@ -88,7 +88,11 @@ function require_auth_page(): array
 {
     $user = current_user();
     if (!$user) {
-        header('Location: /login.php');
+        // Show the sign-in page right here instead of redirecting to
+        // /login.php: Chrome on iOS won't offer password-manager AutoFill
+        // (e.g. Bitwarden) on a page it reached through a redirect.
+        header('Cache-Control: no-store');
+        require __DIR__ . '/../login.php';
         exit;
     }
     return $user;

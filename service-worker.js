@@ -1,4 +1,4 @@
-const CACHE_NAME = "app-lamp-v7";
+const CACHE_NAME = "app-lamp-v8";
 const APP_SHELL = [
   "/",
   "/login.php",
@@ -63,7 +63,10 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (NO_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p))) return;
 
-  if (!APP_SHELL.includes(url.pathname)) {
+  // Page loads (navigations) are always network-first too: a logged-out
+  // visit to "/" now gets the sign-in page at that same URL, which a
+  // cache-first "/" would otherwise keep showing after signing in.
+  if (!APP_SHELL.includes(url.pathname) || event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {

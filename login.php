@@ -74,7 +74,10 @@ $ss = site_settings();
       });
       const data = await res.json();
       if (data.ok) {
-        window.location.href = '/';
+        // Signed in from another page's address (the sign-in form is shown
+        // in place there): reload that page; from /login.php, go home.
+        if (window.location.pathname === '/login.php') window.location.href = '/';
+        else window.location.reload();
       } else {
         err.textContent = data.error || 'Incorrect email or password.';
       }
